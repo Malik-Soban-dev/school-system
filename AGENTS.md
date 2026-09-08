@@ -1,3 +1,10 @@
+# Session continuity
+
+- At the start of every session, read `PROGRESS.txt` before continuing work.
+- Update `PROGRESS.txt` after each meaningful change, verification, deployment, or blocker.
+- Record what is complete, what remains, and the next action. Never record secrets.
+- Verify current repository and deployment state before relying on earlier status entries.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

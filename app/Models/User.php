@@ -27,6 +27,13 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'roles' => 'array',
+            'is_active' => 'boolean',
         ];
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->is_active && in_array($role, $this->roles ?? [], true);
     }
 }

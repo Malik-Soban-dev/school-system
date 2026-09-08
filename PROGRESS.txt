@@ -3,6 +3,24 @@ Updated: 2026-09-08
 
 Maintain this file after each meaningful change or verification. Never record secrets.
 
+SESSION HANDOFF
+- Active milestone: username login, private first-owner provisioning, account password
+  changes, inactive-account protection and palette-based landing/login/dashboard.
+- Local suite passed: 19 tests, 63 assertions. No real credentials are in test fixtures.
+- Owner username requested: malik. Password supplied privately and must never be recorded here.
+- Email is optional for this first account; invitation email and recovery still need a provider.
+- Role storage supports multiple roles; scoped school modules and invitations remain next.
+- Latest live change: bd2247e displays "School System is live." on the public homepage.
+- Public content was verified after deployment; user confirmed seeing it.
+- User is pausing work for now. School-management modules remain unbuilt.
+- AGENTS.md now instructs future sessions to read and maintain this file.
+- Next session: inspect Git/Render state, then agree on the first school module to build.
+- Latest planning work: researched Moodle and Frappe Education account/role workflows.
+- Saved proposed assignment and daily-operation diagrams in details for project/USER-WORKFLOW.md.
+- Proposal includes private first-owner setup, admin-issued invitations, class-scoped
+  teachers, verified guardian links, optional student logins, and account lifecycle.
+- This is a design proposal, not implemented functionality or a change to the live site.
+
 COMPLETED
 - Connected Git origin to Malik-Soban-dev/school-system and pushed main.
 - Installed Render CLI and authorized the account.
@@ -59,3 +77,7 @@ LIVE DEPLOYMENT RESULT - 2026-09-08
 
 - Replaced Laravel welcome screen with a responsive School System launch preview. Pending deploy and public content verification.
 - Launch preview validation: Pint passed, Blade templates compiled, git diff check passed.
+- Pushed launch page in bd2247e. Render deployment requested; awaiting public content check.
+- VERIFIED: Public homepage returned successfully and contains School System is live. Launch preview is visible online.
+
+- Started access milestone: private Owner provisioning, username sign-in, inactive-account protection and password update. Palette confirmed with #96c0b7 correcting the invalid letter o. Credentials remain outside source control.
