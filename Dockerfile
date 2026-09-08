@@ -10,7 +10,7 @@ RUN apt-get update \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+RUN composer install --no-dev --no-interaction --prefer-dist --no-scripts --no-autoloader
 
 COPY package.json ./
 RUN npm install --ignore-scripts
@@ -20,7 +20,7 @@ COPY . .
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views \
     && touch database/database.sqlite \
     && npm run build \
-    && php artisan package:discover --ansi \
+    && composer dump-autoload --no-dev --optimize \
     && php artisan storage:link
 
 EXPOSE 10000
