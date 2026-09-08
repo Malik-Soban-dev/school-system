@@ -1,0 +1,45 @@
+SCHOOL SYSTEM - WORK LOG
+Updated: 2026-09-08
+
+Maintain this file after each meaningful change or verification. Never record secrets.
+
+COMPLETED
+- Connected Git origin to Malik-Soban-dev/school-system and pushed main.
+- Installed Render CLI and authorized the account.
+- Fixed Docker Composer build order; commit f94454c pushed.
+- Render confirmed the Docker build passes. Startup failed because libsql was unconfigured.
+- Installed Laravel Boost 2.7.1 and generated project guidelines locally.
+- Installed mis3085/turso-laravel 2.0.0 locally (declares Laravel 13 support).
+- Added local libsql connection configuration using the Turso HTTP driver.
+- Added Turso credential examples without secrets to .env.example.
+
+CURRENT VERIFICATION
+- Rechecked working tree and installed dependency versions on 2026-09-08.
+- Turso/configuration changes are not yet committed or deployed.
+- Render recheck: latest deploy dep-dafmm5eq1p3s73e5tvig is update_failed.
+- Render recheck: DB_URL is present; DB_AUTH_TOKEN, DB_ACCESS_TOKEN, and TURSO_AUTH_TOKEN are absent.
+- PHP formatting passed with Pint.
+- Local PHPUnit suite passed: 2 tests, 2 assertions. These are starter tests only;
+  they do not establish Turso connectivity or school-module functionality.
+- Additional isolated unit invocation passed: 1 test, 1 assertion.
+- Driver source review confirms replica synchronization is skipped when db_replica is null.
+
+REMAINING
+- Verify Turso authentication, migrations, and live HTTP responses.
+- Add meaningful Turso integration coverage, then commit and deploy verified changes.
+- Last credential check found DB_URL but no Turso authentication token in Render.
+- School ERP modules are not implemented: repository still contains the Laravel starter.
+- Await school name, administrator email, and integration-provider choices.
+- Do not call the full school system complete until real workflows and integrations are tested.
+
+NEXT USER ACTION
+- No new token is needed: user clarified DB_URL includes one.
+
+LATEST FINDING
+- Verified DB_URL uses libsql scheme with an authToken query parameter.
+- Earlier missing-token report was incomplete: the credential exists inside DB_URL.
+- Installed driver expects a separate bearer token. Preparing to separate the existing
+  credential into DB_AUTH_TOKEN and retain only the database address in DB_URL.
+- No credentials were displayed or written to this log.
+
+- Separated existing Render authToken into DB_AUTH_TOKEN; DB_URL now contains only the database address.

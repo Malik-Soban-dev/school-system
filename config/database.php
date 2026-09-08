@@ -32,6 +32,16 @@ return [
 
     'connections' => [
 
+        'libsql' => [
+            'driver' => 'turso',
+            'db_url' => str_replace('libsql://', 'https://', env('TURSO_DATABASE_URL', env('DB_URL', ''))),
+            'access_token' => env('TURSO_AUTH_TOKEN', env('DB_AUTH_TOKEN', env('DB_ACCESS_TOKEN'))),
+            'db_replica' => null,
+            'prefix' => '',
+            'foreign_key_constraints' => true,
+            'sticky' => true,
+        ],
+
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),
