@@ -15,9 +15,9 @@ COMPLETED
 
 CURRENT VERIFICATION
 - Rechecked working tree and installed dependency versions on 2026-09-08.
-- Turso/configuration changes are not yet committed or deployed.
+- Turso/configuration changes committed and pushed in 9705ec2; deployment verification underway.
 - Render recheck: latest deploy dep-dafmm5eq1p3s73e5tvig is update_failed.
-- Render recheck: DB_URL is present; DB_AUTH_TOKEN, DB_ACCESS_TOKEN, and TURSO_AUTH_TOKEN are absent.
+- Initial Render recheck found no separate token; later inspection located authToken inside DB_URL.
 - PHP formatting passed with Pint.
 - Local PHPUnit suite passed: 2 tests, 2 assertions. These are starter tests only;
   they do not establish Turso connectivity or school-module functionality.
@@ -43,3 +43,19 @@ LATEST FINDING
 - No credentials were displayed or written to this log.
 
 - Separated existing Render authToken into DB_AUTH_TOKEN; DB_URL now contains only the database address.
+
+LIVE DEPLOYMENT RESULT - 2026-09-08
+- Commit 9705ec2 deployed successfully; Render status is LIVE.
+- Deployment: dep-dag0k69t0dsc73841uh0.
+- Turso authentication succeeded and all three starter migrations completed.
+- Public homepage https://school-system-wucf.onrender.com/ returned HTTP 200.
+- Requests during deployment transition timed out; the post-live homepage check passed.
+- This confirms the Laravel foundation is live, not a completed school ERP.
+
+- Started Render deployment dep-dag0k69t0dsc73841uh0 for commit 9705ec2 after automatic deployment did not appear.
+
+- Render build passed with Turso driver. Authentication succeeded: migration table, users and cache migrations completed; startup still in progress.
+- Public /up health endpoint returned HTTP 200 after deployment went live.
+
+- Replaced Laravel welcome screen with a responsive School System launch preview. Pending deploy and public content verification.
+- Launch preview validation: Pint passed, Blade templates compiled, git diff check passed.
