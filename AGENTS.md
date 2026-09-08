@@ -4,6 +4,8 @@
 - Update `PROGRESS.txt` after each meaningful change, verification, deployment, or blocker.
 - Record what is complete, what remains, and the next action. Never record secrets.
 - Verify current repository and deployment state before relying on earlier status entries.
+- Push tested milestones and progress notes to GitHub as requested by the user; never commit credentials or database contents.
+- UI palette: #725752, #878E88, #96c0b7, #d4dfc7, #fef6c9. The third color corrects the invalid letter o in the original input.
 
 <laravel-boost-guidelines>
 === foundation rules ===

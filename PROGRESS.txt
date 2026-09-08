@@ -4,6 +4,14 @@ Updated: 2026-09-08
 Maintain this file after each meaningful change or verification. Never record secrets.
 
 SESSION HANDOFF
+- CURRENT RESULT: access milestone is live in commit 9e18307, deployment
+  dep-dag7cruk1f9s73c4slg0. Real production login and logout both verified.
+- Login: https://school-system-wucf.onrender.com/login. Username: malik.
+- Dashboard returned HTTP 200, displayed the Owner role and requested palette.
+- Next milestone: invitations and staff administration, then classes/enrollment/guardian links.
+- Pending capabilities: email recovery, MFA, role administration and the school modules.
+- Code and progress are backed up on GitHub; database contents are stored in Turso,
+  not in Git. Database backup/restore planning remains a separate task.
 - Active milestone: username login, private first-owner provisioning, account password
   changes, inactive-account protection and palette-based landing/login/dashboard.
 - Local suite passed: 19 tests, 63 assertions. No real credentials are in test fixtures.
@@ -81,3 +89,8 @@ LIVE DEPLOYMENT RESULT - 2026-09-08
 - VERIFIED: Public homepage returned successfully and contains School System is live. Launch preview is visible online.
 
 - Started access milestone: private Owner provisioning, username sign-in, inactive-account protection and password update. Palette confirmed with #96c0b7 correcting the invalid letter o. Credentials remain outside source control.
+
+- Committed and pushed access milestone 9e18307. Blade compile and route inspection passed; deployment and first Owner activation pending.
+- Render deployment dep-dag7cruk1f9s73c4slg0 went live. Production access migration completed successfully; Owner activation in progress.
+
+- Provisioned malik as active Owner in production Turso through the private command. No email fabricated; password stored only as a hash in the database. Local CLI required a longer connection timeout; no production timeout setting changed.
