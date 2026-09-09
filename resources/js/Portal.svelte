@@ -9,7 +9,7 @@
     let personToEdit = $state(null), selectedRoles = $state([]);
     let attendanceSheet = $state(false), attendanceRecords = $state([]), attendanceClass = $state('');
     let definition = $derived(meta?.modules.find(m => m.key === section));
-    let title = $derived(definition?.label ?? ({overview: 'Your school, in one place', people: 'People & access', settings: 'School settings', audit: 'Activity history'}[section] ?? section));
+    let title = $derived(definition?.label ?? ({overview: 'Your school, in one place', people: 'People & access', invitations: 'Invitations', settings: 'School settings', audit: 'Activity history'}[section] ?? section));
     let pageHelp = $derived(definition && !definition.canWrite ? ({students:'View the students connected to your account. Contact your school if a student is missing.', attendance:'See recorded attendance for the students connected to your account.', grades:'Your school publishes reviewed results here. Draft results remain private.', invoices:'View your fee invoices and outstanding balances. Contact the school office to arrange payment.', payments:'View recorded payments and print your receipts.', timetables:'Check class times, subjects and rooms for your school week.', exams:'View the exams your school has shared with you.', notices:'Read the latest messages shared with your school community.'}[section] ?? definition.help) : definition?.help);
     let steps = $derived([
         {title: `Welcome to ${section === 'overview' ? 'your workspace' : title}`, body: pageHelp ?? 'Use the menu to open your school tools. You only see information your role is allowed to access.'},
@@ -34,7 +34,7 @@
         loading = true; error = '';
         try {
             if (activeDefinition) { const data = await api(`/portal/records/${activeSection}?page=${page}&search=${encodeURIComponent(search)}`); if (requestNumber !== latestRequest) return; rows = data.rows; total = data.total; }
-            else if (activeSection === 'people' || activeSection === 'audit') { const data = await api(`/portal/${activeSection === 'people' ? 'users' : 'audit'}?page=${page}`); if (requestNumber !== latestRequest) return; const result = data.users ?? data.rows; rows = result.data; total = result.total; }
+            else if (['people', 'audit', 'invitations'].includes(activeSection)) { const data = await api(`/portal/${activeSection === 'people' ? 'users' : activeSection}?page=${page}`); if (requestNumber !== latestRequest) return; const result = data.users ?? data.rows; rows = result.data; total = result.total; }
             else { rows = []; total = 0; }
         } catch (e) { if (requestNumber === latestRequest) error = e.message; } finally { if (requestNumber === latestRequest) loading = false; }
     }
@@ -74,6 +74,11 @@
     async function updateAccess(person) {
         busy = true; error = '';
         try { const result = await api(`/portal/users/${person.id}`, 'PUT', {roles: person.roles, is_active: !person.is_active}); message = result.message; await loadRows(); await refreshMeta(); } catch(e) { error = e.message; } finally { busy = false; }
+    }
+    async function revokeInvitation(invitation) {
+        busy = true; error = '';
+        try { const result = await api(`/portal/invitations/${invitation.id}`, 'DELETE'); message = result.message; await loadRows(); }
+        catch(e) { error = e.message; } finally { busy = false; }
     }
     async function saveAccess(event) {
         event.preventDefault(); busy = true; errors = {};
@@ -132,8 +137,13 @@
                 <div class="records">{#each rows as row}<article class="record" data-cy="record"><h2>{row.name ?? row.title ?? row.reference ?? `${definition.singular} #${row.id}`}</h2><dl>{#each definition.fields as field}<div><dt>{field.label}</dt><dd>{display(field, row[field.name])}</dd></div>{/each}{#if row.balance !== undefined}<div><dt>Outstanding balance</dt><dd>{display({type: 'money'}, row.balance)}</dd></div>{/if}{#if row.net !== undefined}<div><dt>Net pay</dt><dd>{display({type: 'money'}, row.net)}</dd></div>{/if}{#if row.percentage !== undefined}<div><dt>Percentage</dt><dd>{row.percentage}%</dd></div>{/if}</dl><div class="actions">{#if definition.canWrite && !definition.immutable}<Button color="alternative" onclick={() => openEditor(row)}>Edit</Button>{/if}{#if ['payments','invoices','payroll','grades'].includes(section)}<a href={`/reports/${section}/${row.id}`} target="_blank" rel="noopener">Print / save PDF</a>{/if}</div></article>{/each}</div>
             {:else if section === 'people'}
                 <div class="setup"><h2>Access starts with an invitation</h2><p>Choose a person's role, share their private invitation link, then link their account to a student or teacher assignment. Parents only see students connected through Guardian links. Only the Owner can invite administrators.</p></div>
-                <Button onclick={() => {draft = {name:'',email:'',roles:['teacher']}; errors = {}; inviteUrl = ''; invite = true;}}>Invite person</Button>
+                <Button onclick={() => {draft = {name:'',email:'',roles:['teacher']}; errors = {}; inviteUrl = ''; invite = true;}}>Invite person</Button> <Button color="alternative" onclick={() => navigate('invitations')}>Manage invitations</Button>
                 <div class="records people">{#each rows as person}<article class="record"><h2>{person.name}</h2><p>{person.username || person.email}</p><p>{person.roles?.join(' · ')} · {person.is_active ? 'Active' : 'Suspended'}</p>{#if person.id !== meta.user.id && !person.roles?.includes('owner') && (meta.user.roles.includes('owner') || !person.roles?.includes('admin'))}<Button color="alternative" onclick={() => {personToEdit = person; selectedRoles = [...person.roles]; errors = {}; access = true;}}>Edit roles</Button> <Button color="alternative" disabled={busy} onclick={() => updateAccess(person)}>{person.is_active ? 'Suspend access' : 'Restore access'}</Button>{/if}</article>{/each}</div>
+            {:else if section === 'invitations'}
+                <div class="setup"><h2>Keep invitation links under your control</h2><p>Revoke an unused link if it was shared with the wrong person. Expired or revoked links cannot create accounts. To send a new link, return to People & access and invite the same email again. Accepted accounts are managed in People & access.</p></div>
+                <Button color="alternative" onclick={() => navigate('people')}>Back to people</Button>
+                <div class="records people">{#each rows as invitation}<article class="record" data-cy="invitation"><h2>{invitation.name}</h2><p>{invitation.email}</p><p>{invitation.roles.join(' · ')}</p><p>{invitation.is_pending ? 'Awaiting acceptance' : 'Expired or revoked'}</p>{#if invitation.is_pending}<Button color="alternative" disabled={busy} onclick={() => revokeInvitation(invitation)}>Revoke invitation</Button>{/if}</article>{/each}</div>
+                {#if !rows.length}<p class="empty">No outstanding invitations.</p>{/if}
             {:else if section === 'settings'}
                 <form class="settings record" onsubmit={saveSettings}><label for="school_name">School name *</label><input id="school_name" bind:value={meta.settings.school_name} required maxlength="150"><label for="currency">Currency code *</label><input id="currency" bind:value={meta.settings.currency} placeholder="For example PKR" pattern={'[A-Z]{3}'} required><label for="timezone">Timezone *</label><input id="timezone" bind:value={meta.settings.timezone} placeholder="For example Asia/Karachi" required><p>These settings identify your school. Payment entries record payments received outside this application.</p><Button type="submit" disabled={busy}>Save settings</Button></form>
             {:else if section === 'audit'}<div class="records">{#each rows as row}<article class="record"><h2>{row.action.replaceAll('_',' ')}</h2><p>{row.name ?? 'Former account'} · {row.module.replaceAll('_',' ')} #{row.record_id}</p><p>{row.created_at}</p></article>{/each}</div>{/if}

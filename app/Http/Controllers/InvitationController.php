@@ -13,6 +13,37 @@ use Illuminate\View\View;
 
 class InvitationController extends Controller
 {
+    public function index(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->hasRole('owner') || $request->user()->hasRole('admin'), 403);
+        $query = DB::table('school_invitations')->whereNull('accepted_at');
+        if (! $request->user()->hasRole('owner')) {
+            $query->where('roles', 'not like', '%"admin"%');
+        }
+
+        return response()->json(['rows' => $query->orderByDesc('id')->paginate(30, ['id', 'name', 'email', 'roles', 'expires_at'])->through(function (object $invitation): object {
+            $invitation->roles = json_decode($invitation->roles, true);
+            $invitation->is_pending = $invitation->expires_at > now()->toDateTimeString();
+
+            return $invitation;
+        })]);
+    }
+
+    public function revoke(Request $request, int $id): JsonResponse
+    {
+        abort_unless($request->user()->hasRole('owner') || $request->user()->hasRole('admin'), 403);
+        DB::transaction(function () use ($request, $id): void {
+            $invitation = DB::table('school_invitations')->where('id', $id)->first();
+            abort_unless($invitation, 404);
+            abort_if(in_array('admin', json_decode($invitation->roles, true), true) && ! $request->user()->hasRole('owner'), 403);
+            abort_if($invitation->accepted_at !== null, 409, 'This invitation was already accepted. Manage the account from People & access.');
+            DB::table('school_invitations')->where('id', $id)->update(['expires_at' => now(), 'token_hash' => hash('sha256', Str::random(64)), 'updated_at' => now()]);
+            DB::table('school_audit')->insert(['user_id' => $request->user()->id, 'module' => 'invitations', 'record_id' => $id, 'action' => 'revoked', 'changes' => json_encode(['email' => $invitation->email]), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'Invitation revoked. The old link no longer works.']);
+    }
+
     public function store(Request $request): JsonResponse
     {
         abort_unless($request->user()->hasRole('owner') || $request->user()->hasRole('admin'), 403);

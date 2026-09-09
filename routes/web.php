@@ -22,6 +22,8 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
     Route::get('/portal/users', [PortalController::class, 'users']);
     Route::put('/portal/users/{user}', [PortalController::class, 'updateUser']);
     Route::post('/portal/invitations', [InvitationController::class, 'store']);
+    Route::get('/portal/invitations', [InvitationController::class, 'index']);
+    Route::delete('/portal/invitations/{id}', [InvitationController::class, 'revoke'])->whereNumber('id');
     Route::put('/portal/settings', [PortalController::class, 'settings']);
     Route::put('/portal/tutorial', [PortalController::class, 'tutorial']);
     Route::put('/portal/attendance/batch', [PortalController::class, 'attendanceBatch']);

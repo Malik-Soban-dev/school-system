@@ -83,7 +83,7 @@ class PortalController extends Controller
 
     public function tutorial(Request $request): JsonResponse
     {
-        $data = $request->validate(['module' => ['required', Rule::in(['overview', 'people', 'settings', ...array_keys(config('school-modules'))])]]);
+        $data = $request->validate(['module' => ['required', Rule::in(['overview', 'people', 'invitations', 'settings', ...array_keys(config('school-modules'))])]]);
         $completed = array_unique([...($request->user()->tutorials ?? []), $data['module']]);
         $request->user()->forceFill(['tutorials' => array_values($completed)])->save();
 

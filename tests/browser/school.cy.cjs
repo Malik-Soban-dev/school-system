@@ -41,6 +41,15 @@ describe('School workflows', () => {
     it('owner saves first-use school settings', () => {
         login('owner'); cy.contains('nav button','School settings').click(); cy.contains('button','Skip guide').click(); cy.get('#school_name').type('Browser Test School'); cy.get('#currency').type('PKR'); cy.get('#timezone').type('UTC'); cy.contains('button','Save settings').click(); cy.contains('School settings saved.').should('be.visible'); cy.reload(); cy.contains('Browser Test School').should('be.visible');
     });
+    it('owner revokes an unused invitation on mobile', () => {
+        cy.viewport(390,844); login('owner'); cy.contains('button','Menu').click(); cy.contains('nav button','People & access').click(); cy.contains('button','Invite person').click(); cy.get('#invite-name').type('Cancelled Teacher'); cy.get('#invite-email').type('cancelled@example.test'); cy.contains('button','Create private invitation').click();
+        cy.get('#invitation-link').invoke('val').then(url => {
+            cy.get('dialog[open]').within(() => cy.get('button[aria-label]').click()); cy.contains('button','Manage invitations').click(); cy.contains('button','Skip guide').click();
+            cy.contains('[data-cy=invitation]','Cancelled Teacher').within(() => cy.contains('button','Revoke invitation').click());
+            cy.contains('[data-cy=invitation]','Cancelled Teacher').should('contain','Expired or revoked'); cy.document().then(doc => expect(doc.documentElement.scrollWidth).to.be.at.most(390)); cy.screenshot('invitations-mobile', {capture:'viewport'});
+            cy.contains('button','Sign out').click(); cy.request({url,failOnStatusCode:false}).its('status').should('eq',404);
+        });
+    });
     it('rapid navigation keeps the newest page records', () => {
         login('owner');
         cy.intercept('GET','/portal/records/subjects*', request => request.continue(response => response.setDelay(1500))).as('slowSubjects');
