@@ -2,34 +2,44 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    private function createTable(string $name, Closure $definition): void
+    {
+        $statements = DB::connection()->pretend(fn () => Schema::create($name, $definition));
+        foreach ($statements as $statement) {
+            $sql = preg_replace('/^create (table|unique index|index) /i', 'create $1 if not exists ', $statement['query']);
+            DB::statement($sql, $statement['bindings']);
+        }
+    }
+
     public function up(): void
     {
-        Schema::create('school_academic_years', function (Blueprint $table) {
+        $this->createTable('school_academic_years', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->date('starts_on');
             $table->date('ends_on');
             $table->timestamps();
         });
-        Schema::create('school_classes', function (Blueprint $table) {
+        $this->createTable('school_classes', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->foreignId('year_id')->constrained('school_academic_years')->restrictOnDelete();
             $table->unsignedInteger('capacity');
             $table->timestamps();
         });
-        Schema::create('school_subjects', function (Blueprint $table) {
+        $this->createTable('school_subjects', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('code');
             $table->timestamps();
             $table->unique(['code']);
         });
-        Schema::create('school_staff', function (Blueprint $table) {
+        $this->createTable('school_staff', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('employee_number');
@@ -41,7 +51,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['employee_number']);
         });
-        Schema::create('school_students', function (Blueprint $table) {
+        $this->createTable('school_students', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('admission_number');
@@ -53,7 +63,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['admission_number']);
         });
-        Schema::create('school_guardian_links', function (Blueprint $table) {
+        $this->createTable('school_guardian_links', function (Blueprint $table) {
             $table->id();
             $table->foreignId('student_id')->constrained('school_students')->restrictOnDelete();
             $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
@@ -62,7 +72,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['student_id', 'user_id']);
         });
-        Schema::create('school_teacher_assignments', function (Blueprint $table) {
+        $this->createTable('school_teacher_assignments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
             $table->foreignId('class_id')->constrained('school_classes')->restrictOnDelete();
@@ -71,7 +81,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['user_id', 'class_id', 'subject_id']);
         });
-        Schema::create('school_attendance', function (Blueprint $table) {
+        $this->createTable('school_attendance', function (Blueprint $table) {
             $table->id();
             $table->foreignId('student_id')->constrained('school_students')->restrictOnDelete();
             $table->date('date');
@@ -80,7 +90,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['student_id', 'date']);
         });
-        Schema::create('school_timetables', function (Blueprint $table) {
+        $this->createTable('school_timetables', function (Blueprint $table) {
             $table->id();
             $table->foreignId('class_id')->constrained('school_classes')->restrictOnDelete();
             $table->foreignId('subject_id')->constrained('school_subjects')->restrictOnDelete();
@@ -91,7 +101,7 @@ return new class extends Migration
             $table->string('room');
             $table->timestamps();
         });
-        Schema::create('school_exams', function (Blueprint $table) {
+        $this->createTable('school_exams', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->foreignId('class_id')->constrained('school_classes')->restrictOnDelete();
@@ -99,7 +109,7 @@ return new class extends Migration
             $table->string('status');
             $table->timestamps();
         });
-        Schema::create('school_grades', function (Blueprint $table) {
+        $this->createTable('school_grades', function (Blueprint $table) {
             $table->id();
             $table->foreignId('exam_id')->constrained('school_exams')->restrictOnDelete();
             $table->foreignId('student_id')->constrained('school_students')->restrictOnDelete();
@@ -110,7 +120,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['exam_id', 'student_id', 'subject_id']);
         });
-        Schema::create('school_invoices', function (Blueprint $table) {
+        $this->createTable('school_invoices', function (Blueprint $table) {
             $table->id();
             $table->string('reference');
             $table->foreignId('student_id')->constrained('school_students')->restrictOnDelete();
@@ -120,7 +130,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['reference']);
         });
-        Schema::create('school_payments', function (Blueprint $table) {
+        $this->createTable('school_payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('invoice_id')->constrained('school_invoices')->restrictOnDelete();
             $table->string('reference');
@@ -131,7 +141,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['reference']);
         });
-        Schema::create('school_expenses', function (Blueprint $table) {
+        $this->createTable('school_expenses', function (Blueprint $table) {
             $table->id();
             $table->string('reference');
             $table->string('description');
@@ -141,7 +151,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['reference']);
         });
-        Schema::create('school_leave_requests', function (Blueprint $table) {
+        $this->createTable('school_leave_requests', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
             $table->date('starts_on');
@@ -150,7 +160,7 @@ return new class extends Migration
             $table->string('status');
             $table->timestamps();
         });
-        Schema::create('school_payroll', function (Blueprint $table) {
+        $this->createTable('school_payroll', function (Blueprint $table) {
             $table->id();
             $table->foreignId('staff_id')->constrained('school_staff')->restrictOnDelete();
             $table->string('month');
@@ -160,7 +170,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['staff_id', 'month']);
         });
-        Schema::create('school_notices', function (Blueprint $table) {
+        $this->createTable('school_notices', function (Blueprint $table) {
             $table->id();
             $table->string('title');
             $table->text('body');
@@ -168,14 +178,14 @@ return new class extends Migration
             $table->string('status');
             $table->timestamps();
         });
-        Schema::create('school_enrollments', function (Blueprint $table) {
+        $this->createTable('school_enrollments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('student_id')->constrained('school_students')->restrictOnDelete();
             $table->foreignId('class_id')->constrained('school_classes')->restrictOnDelete();
             $table->timestamps();
             $table->unique(['student_id', 'class_id']);
         });
-        Schema::create('school_audit', function (Blueprint $table) {
+        $this->createTable('school_audit', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('module');
@@ -184,7 +194,7 @@ return new class extends Migration
             $table->json('changes');
             $table->timestamp('created_at');
         });
-        Schema::create('school_invitations', function (Blueprint $table) {
+        $this->createTable('school_invitations', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
@@ -195,9 +205,11 @@ return new class extends Migration
             $table->foreignId('created_by')->constrained('users');
             $table->timestamps();
         });
-        Schema::table('users', function (Blueprint $table) {
-            $table->json('tutorials')->nullable();
-        });
+        if (! Schema::hasColumn('users', 'tutorials')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->json('tutorials')->nullable();
+            });
+        }
     }
 
     public function down(): void
