@@ -20,7 +20,7 @@ describe('School workflows', () => {
         cy.contains('button','Menu').click(); open('invoices'); cy.contains('Outstanding balance').should('be.visible'); cy.contains('100.10').should('be.visible');
     });
     it('teacher records attendance and validation blocks duplicate entries', () => {
-        login('teacher'); open('attendance'); cy.get('[data-cy=add-record]').click(); cy.get('#field-student_id').select('Alex Student'); const today=new Date().toISOString().slice(0,10); cy.get('#field-date').type(today); cy.get('#field-status').select('present'); cy.contains('button','Save record').click(); cy.contains('[data-cy=record]','Alex Student').should('be.visible');
+        login('teacher'); open('attendance'); cy.intercept('POST','/portal/records/attendance').as('saveAttendance'); cy.get('[data-cy=add-record]').click(); cy.get('#field-student_id').select('Alex Student'); const today=new Date().toISOString().slice(0,10); cy.get('#field-date').type(today); cy.get('#field-status').select('present'); cy.contains('button','Save record').click(); cy.wait('@saveAttendance').its('response.statusCode').should('eq',200); cy.contains('[data-cy=record]','Alex Student').should('be.visible');
         cy.get('[data-cy=add-record]').click(); cy.get('#field-student_id').select('Alex Student'); cy.get('#field-date').type(today); cy.contains('button','Save record').click(); cy.contains('This record already exists.').should('be.visible'); cy.contains('button','Cancel').click();
     });
     it('accountant records payment and rejects overpayment', () => {
@@ -54,5 +54,21 @@ describe('School workflows', () => {
         login('owner');
         cy.intercept('GET','/portal/records/subjects*', request => request.continue(response => response.setDelay(1500))).as('slowSubjects');
         cy.get('[data-cy=nav-subjects]').click(); cy.get('[data-cy=nav-classes]').click(); cy.contains('button','Skip guide').click(); cy.wait('@slowSubjects'); cy.contains('h1','Classes & sections').should('be.visible'); cy.contains('[data-cy=record]','Grade 5 A').should('be.visible'); cy.contains('[data-cy=record]','English').should('not.exist');
+    });
+    it('teacher uses the private notification inbox on a phone', () => {
+        cy.viewport(390,844); login('teacher'); cy.contains('button','Menu').click(); cy.contains('nav button','Notifications').click(); cy.contains('button','Skip guide').click();
+        cy.contains('[data-cy=notification]','Welcome to the school inbox').within(() => cy.contains('button','Mark as read').click());
+        cy.contains('[data-cy=notification]','Welcome to the school inbox').within(() => cy.contains('button','Mark as read').should('not.exist'));
+        cy.reload(); cy.contains('button','Menu').click(); cy.contains('nav button','Notifications').click(); cy.contains('[data-cy=notification]','Welcome to the school inbox').should('contain','Read');
+        cy.document().then(doc => expect(doc.documentElement.scrollWidth).to.be.at.most(390)); cy.screenshot('notifications-mobile', {capture:'viewport'});
+    });
+    it('accountant records a monthly salary payment and teacher sees the balance', () => {
+        login('accountant'); open('payroll_payments'); cy.get('[data-cy=add-record]').click(); cy.get('#field-payroll_id').select('Teacher Test — 2026-09'); cy.get('#field-reference').type('SAL-CYP-1'); cy.get('#field-amount').type('40.02'); cy.get('#field-paid_on').type(new Date().toISOString().slice(0,10)); cy.get('#field-method').select('cash'); cy.contains('button','Save record').click(); cy.contains('[data-cy=record]','SAL-CYP-1').should('be.visible');
+        cy.contains('button','Sign out').click(); login('teacher'); open('payroll'); cy.contains('[data-cy=record]','65.03').should('contain','partially paid'); cy.get('[data-cy=add-record]').should('not.exist'); cy.get('#billing-month').type('2026-08'); cy.contains('button','Show month').click(); cy.contains('No records to show yet').should('be.visible'); cy.contains('button','All months').click(); cy.contains('[data-cy=record]','65.03').should('be.visible');
+    });
+    it('parent can opt in to delivery without pretending providers are connected', () => {
+        cy.viewport(390,844); login('parent'); cy.contains('button','Menu').click(); cy.contains('nav button','Notifications').click(); cy.contains('button','Skip guide').click(); cy.contains('button','Delivery preferences').click();
+        cy.contains('Not connected by school yet').should('be.visible'); cy.get('#whatsapp-phone').type('+12025550123'); cy.get('#whatsapp-opt-in').check(); cy.get('#email-opt-in').check(); cy.get('#preference-password').type('Browser-test-12345',{log:false}); cy.contains('button','Save delivery preferences').click(); cy.contains('Notification preferences saved.').should('be.visible');
+        cy.contains('button','Delivery preferences').click(); cy.get('#whatsapp-phone').should('have.value','+12025550123'); cy.get('#whatsapp-opt-in').should('be.checked'); cy.get('#email-opt-in').should('be.checked'); cy.screenshot('delivery-preferences-mobile', {capture:'viewport'});
     });
 });

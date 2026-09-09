@@ -30,9 +30,9 @@ class PortalController extends Controller
 
     public function index(Request $request, string $module): JsonResponse
     {
-        $request->validate(['search' => ['nullable', 'string', 'max:100'], 'page' => ['nullable', 'integer', 'min:1', 'max:100000']]);
+        $request->validate(['search' => ['nullable', 'string', 'max:100'], 'page' => ['nullable', 'integer', 'min:1', 'max:100000'], 'month' => ['nullable', 'date_format:Y-m']]);
 
-        return response()->json($this->portal->listing($module, $request->user(), (string) $request->input('search', ''), (int) $request->input('page', 1)));
+        return response()->json($this->portal->listing($module, $request->user(), (string) $request->input('search', ''), (int) $request->input('page', 1), $request->input('month')));
     }
 
     public function save(Request $request, string $module, ?int $id = null): JsonResponse
@@ -64,6 +64,9 @@ class PortalController extends Controller
             DB::table('school_audit')->insert($saved->map(fn ($row): array => ['user_id' => $request->user()->id,
                 'module' => 'attendance', 'record_id' => $row->id, 'action' => 'class_attendance_saved',
                 'changes' => json_encode(['before' => $before->get($row->student_id), 'after' => $row]), 'created_at' => $now])->all());
+            $events = $saved->map(fn ($row): array => ['module' => 'attendance', 'record_id' => $row->id,
+                'event_key' => 'attendance:'.$row->id.':'.hash('sha256', $row->date.':'.$row->status), 'created_at' => $now])->all();
+            DB::table('school_notification_events')->insertOrIgnore($events);
         });
 
         return response()->json(['message' => 'Attendance saved for '.count($data['records']).' students.']);
@@ -83,7 +86,7 @@ class PortalController extends Controller
 
     public function tutorial(Request $request): JsonResponse
     {
-        $data = $request->validate(['module' => ['required', Rule::in(['overview', 'people', 'invitations', 'settings', ...array_keys(config('school-modules'))])]]);
+        $data = $request->validate(['module' => ['required', Rule::in(['overview', 'people', 'invitations', 'notifications', 'settings', ...array_keys(config('school-modules'))])]]);
         $completed = array_unique([...($request->user()->tutorials ?? []), $data['module']]);
         $request->user()->forceFill(['tutorials' => array_values($completed)])->save();
 
@@ -147,7 +150,7 @@ class PortalController extends Controller
 
     public function report(Request $request, string $module, int $id): View
     {
-        abort_unless(in_array($module, ['payments', 'invoices', 'payroll', 'grades']), 404);
+        abort_unless(in_array($module, ['payments', 'invoices', 'payroll', 'payroll_payments', 'grades']), 404);
         $row = $this->portal->query($module, $request->user())->where('id', $id)->first();
         abort_unless($row, 404);
         $definition = $this->portal->definition($module);
@@ -158,6 +161,8 @@ class PortalController extends Controller
         }
         if ($module === 'payroll') {
             $extra['Net pay'] = $row->basic + $row->allowances - $row->deductions;
+            $extra['Paid'] = (int) DB::table('school_payroll_payments')->where('payroll_id', $id)->sum('amount');
+            $extra['Balance'] = $extra['Net pay'] - $extra['Paid'];
         }
 
         return view('reports.record', ['row' => (array) $row, 'definition' => $definition,

@@ -1,6 +1,17 @@
 <?php
 
 return [
+    'school_email' => ['enabled' => env('SCHOOL_EMAIL_NOTIFICATIONS', false)],
+    'whatsapp' => [
+        'enabled' => env('WHATSAPP_ENABLED', false),
+        'version' => env('WHATSAPP_API_VERSION'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'token' => env('WHATSAPP_TOKEN'),
+        'template' => env('WHATSAPP_TEMPLATE_NAME'),
+        'language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'en_US'),
+        'app_secret' => env('WHATSAPP_APP_SECRET'),
+        'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
+    ],
 
     /*
     |--------------------------------------------------------------------------

@@ -35,8 +35,10 @@ RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framewor
     && composer dump-autoload --no-dev --optimize \
     && php artisan storage:link \
     && chown -R www-data:www-data storage bootstrap/cache \
+    && command -v runuser \
+    && bash -n config/start-school.sh \
     && apache2ctl -t
 
 EXPOSE 10000
 
-CMD sh -c "php artisan migrate --force && chown -R www-data:www-data storage bootstrap/cache && exec apache2-foreground"
+CMD ["bash", "config/start-school.sh"]

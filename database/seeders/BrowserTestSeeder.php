@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Services\SchoolNotifications;
 use App\Services\SchoolPortal;
 use Illuminate\Database\Seeder;
 
@@ -31,6 +32,10 @@ class BrowserTestSeeder extends Seeder
         $save('students', ['name' => 'Private Student', 'admission_number' => 'ADM-002', 'class_id' => $class, 'status' => 'active']);
         $save('guardian_links', ['student_id' => $student, 'user_id' => $people['parent']->id, 'relationship' => 'Parent', 'status' => 'active']);
         $save('teacher_assignments', ['user_id' => $people['teacher']->id, 'class_id' => $class, 'subject_id' => $subject, 'status' => 'active']);
-        $save('invoices', ['student_id' => $student, 'reference' => 'INV-001', 'description' => 'Tuition', 'amount' => '100.10', 'due_on' => today()->toDateString()]);
+        $save('invoices', ['student_id' => $student, 'reference' => 'INV-001', 'description' => 'Tuition', 'amount' => '100.10', 'due_on' => today()->toDateString(), 'billing_month' => '2026-09']);
+        $staff = $save('staff', ['name' => 'Teacher Test', 'employee_number' => 'EMP-001', 'department' => 'Teaching', 'designation' => 'Teacher', 'user_id' => $people['teacher']->id, 'joined_on' => '2026-01-01', 'status' => 'active']);
+        $save('payroll', ['staff_id' => $staff, 'month' => '2026-09', 'basic' => '100.10', 'allowances' => '10', 'deductions' => '5.05']);
+        $save('notices', ['title' => 'Welcome to the school inbox', 'body' => 'Read school updates here.', 'audience' => 'all', 'status' => 'published']);
+        app(SchoolNotifications::class)->process();
     }
 }

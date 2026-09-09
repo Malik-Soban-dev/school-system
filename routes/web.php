@@ -2,13 +2,19 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\PortalController;
+use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Middleware\EnsureActiveAccount;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify']);
+Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'receive']);
 
 Route::middleware('guest')->group(function () {
     Route::get('/invitations/{token}', [InvitationController::class, 'show'])->name('invitation.show');
@@ -19,6 +25,10 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
     Route::get('/portal/meta', [PortalController::class, 'meta']);
+    Route::get('/portal/notifications', [NotificationController::class, 'index']);
+    Route::get('/portal/notification-preferences', [NotificationPreferenceController::class, 'show']);
+    Route::put('/portal/notification-preferences', [NotificationPreferenceController::class, 'update'])->middleware('throttle:5,1');
+    Route::put('/portal/notifications/{id}/read', [NotificationController::class, 'read'])->whereNumber('id');
     Route::get('/portal/users', [PortalController::class, 'users']);
     Route::put('/portal/users/{user}', [PortalController::class, 'updateUser']);
     Route::post('/portal/invitations', [InvitationController::class, 'store']);

@@ -77,7 +77,7 @@ class SchoolPortal
         if ($this->admin($user)) {
             return $query;
         }
-        if ($user->hasRole('accountant') && in_array($module, ['students', 'classes', 'subjects', 'invoices', 'payments', 'expenses', 'payroll'])) {
+        if ($user->hasRole('accountant') && in_array($module, ['students', 'classes', 'subjects', 'invoices', 'payments', 'expenses', 'payroll', 'payroll_payments'])) {
             return $query;
         }
         if ($module === 'notices') {
@@ -85,6 +85,11 @@ class SchoolPortal
         }
         if ($module === 'subjects') {
             return $query;
+        }
+        if (in_array($module, ['payroll', 'payroll_payments'])) {
+            $payroll = DB::table('school_payroll')->whereIn('staff_id', DB::table('school_staff')->where('user_id', $user->id)->select('id'))->select('id');
+
+            return $query->whereIn($module === 'payroll' ? 'id' : 'payroll_id', $payroll);
         }
         if ($module === 'leave_requests' || $module === 'teacher_assignments') {
             return $query->where('user_id', $user->id);
@@ -114,7 +119,9 @@ class SchoolPortal
         if ($module === 'exams') {
             return $query->where(function (Builder $query) use ($family, $user): void {
                 $query->where(function (Builder $query) use ($family): void {
-                    $query->where('status', 'published')->whereIn('class_id', DB::table('school_enrollments')->whereIn('student_id', $family)->select('class_id'));
+                    $query->where(function (Builder $visibility): void {
+                        $visibility->where('status', 'published')->orWhereIn('schedule_status', ['announced', 'cancelled']);
+                    })->whereIn('class_id', DB::table('school_enrollments')->whereIn('student_id', $family)->select('class_id'));
                 });
                 if ($user->hasRole('teacher')) {
                     $query->orWhereIn('class_id', DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->select('class_id'));
@@ -137,10 +144,18 @@ class SchoolPortal
         };
     }
 
-    public function listing(string $module, User $user, string $search = '', int $page = 1): array
+    public function listing(string $module, User $user, string $search = '', int $page = 1, ?string $month = null): array
     {
         $definition = $this->definition($module);
         $query = $this->query($module, $user);
+        if ($month && in_array($module, ['invoices', 'payroll', 'payments', 'payroll_payments'])) {
+            if ($module === 'invoices' || $module === 'payroll') {
+                $query->where($module === 'invoices' ? 'billing_month' : 'month', $month);
+            } else {
+                $parent = $module === 'payments' ? 'invoices' : 'payroll';
+                $query->whereIn($module === 'payments' ? 'invoice_id' : 'payroll_id', DB::table('school_'.$parent)->where($parent === 'invoices' ? 'billing_month' : 'month', $month)->select('id'));
+            }
+        }
         if ($search !== '') {
             $text = array_filter($definition['fields'], fn ($f) => in_array($f['type'], ['text', 'textarea']));
             if ($text !== []) {
@@ -160,9 +175,13 @@ class SchoolPortal
             if ($module === 'invoices') {
                 $data['paid'] = (int) DB::table('school_payments')->where('invoice_id', $row->id)->sum('amount');
                 $data['balance'] = (int) $row->amount - $data['paid'];
+                $data['payment_status'] = $data['balance'] === 0 ? 'paid' : ($data['paid'] > 0 ? 'partially paid' : 'unpaid');
             }
             if ($module === 'payroll') {
                 $data['net'] = (int) $row->basic + (int) $row->allowances - (int) $row->deductions;
+                $data['paid'] = (int) DB::table('school_payroll_payments')->where('payroll_id', $row->id)->sum('amount');
+                $data['balance'] = $data['net'] - $data['paid'];
+                $data['payment_status'] = $data['balance'] === 0 ? 'paid' : ($data['paid'] > 0 ? 'partially paid' : 'unpaid');
             }
             if ($module === 'grades') {
                 $data['percentage'] = round((float) $row->marks / (float) $row->maximum * 100, 2);
@@ -191,6 +210,15 @@ class SchoolPortal
             $options['staff'] = DB::table('school_staff')->select('id', 'name')->orderBy('name')->get()->map(fn ($row) => ['value' => $row->id, 'name' => $row->name])->all();
         }
 
+        if ($this->can($user, $this->definition('payroll')['read'])) {
+            $payroll = $this->query('payroll', $user)->get(['id', 'staff_id', 'month']);
+            $staff = DB::table('school_staff')->whereIn('id', $payroll->pluck('staff_id'))->pluck('name', 'id');
+            $options['payroll'] = $payroll->map(fn ($row) => ['value' => $row->id, 'name' => ($staff[$row->staff_id] ?? 'Staff').' — '.$row->month])->all();
+            if (! $this->admin($user) && ! $user->hasRole('accountant')) {
+                $options['staff'] = $staff->map(fn ($name, $id) => ['value' => $id, 'name' => $name])->values()->all();
+            }
+        }
+
         return $options;
     }
 
@@ -216,7 +244,7 @@ class SchoolPortal
                 default => ['string', 'max:'.($field['type'] === 'textarea' ? 5000 : 255)],
             }];
             $unique = match ($module.'.'.$field['name']) {
-                'subjects.code', 'staff.employee_number', 'students.admission_number', 'invoices.reference', 'payments.reference', 'expenses.reference' => true,
+                'subjects.code', 'staff.employee_number', 'students.admission_number', 'invoices.reference', 'payments.reference', 'payroll_payments.reference', 'expenses.reference' => true,
                 default => false,
             };
             if ($unique) {
@@ -225,6 +253,9 @@ class SchoolPortal
             $rules[$field['name']] = $rule;
         }
         $data = Validator::make($input, $rules)->validate();
+        if ($module === 'exams') {
+            $data['schedule_status'] = $data['schedule_status'] ?? $old?->schedule_status ?? 'draft';
+        }
         foreach ($definition['fields'] as $field) {
             if ($field['type'] === 'money') {
                 $parts = explode('.', (string) $data[$field['name']]);
@@ -245,6 +276,7 @@ class SchoolPortal
             }
             DB::table('school_audit')->insert(['user_id' => $user->id, 'module' => $module, 'record_id' => $id,
                 'action' => $old ? 'updated' : 'created', 'changes' => json_encode(['before' => $old, 'after' => $data]), 'created_at' => $now]);
+            app(SchoolNotifications::class)->enqueue($module, $id, $data);
 
             return $id;
         });
@@ -341,8 +373,9 @@ class SchoolPortal
             if ($data['amount'] <= 0) {
                 $this->fail('amount', 'An invoice amount must be greater than zero.');
             }
-            if ($old && DB::table('school_payments')->where('invoice_id', $id)->exists() && ((int) $old->amount !== $data['amount'] || (int) $old->student_id !== (int) $data['student_id'])) {
-                $this->fail('amount', 'The amount and student cannot change after a payment is recorded.');
+            $billingMonth = array_key_exists('billing_month', $data) ? $data['billing_month'] : $old?->billing_month;
+            if ($old && DB::table('school_payments')->where('invoice_id', $id)->exists() && ((int) $old->amount !== $data['amount'] || (int) $old->student_id !== (int) $data['student_id'] || $old->billing_month !== $billingMonth)) {
+                $this->fail('amount', 'The amount, student and fee month cannot change after a payment is recorded.');
             }
         }
         if ($module === 'payments') {
@@ -357,6 +390,16 @@ class SchoolPortal
         }
         if ($module === 'payroll' && $data['deductions'] > $data['basic'] + $data['allowances']) {
             $this->fail('deductions', 'Deductions cannot exceed basic pay plus allowances.');
+        }
+        if ($module === 'payroll_payments') {
+            $payroll = DB::table('school_payroll')->find($data['payroll_id']);
+            $balance = (int) $payroll->basic + (int) $payroll->allowances - (int) $payroll->deductions - (int) DB::table('school_payroll_payments')->where('payroll_id', $payroll->id)->sum('amount');
+            if ($data['amount'] <= 0 || $data['amount'] > $balance) {
+                $this->fail('amount', 'Salary payment must be positive and cannot exceed the unpaid net salary.');
+            }
+            if ($data['paid_on'] > $this->today()) {
+                $this->fail('paid_on', 'A salary payment cannot have a future date.');
+            }
         }
         if ($module === 'expenses' && ($data['amount'] <= 0 || $data['paid_on'] > $this->today())) {
             $this->fail('amount', 'Enter a positive amount for an expense already paid.');

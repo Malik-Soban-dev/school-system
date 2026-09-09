@@ -9,7 +9,7 @@ for (const dir of ['tmp', 'cypress-cache', 'browser-data']) fs.mkdirSync(path.jo
 Object.assign(process.env, { CYPRESS_CACHE_FOLDER: path.join(local, 'cypress-cache'), TEMP: path.join(local, 'tmp'), TMP: path.join(local, 'tmp'), CYPRESS_APP_DATA_PATH: path.join(local, 'browser-data') });
 const php = process.env.PHP_BINARY || 'php';
 const database = path.join(root, 'database/browser-testing.sqlite');
-const env = {...process.env, APP_ENV: 'testing', APP_KEY: 'base64:' + crypto.randomBytes(32).toString('base64'), APP_URL: 'http://127.0.0.1:8010', DB_CONNECTION: 'sqlite', DB_DATABASE: database, DB_URL: '', DB_AUTH_TOKEN: '', TURSO_DATABASE_URL: '', TURSO_AUTH_TOKEN: '', SESSION_DRIVER: 'database', SESSION_SECURE_COOKIE: 'false', CACHE_STORE: 'database', MAIL_MAILER: 'array', QUEUE_CONNECTION: 'sync', APP_DEBUG: 'true'};
+const env = {...process.env, APP_ENV: 'testing', APP_KEY: 'base64:' + crypto.randomBytes(32).toString('base64'), APP_URL: 'http://127.0.0.1:8010', DB_CONNECTION: 'sqlite', DB_DATABASE: database, DB_URL: '', DB_AUTH_TOKEN: '', TURSO_DATABASE_URL: '', TURSO_AUTH_TOKEN: '', SESSION_DRIVER: 'database', SESSION_SECURE_COOKIE: 'false', CACHE_STORE: 'database', MAIL_MAILER: 'array', WHATSAPP_ENABLED: 'false', SCHOOL_EMAIL_NOTIFICATIONS: 'false', QUEUE_CONNECTION: 'sync', APP_DEBUG: 'true'};
 if (fs.existsSync(path.join(root, 'bootstrap/cache/config.php'))) throw new Error('Clear cached Laravel configuration before browser tests to ensure database isolation.');
 fs.closeSync(fs.openSync(database, 'a'));
 const reset = spawnSync(php, ['artisan', 'migrate:fresh', '--seed', '--seeder=BrowserTestSeeder', '--force', '--no-interaction'], {env, stdio:'inherit', windowsHide:true});
@@ -30,6 +30,6 @@ async function run() {
         const results = await require('cypress').run({configFile:path.join(root,'cypress.config.cjs'), browser:process.env.TEST_BROWSER || 'electron'});
         process.exitCode = results.totalFailed || results.failures || 0;
     } catch(error) { console.error(error); process.exitCode=1; }
-    finally { if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(server.pid), '/T', '/F'], {stdio:'ignore',windowsHide:true}); else server.kill(); }
+    finally { fs.writeFileSync(path.join(local, 'browser-server.log'), serverLog); if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(server.pid), '/T', '/F'], {stdio:'ignore',windowsHide:true}); else server.kill(); }
 }
 run();

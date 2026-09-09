@@ -266,7 +266,7 @@ return [
     'exams' => [
         'label' => 'Exams',
         'singular' => 'exam',
-        'help' => 'Schedule an exam for a class. Results are drafts until an administrator publishes the exam.',
+        'help' => 'Announce a test or paper so families can prepare. Schedule visibility is separate from results: announcing an exam never publishes its marks.',
         'read' => ['owner', 'admin', 'teacher', 'student', 'parent'],
         'write' => ['owner', 'admin'],
         'fields' => [[
@@ -282,6 +282,12 @@ return [
             'name' => 'date',
             'label' => 'Exam date',
             'type' => 'date',
+        ], [
+            'name' => 'schedule_status',
+            'label' => 'Schedule visibility',
+            'type' => 'select',
+            'choices' => ['draft', 'announced', 'cancelled'],
+            'optional' => true,
         ], [
             'name' => 'status',
             'label' => 'Results',
@@ -352,6 +358,11 @@ return [
             'name' => 'due_on',
             'label' => 'Due date',
             'type' => 'date',
+        ], [
+            'name' => 'billing_month',
+            'label' => 'Fee month (leave empty for one-off fees)',
+            'type' => 'month',
+            'optional' => true,
         ]],
     ],
     'payments' => [
@@ -382,7 +393,7 @@ return [
             'name' => 'method',
             'label' => 'Method',
             'type' => 'select',
-            'choices' => ['cash', 'bank_transfer', 'cheque'],
+            'choices' => ['cash', 'bank_transfer', 'cheque', 'online_manual'],
         ], [
             'name' => 'note',
             'label' => 'Note',
@@ -452,7 +463,7 @@ return [
         'label' => 'Payroll records',
         'singular' => 'payroll record',
         'help' => 'Record a monthly payroll calculation. Net pay is basic pay plus allowances minus deductions. Each staff member can have one record per month.',
-        'read' => ['owner', 'admin', 'accountant'],
+        'read' => ['owner', 'admin', 'accountant', 'teacher'],
         'write' => ['owner', 'admin', 'accountant'],
         'immutable' => true,
         'fields' => [[
@@ -477,6 +488,22 @@ return [
             'label' => 'Deductions',
             'type' => 'money',
         ]],
+    ],
+    'payroll_payments' => [
+        'label' => 'Salary payments',
+        'singular' => 'salary payment',
+        'help' => 'Record money actually paid against a monthly payroll record. Choose cash, bank transfer, cheque or online manual after independently verifying payment. Partial payments reduce the balance. Posted payments cannot be edited.',
+        'read' => ['owner', 'admin', 'accountant', 'teacher'],
+        'write' => ['owner', 'admin', 'accountant'],
+        'immutable' => true,
+        'fields' => [
+            ['name' => 'payroll_id', 'label' => 'Monthly payroll', 'type' => 'relation', 'relation' => 'payroll'],
+            ['name' => 'reference', 'label' => 'Payment reference', 'type' => 'text'],
+            ['name' => 'amount', 'label' => 'Amount paid', 'type' => 'money'],
+            ['name' => 'paid_on', 'label' => 'Payment date', 'type' => 'date'],
+            ['name' => 'method', 'label' => 'Method', 'type' => 'select', 'choices' => ['cash', 'bank_transfer', 'cheque', 'online_manual']],
+            ['name' => 'note', 'label' => 'Note', 'type' => 'textarea', 'optional' => true],
+        ],
     ],
     'notices' => [
         'label' => 'Noticeboard',

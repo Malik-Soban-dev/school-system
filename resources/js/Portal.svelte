@@ -7,9 +7,11 @@
     let menu = $state(false), editor = $state(false), draft = $state({}), editing = $state(null), errors = $state({});
     let guide = $state(false), step = $state(0), invite = $state(false), inviteUrl = $state(''), access = $state(false);
     let personToEdit = $state(null), selectedRoles = $state([]);
+    let month = $state(''), unread = $state(0);
+    let preferencesOpen = $state(false), preferences = $state({}), preferencePassword = $state('');
     let attendanceSheet = $state(false), attendanceRecords = $state([]), attendanceClass = $state('');
     let definition = $derived(meta?.modules.find(m => m.key === section));
-    let title = $derived(definition?.label ?? ({overview: 'Your school, in one place', people: 'People & access', invitations: 'Invitations', settings: 'School settings', audit: 'Activity history'}[section] ?? section));
+    let title = $derived(definition?.label ?? ({overview: 'Your school, in one place', people: 'People & access', notifications: 'Notifications', invitations: 'Invitations', settings: 'School settings', audit: 'Activity history'}[section] ?? section));
     let pageHelp = $derived(definition && !definition.canWrite ? ({students:'View the students connected to your account. Contact your school if a student is missing.', attendance:'See recorded attendance for the students connected to your account.', grades:'Your school publishes reviewed results here. Draft results remain private.', invoices:'View your fee invoices and outstanding balances. Contact the school office to arrange payment.', payments:'View recorded payments and print your receipts.', timetables:'Check class times, subjects and rooms for your school week.', exams:'View the exams your school has shared with you.', notices:'Read the latest messages shared with your school community.'}[section] ?? definition.help) : definition?.help);
     let steps = $derived([
         {title: `Welcome to ${section === 'overview' ? 'your workspace' : title}`, body: pageHelp ?? 'Use the menu to open your school tools. You only see information your role is allowed to access.'},
@@ -33,13 +35,13 @@
         const activeSection = section;
         loading = true; error = '';
         try {
-            if (activeDefinition) { const data = await api(`/portal/records/${activeSection}?page=${page}&search=${encodeURIComponent(search)}`); if (requestNumber !== latestRequest) return; rows = data.rows; total = data.total; }
-            else if (['people', 'audit', 'invitations'].includes(activeSection)) { const data = await api(`/portal/${activeSection === 'people' ? 'users' : activeSection}?page=${page}`); if (requestNumber !== latestRequest) return; const result = data.users ?? data.rows; rows = result.data; total = result.total; }
+            if (activeDefinition) { const data = await api(`/portal/records/${activeSection}?page=${page}&search=${encodeURIComponent(search)}&month=${month}`); if (requestNumber !== latestRequest) return; rows = data.rows; total = data.total; }
+            else if (['people', 'audit', 'invitations', 'notifications'].includes(activeSection)) { const data = await api(`/portal/${activeSection === 'people' ? 'users' : activeSection}?page=${page}`); if (requestNumber !== latestRequest) return; const result = data.users ?? data.rows; rows = result.data; total = result.total; if (data.unread !== undefined) unread = data.unread; }
             else { rows = []; total = 0; }
         } catch (e) { if (requestNumber === latestRequest) error = e.message; } finally { if (requestNumber === latestRequest) loading = false; }
     }
     async function navigate(key) {
-        section = key; page = 1; search = ''; menu = false; message = ''; await loadRows();
+        section = key; page = 1; search = ''; month = ''; menu = false; message = ''; await loadRows();
         if (key === section && key !== 'audit' && !meta.user.tutorials?.includes(key)) { step = 0; guide = true; }
     }
     async function finishGuide() {
@@ -102,7 +104,30 @@
         event.preventDefault(); busy = true; error = '';
         try { await api('/portal/settings', 'PUT', meta.settings); message = 'School settings saved.'; } catch(e) { error = Object.values(e.errors).flat().join(' ') || e.message; } finally { busy = false; }
     }
-    onMount(async () => { try { await refreshMeta(); await navigate('overview'); } catch(e) { error = e.message; loading = false; } });
+    async function readNotification(row) {
+        busy = true;
+        try { await api(`/portal/notifications/${row.id}/read`, 'PUT'); await loadRows(); }
+        catch(e) { error = e.message; } finally { busy = false; }
+    }
+    async function openPreferences() {
+        errors = {}; busy = true; preferencePassword = '';
+        try { preferences = await api('/portal/notification-preferences'); preferencesOpen = true; }
+        catch(e) { error = e.message; } finally { busy = false; }
+    }
+    async function savePreferences(event) {
+        event.preventDefault(); errors = {}; busy = true;
+        try { const result = await api('/portal/notification-preferences', 'PUT', {whatsapp_phone:preferences.whatsapp_phone, whatsapp_enabled:preferences.whatsapp_enabled, email_enabled:preferences.email_enabled, current_password:preferencePassword}); preferencesOpen = false; preferencePassword = ''; message = result.message; }
+        catch(e) { errors.form = [Object.values(e.errors).flat().join(' ') || e.message]; } finally { busy = false; }
+    }
+    async function refreshUnread() {
+        if (document.hidden || !meta) return;
+        try { const data = await api('/portal/notifications'); unread = data.unread; } catch(e) { /* The inbox offers a visible retry through Refresh. */ }
+    }
+    onMount(() => {
+        (async () => { try { await refreshMeta(); await navigate('overview'); await refreshUnread(); } catch(e) { error = e.message; loading = false; } })();
+        const timer = setInterval(refreshUnread, 60000);
+        return () => clearInterval(timer);
+    });
 </script>
 
 <svelte:head><title>{title} · School workspace</title></svelte:head>
@@ -114,6 +139,7 @@
         <nav aria-label="School tools">
             <button class:active={section === 'overview'} onclick={() => navigate('overview')}>Overview</button>
             {#if meta.canManage}<button class:active={section === 'people'} onclick={() => navigate('people')}>People & access</button>{/if}
+            <button class:active={section === 'notifications'} onclick={() => navigate('notifications')}>Notifications {unread ? `(${unread} unread)` : ''}</button>
             {#each meta.modules as item}<button class:active={section === item.key} data-cy={`nav-${item.key}`} onclick={() => navigate(item.key)}>{item.label}</button>{/each}
             {#if meta.canManage}<button class:active={section === 'audit'} onclick={() => navigate('audit')}>Activity history</button>{/if}
             {#if meta.user.roles.includes('owner')}<button class:active={section === 'settings'} onclick={() => navigate('settings')}>School settings</button>{/if}
@@ -131,10 +157,17 @@
                 {#if meta.canManage}<div class="setup"><h2>Set up your school in order</h2><p>1. Add an academic year, classes and subjects. 2. Invite teachers, students and parents. 3. Create student records and link accounts. 4. Assign teachers and connect guardians. 5. Begin attendance, lessons and fees.</p></div>{/if}
                 <div class="tiles">{#each meta.modules as item}<button class="tile" onclick={() => navigate(item.key)}><span class="tile-icon">{item.label.slice(0, 1)}</span><h2>{item.label}</h2><p>{item.help}</p><span class="open">Open tool →</span></button>{/each}</div>
             {:else if definition}
+                {#if ['invoices','payments','payroll','payroll_payments'].includes(section)}<div class="actions"><label for="billing-month">Fee / salary month</label><input id="billing-month" type="month" bind:value={month}><Button color="alternative" onclick={() => {page = 1; loadRows();}}>Show month</Button><Button color="alternative" onclick={() => {month = ''; page = 1; loadRows();}}>All months</Button></div>{/if}
                 <div class="toolbar"><form onsubmit={(e) => {e.preventDefault(); page = 1; loadRows();}}><label class="sr-only" for="search">Search records</label><input id="search" bind:value={search} placeholder="Search name or reference…" maxlength="100"><Button type="submit" color="alternative">Search</Button></form>{#if definition.canWrite}<Button onclick={() => openEditor()} data-cy="add-record">Add {definition.singular}</Button>{/if}</div>
                 {#if section === 'attendance' && definition.canWrite}<div class="actions"><label for="attendance-class">Class</label><select id="attendance-class" bind:value={attendanceClass}><option value="">Choose a class</option>{#each meta.options.classes ?? [] as option}<option value={option.value}>{option.name}</option>{/each}</select><Button color="alternative" disabled={busy || !attendanceClass} onclick={openAttendance}>Quick attendance</Button></div>{/if}<p class="count">{total} {total === 1 ? 'record' : 'records'}</p>
                 {#if !rows.length}<div class="empty"><h2>No records to show yet</h2><p>{definition.canWrite ? `Use Add ${definition.singular} to create the first record. Linked records such as classes must be created first.` : 'Your school will share records here once your account is linked and information is available.'}</p></div>{/if}
-                <div class="records">{#each rows as row}<article class="record" data-cy="record"><h2>{row.name ?? row.title ?? row.reference ?? `${definition.singular} #${row.id}`}</h2><dl>{#each definition.fields as field}<div><dt>{field.label}</dt><dd>{display(field, row[field.name])}</dd></div>{/each}{#if row.balance !== undefined}<div><dt>Outstanding balance</dt><dd>{display({type: 'money'}, row.balance)}</dd></div>{/if}{#if row.net !== undefined}<div><dt>Net pay</dt><dd>{display({type: 'money'}, row.net)}</dd></div>{/if}{#if row.percentage !== undefined}<div><dt>Percentage</dt><dd>{row.percentage}%</dd></div>{/if}</dl><div class="actions">{#if definition.canWrite && !definition.immutable}<Button color="alternative" onclick={() => openEditor(row)}>Edit</Button>{/if}{#if ['payments','invoices','payroll','grades'].includes(section)}<a href={`/reports/${section}/${row.id}`} target="_blank" rel="noopener">Print / save PDF</a>{/if}</div></article>{/each}</div>
+                <div class="records">{#each rows as row}<article class="record" data-cy="record"><h2>{row.name ?? row.title ?? row.reference ?? `${definition.singular} #${row.id}`}</h2><dl>{#each definition.fields as field}<div><dt>{field.label}</dt><dd>{display(field, row[field.name])}</dd></div>{/each}{#if row.payment_status}<div><dt>Payment status</dt><dd>{row.payment_status}</dd></div><div><dt>Amount paid</dt><dd>{display({type: 'money'}, row.paid)}</dd></div>{/if}{#if row.balance !== undefined}<div><dt>Outstanding balance</dt><dd>{display({type: 'money'}, row.balance)}</dd></div>{/if}{#if row.net !== undefined}<div><dt>Net pay</dt><dd>{display({type: 'money'}, row.net)}</dd></div>{/if}{#if row.percentage !== undefined}<div><dt>Percentage</dt><dd>{row.percentage}%</dd></div>{/if}</dl><div class="actions">{#if definition.canWrite && !definition.immutable}<Button color="alternative" onclick={() => openEditor(row)}>Edit</Button>{/if}{#if ['payments','invoices','payroll','payroll_payments','grades'].includes(section)}<a href={`/reports/${section}/${row.id}`} target="_blank" rel="noopener">Print / save PDF</a>{/if}</div></article>{/each}</div>
+            {:else if section === 'notifications'}
+                <div class="setup"><h2>Your private school inbox</h2><p>Find announcements, exam reminders and updates linked to your account. New messages appear as school changes are processed. WhatsApp and email delivery require the school to connect those services.</p></div>
+                <Button color="alternative" onclick={loadRows}>Refresh notifications</Button> <Button color="alternative" disabled={busy} onclick={openPreferences}>Delivery preferences</Button>
+                <p class="count">{unread} unread</p>
+                <div class="records">{#each rows as row}<article class="record" data-cy="notification"><h2>{row.title}</h2><p>{row.body}</p><p>{row.read_at ? 'Read' : 'Unread'}</p>{#each row.deliveries ?? [] as delivery}<p>{delivery.channel}: {({pending: 'Waiting to send', processing: 'Sending', accepted: 'Accepted by provider; delivery not yet confirmed', delivered: 'Delivered', read: 'Read by recipient', failed: 'Delivery failed', unknown: 'Delivery outcome unknown; contact school', skipped: 'Not sent because access or preferences changed'})[delivery.status] ?? delivery.status}</p>{/each}<div class="actions">{#if !row.read_at}<Button disabled={busy} color="alternative" onclick={() => readNotification(row)}>Mark as read</Button>{/if}<Button color="alternative" onclick={() => navigate(row.module)}>Open related records</Button></div></article>{/each}</div>
+                {#if !rows.length}<p class="empty">You're up to date. Your school notifications will appear here.</p>{/if}
             {:else if section === 'people'}
                 <div class="setup"><h2>Access starts with an invitation</h2><p>Choose a person's role, share their private invitation link, then link their account to a student or teacher assignment. Parents only see students connected through Guardian links. Only the Owner can invite administrators.</p></div>
                 <Button onclick={() => {draft = {name:'',email:'',roles:['teacher']}; errors = {}; inviteUrl = ''; invite = true;}}>Invite person</Button> <Button color="alternative" onclick={() => navigate('invitations')}>Manage invitations</Button>
@@ -152,6 +185,7 @@
     </div>
 </div>
 <Modal bind:open={guide} title={steps[step].title} size="md" dismissable={false}><p class="guide-step">STEP {step + 1} OF {steps.length}</p><p class="guide-copy">{steps[step].body}</p><div class="actions"><Button color="alternative" onclick={finishGuide}>Skip guide</Button>{#if step > 0}<Button color="alternative" onclick={() => step--}>Back</Button>{/if}<Button onclick={() => step < steps.length - 1 ? step++ : finishGuide()}>{step < steps.length - 1 ? 'Next tip' : 'Got it'}</Button></div></Modal>
+<Modal bind:open={preferencesOpen} title="Notification delivery"><form class="record-form" onsubmit={savePreferences}><p>Your account inbox is always available. Enable extra channels only for contact details you own. You can turn them off at any time.</p>{#if errors.form}<p class="error" role="alert">{errors.form[0]}</p>{/if}<p>WhatsApp: {preferences.whatsapp_ready ? 'Connected by school' : 'Not connected by school yet'}</p><label for="whatsapp-phone">Your WhatsApp number, including country code</label><input id="whatsapp-phone" type="tel" placeholder="+12025550123" bind:value={preferences.whatsapp_phone}><label class="check"><input id="whatsapp-opt-in" type="checkbox" bind:checked={preferences.whatsapp_enabled}>I agree to receive school updates on my WhatsApp number.</label><p>Email: {preferences.email || 'No email linked'} · {preferences.email_ready ? 'Connected by school' : 'Not connected by school yet'}</p><label class="check"><input id="email-opt-in" type="checkbox" bind:checked={preferences.email_enabled} disabled={!preferences.email}>Send school updates to my account email.</label><label for="preference-password">Confirm your current password</label><input id="preference-password" type="password" autocomplete="current-password" bind:value={preferencePassword} required><p>Only new notifications after you opt in are eligible. Pending messages may take a few minutes. Delivery depends on the connected service.</p><Button type="submit" disabled={busy}>Save delivery preferences</Button></form></Modal>
 <Modal bind:open={editor} title={`${editing ? 'Edit' : 'Add'} ${definition?.singular ?? 'record'}`} size="lg">
     <form onsubmit={saveRecord} class="record-form">{#if errors.form}<p role="alert" class="error">{errors.form[0]}</p>{/if}{#each definition?.fields ?? [] as field}<div class="field"><label for={`field-${field.name}`}>{field.label}{field.optional ? ' (optional)' : ' *'}</label>{#if field.type === 'relation' || field.type === 'select'}<select id={`field-${field.name}`} bind:value={draft[field.name]} required={!field.optional}><option value="">Choose {field.label.toLowerCase()}</option>{#each field.type === 'relation' ? (meta.options[field.relation] ?? []) : field.choices.map(v => ({value:v,name:v.replaceAll('_',' ')})) as option}<option value={option.value}>{option.name}</option>{/each}</select>{:else if field.type === 'textarea'}<textarea id={`field-${field.name}`} bind:value={draft[field.name]} required={!field.optional} maxlength="5000" rows="3"></textarea>{:else}<input id={`field-${field.name}`} type={['date','time','month','number'].includes(field.type) ? field.type : 'text'} inputmode={['money','decimal'].includes(field.type) ? 'decimal' : undefined} bind:value={draft[field.name]} required={!field.optional} min={field.min} max={field.max} maxlength="255">{/if}{#if errors[field.name]}<p class="error" role="alert">{errors[field.name][0]}</p>{/if}</div>{/each}<div class="actions"><Button color="alternative" onclick={() => editor = false} disabled={busy}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save record'}</Button></div></form>
 </Modal>

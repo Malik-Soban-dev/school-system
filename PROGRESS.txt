@@ -6,8 +6,8 @@ CURRENT WORK - 2026-09-09 (this section supersedes older status below)
 - Built role-scoped school records, invitations/access management, contextual popup guides,
   mobile navigation, class attendance entry, invoices/payments, scheduling, grades/publication,
   payroll/leave, notices, audit history and printable records.
-- Latest checks: production frontend build passed; 41 PHPUnit tests passed, 204 assertions;
-  Pint formatting passed. Ten Cypress workflows passed in Chrome with desktop and mobile widths.
+- Latest checks: production frontend build passed; 50 PHPUnit tests passed, 305 assertions;
+  Pint formatting passed. Thirteen Cypress workflows passed in Chrome with desktop and mobile widths.
 - Cypress runner uses database/browser-testing.sqlite and test-only accounts; never production data.
 - C drive is full. TEMP/TMP, npm cache and Cypress downloads use ignored .local-tools on D.
   PHP formatting additionally needs -d sys_temp_dir=D:/laragon/www/school-system/.local-tools/tmp.
@@ -147,3 +147,15 @@ LIVE DEPLOYMENT RESULT - 2026-09-08
 - Updated USER-WORKFLOW.md to distinguish implemented access/daily operations from the original target diagrams. Remaining priorities cover report cards/grading, assignments/storage, fee/payroll automation, provider integrations, MFA and off-device backup scheduling. Asked for country and provider names; no secrets requested.
 
 - Release d09fd24 live verification: /up, real owner dashboard, authenticated invitation list and logout all HTTP 200; invitation pagination JSON valid. No production invitations or school sample data were created. GitHub and deployment verified. Next internal milestone: comprehensive examination reports and grading; external integrations await provider choices.
+
+NEW REQUEST 2026-09-09: Expand, do not replace, the roadmap with WhatsApp/email and private inbox notifications for every role, advance exam reminders, monthly fee receipts and actual salary disbursements. Eight phases saved in details for project/IMPLEMENTATION-PHASES.md. Building monthly settlement and notification foundations; no external provider connected yet. Free Render sleeping prevents guaranteed scheduled delivery until always-on hosting is selected.
+
+- Phase 1/2 implementation: fee billing month and month filters; manual online receipt method; immutable salary disbursements with remaining net-pay balance and teacher-only own pay access; private role-scoped notification inbox with durable event queue and read state; separate exam announcement/results status; duplicate-safe 7/1-day in-account reminders. Targeted four PHP tests passed (77 assertions); frontend build and Pint passed. Cypress desktop/mobile loop running. No WhatsApp/email delivery yet. Scheduler integration prepared; free hosting cannot guarantee scheduled delivery while asleep.
+
+- Cypress found a real month-filter timing issue: the change handler requested records before the Svelte binding updated. Fixed by reading the selected month directly from the change event; rerun required. Eleven other workflows passed. Production backup restored in memory before schema rollout: 30 tables verified.
+
+- Month filtering now uses an explicit Show month action (Cypress passed). Second browser run: 11/12 passed; attendance save was still in flight at the UI assertion timeout. Added an explicit network-response wait to distinguish slow requests from application failures; no blanket retry added. WhatsApp/email adapter tests passed (5 tests, 24 assertions) using simulated providers; real delivery still unconfigured.
+
+- Delivery phase foundation: self-service WhatsApp/email opt-in protected by current password, official WhatsApp template adapter, Laravel email adapter, signed delivery webhooks, bounded rate-limit retries, unknown outcome protection, access/consent rechecks, explicit delivery statuses and external services disabled by default. Five adapter/security tests passed. Full backend suite: 50 tests, 305 assertions. Real provider activation and always-on scheduling remain pending; no external messages were sent.
+
+- Monthly payments/inbox/delivery foundation: all 13 Cypress workflows passed (Chrome 152, desktop and 360/390px mobile), all 50 PHP tests passed (305 assertions), build/Pint passed. Mobile inbox and delivery preferences screenshots reviewed. Preparing GitHub push and Render deployment; external channels remain disabled.
