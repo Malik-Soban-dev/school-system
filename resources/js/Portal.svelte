@@ -18,6 +18,7 @@
         {title: 'Help is always here', body: 'Open Page guide any time to replay these tips. On a phone, the Menu button opens all your tools. Account lets you change your password.'}
     ]);
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    let latestRequest = 0;
     async function api(path, method = 'GET', body) {
         const response = await fetch(path, {method, credentials: 'same-origin', headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf}, ...(body ? {body: JSON.stringify(body)} : {})});
         if ([401, 419].includes(response.status)) { location.assign('/login'); throw new Error('Your session ended. Please sign in again.'); }
@@ -27,16 +28,19 @@
     }
     async function refreshMeta() { meta = await api('/portal/meta'); }
     async function loadRows() {
+        const requestNumber = ++latestRequest;
+        const activeDefinition = definition;
+        const activeSection = section;
         loading = true; error = '';
         try {
-            if (definition) { const data = await api(`/portal/records/${section}?page=${page}&search=${encodeURIComponent(search)}`); rows = data.rows; total = data.total; }
-            else if (section === 'people' || section === 'audit') { const data = await api(`/portal/${section === 'people' ? 'users' : 'audit'}?page=${page}`); const result = data.users ?? data.rows; rows = result.data; total = result.total; }
+            if (activeDefinition) { const data = await api(`/portal/records/${activeSection}?page=${page}&search=${encodeURIComponent(search)}`); if (requestNumber !== latestRequest) return; rows = data.rows; total = data.total; }
+            else if (activeSection === 'people' || activeSection === 'audit') { const data = await api(`/portal/${activeSection === 'people' ? 'users' : 'audit'}?page=${page}`); if (requestNumber !== latestRequest) return; const result = data.users ?? data.rows; rows = result.data; total = result.total; }
             else { rows = []; total = 0; }
-        } catch (e) { error = e.message; } finally { loading = false; }
+        } catch (e) { if (requestNumber === latestRequest) error = e.message; } finally { if (requestNumber === latestRequest) loading = false; }
     }
     async function navigate(key) {
         section = key; page = 1; search = ''; menu = false; message = ''; await loadRows();
-        if (key !== 'audit' && !meta.user.tutorials?.includes(key)) { step = 0; guide = true; }
+        if (key === section && key !== 'audit' && !meta.user.tutorials?.includes(key)) { step = 0; guide = true; }
     }
     async function finishGuide() {
         const completedSection = section;
@@ -131,7 +135,7 @@
                 <Button onclick={() => {draft = {name:'',email:'',roles:['teacher']}; errors = {}; inviteUrl = ''; invite = true;}}>Invite person</Button>
                 <div class="records people">{#each rows as person}<article class="record"><h2>{person.name}</h2><p>{person.username || person.email}</p><p>{person.roles?.join(' · ')} · {person.is_active ? 'Active' : 'Suspended'}</p>{#if person.id !== meta.user.id && !person.roles?.includes('owner') && (meta.user.roles.includes('owner') || !person.roles?.includes('admin'))}<Button color="alternative" onclick={() => {personToEdit = person; selectedRoles = [...person.roles]; errors = {}; access = true;}}>Edit roles</Button> <Button color="alternative" disabled={busy} onclick={() => updateAccess(person)}>{person.is_active ? 'Suspend access' : 'Restore access'}</Button>{/if}</article>{/each}</div>
             {:else if section === 'settings'}
-                <form class="settings record" onsubmit={saveSettings}><label for="school_name">School name *</label><input id="school_name" bind:value={meta.settings.school_name} required maxlength="150"><label for="currency">Currency code *</label><input id="currency" bind:value={meta.settings.currency} placeholder="For example PKR" pattern="[A-Z]{3}" required><label for="timezone">Timezone *</label><input id="timezone" bind:value={meta.settings.timezone} placeholder="For example Asia/Karachi" required><p>These settings identify your school. Payment entries record payments received outside this application.</p><Button type="submit" disabled={busy}>Save settings</Button></form>
+                <form class="settings record" onsubmit={saveSettings}><label for="school_name">School name *</label><input id="school_name" bind:value={meta.settings.school_name} required maxlength="150"><label for="currency">Currency code *</label><input id="currency" bind:value={meta.settings.currency} placeholder="For example PKR" pattern={'[A-Z]{3}'} required><label for="timezone">Timezone *</label><input id="timezone" bind:value={meta.settings.timezone} placeholder="For example Asia/Karachi" required><p>These settings identify your school. Payment entries record payments received outside this application.</p><Button type="submit" disabled={busy}>Save settings</Button></form>
             {:else if section === 'audit'}<div class="records">{#each rows as row}<article class="record"><h2>{row.action.replaceAll('_',' ')}</h2><p>{row.name ?? 'Former account'} · {row.module.replaceAll('_',' ')} #{row.record_id}</p><p>{row.created_at}</p></article>{/each}</div>{/if}
             {#if total > (definition ? 20 : 30)}<div class="pagination"><Button color="alternative" disabled={page === 1 || loading} onclick={() => {page--; loadRows();}}>Previous</Button><span>Page {page}</span><Button color="alternative" disabled={page * (definition ? 20 : 30) >= total || loading} onclick={() => {page++; loadRows();}}>Next</Button></div>{/if}
         </main><footer>School System · Built around your school day</footer>

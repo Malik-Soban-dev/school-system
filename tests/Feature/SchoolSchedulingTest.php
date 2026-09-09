@@ -60,4 +60,16 @@ class SchoolSchedulingTest extends TestCase
         $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
         $this->actingAs($owner)->getJson('/portal/meta')->assertJsonPath('today', '2026-09-08');
     }
+
+    public function test_owner_can_save_initial_settings_and_admin_cannot_change_them(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $response = $this->actingAs($owner)->getJson('/portal/meta')->assertOk();
+        $this->assertInstanceOf(\stdClass::class, json_decode($response->getContent())->settings);
+        $settings = ['school_name' => 'Example School', 'currency' => 'PKR', 'timezone' => 'Asia/Karachi'];
+        $this->putJson('/portal/settings', $settings)->assertOk();
+        $this->getJson('/portal/meta')->assertJsonPath('settings.school_name', 'Example School');
+        $admin = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        $this->actingAs($admin)->putJson('/portal/settings', $settings)->assertForbidden();
+    }
 }

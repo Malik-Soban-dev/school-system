@@ -20,7 +20,7 @@ class PortalController extends Controller
             'user' => $request->user()->only(['id', 'name', 'username', 'roles', 'tutorials']),
             'modules' => $this->portal->modules($request->user()),
             'options' => $this->portal->options($request->user()),
-            'settings' => DB::table('school_settings')->whereIn('key', ['school_name', 'currency', 'timezone'])->pluck('value', 'key'),
+            'settings' => (object) DB::table('school_settings')->whereIn('key', ['school_name', 'currency', 'timezone'])->pluck('value', 'key')->all(),
             'canManage' => $this->portal->admin($request->user()),
             'today' => $this->portal->today(),
         ]);

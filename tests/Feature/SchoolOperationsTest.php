@@ -92,6 +92,16 @@ class SchoolOperationsTest extends TestCase
         $this->getJson('/portal/records/grades')->assertJsonCount(1, 'rows')->assertJsonPath('rows.0.percentage', 85);
         $this->get('/reports/grades/'.$grade)->assertOk();
         $this->actingAs($this->person('owner'))->putJson('/portal/records/grades/'.$grade, [...$data, 'marks' => 90])->assertUnprocessable()->assertJsonValidationErrors('exam_id');
+        $nextClassStudent = $this->student();
+        $newClass = DB::table('school_students')->find($nextClassStudent)->class_id;
+        $current = (array) DB::table('school_students')->find($student);
+        $this->putJson('/portal/records/students/'.$student, [...$current, 'class_id' => $newClass])->assertOk();
+        $this->actingAs($studentUser)->getJson('/portal/records/exams')->assertJsonPath('rows.0.id', $exam);
+        $this->get('/reports/grades/'.$grade)->assertOk();
+        DB::table('school_exams')->where('id', $exam)->update(['status' => 'draft']);
+        $this->actingAs($this->person('owner'))->putJson('/portal/records/grades/'.$grade, [...$data, 'marks' => 90])->assertOk();
+        $this->assertDatabaseHas('school_enrollments', ['student_id' => $student, 'class_id' => $class]);
+        $this->assertDatabaseHas('school_enrollments', ['student_id' => $student, 'class_id' => $newClass]);
     }
 
     public function test_teacher_parent_combined_role_does_not_expose_other_families_invoices(): void

@@ -121,7 +121,7 @@ class SchoolPortal
         if ($module === 'exams') {
             return $query->where(function (Builder $query) use ($family, $user): void {
                 $query->where(function (Builder $query) use ($family): void {
-                    $query->where('status', 'published')->whereIn('class_id', DB::table('school_students')->whereIn('id', $family)->select('class_id'));
+                    $query->where('status', 'published')->whereIn('class_id', DB::table('school_enrollments')->whereIn('student_id', $family)->select('class_id'));
                 });
                 if ($user->hasRole('teacher')) {
                     $query->orWhereIn('class_id', DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->select('class_id'));
@@ -315,8 +315,8 @@ class SchoolPortal
         if ($module === 'grades') {
             $exam = DB::table('school_exams')->find($data['exam_id']);
             $student = DB::table('school_students')->find($data['student_id']);
-            if ((int) $exam->class_id !== (int) $student->class_id) {
-                $this->fail('student_id', 'The student must belong to the exam class.');
+            if ((int) $exam->class_id !== (int) $student->class_id && ! DB::table('school_enrollments')->where('student_id', $student->id)->where('class_id', $exam->class_id)->exists()) {
+                $this->fail('student_id', 'The student must have an enrollment in the exam class.');
             }
             if ($exam->status === 'published' || ($old && DB::table('school_exams')->find($old->exam_id)->status === 'published')) {
                 $this->fail('exam_id', 'Published results are locked. An administrator must return the exam to draft before corrections.');

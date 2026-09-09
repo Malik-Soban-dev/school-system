@@ -124,3 +124,11 @@ LIVE DEPLOYMENT RESULT - 2026-09-08
 
 - Render deployment dep-dagl1s3bc2fs73flcqng failed on a Turso HTTP request timeout while creating an invoice index. Previous live login release remains available; schema was partially created.
 - Added resumable CREATE TABLE/INDEX operations and a guarded tutorial column. A recovery test confirms rerunning repairs missing indexes and preserves existing users/data. Published Turso timeout configuration (10-second connect, 30-second request). Redeployment pending.
+
+- Release 14932b9 is live (dep-dagl4je7bikc739al630). Verified real malik login: dashboard HTTP 200, Owner role, all 17 modules returned by authenticated metadata; logout completed.
+- Added first-use settings coverage; fixed empty settings JSON shape and Svelte currency pattern interpolation. Latest backend suite: 37 passing tests, 170 assertions. Cypress rerun pending.
+- Preparing Apache production runtime with restricted public document root, writable Laravel runtime directories and bounded workers. Render build will validate Apache configuration. Existing npm lifecycle-script restrictions preserved; project cache now uses D drive.
+- PowerShell source edits MUST use Get-Content -Encoding UTF8 (or apply_patch) to avoid corrupting Unicode punctuation.
+
+- Final local application checks: 37 PHPUnit tests passed, 176 assertions; nine Cypress workflows passed in Chrome 152 at desktop/390px/360px widths; production assets rebuilt; Pint passed. Added rapid-navigation race coverage and preserved historical exam access after class changes.
+- Next deployment includes Apache production serving, first-use settings fixes, updated landing copy and the final UI race fix. No production school/sample records were created by browser tests.

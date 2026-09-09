@@ -38,4 +38,12 @@ describe('School workflows', () => {
             cy.contains('button','Sign out').click(); cy.visit(url); cy.get('#username').type('invited.teacher'); cy.get('#password').type('Invite-test-12345',{log:false}); cy.get('#password_confirmation').type('Invite-test-12345',{log:false}); cy.get('button[type=submit]').click(); cy.url().should('include','/login'); cy.get('#username').type('invited.teacher'); cy.get('#password').type('Invite-test-12345',{log:false}); cy.get('button[type=submit]').click(); cy.contains('Welcome, Invited Teacher').should('be.visible');
         });
     });
+    it('owner saves first-use school settings', () => {
+        login('owner'); cy.contains('nav button','School settings').click(); cy.contains('button','Skip guide').click(); cy.get('#school_name').type('Browser Test School'); cy.get('#currency').type('PKR'); cy.get('#timezone').type('UTC'); cy.contains('button','Save settings').click(); cy.contains('School settings saved.').should('be.visible'); cy.reload(); cy.contains('Browser Test School').should('be.visible');
+    });
+    it('rapid navigation keeps the newest page records', () => {
+        login('owner');
+        cy.intercept('GET','/portal/records/subjects*', request => request.continue(response => response.setDelay(1500))).as('slowSubjects');
+        cy.get('[data-cy=nav-subjects]').click(); cy.get('[data-cy=nav-classes]').click(); cy.contains('button','Skip guide').click(); cy.wait('@slowSubjects'); cy.contains('h1','Classes & sections').should('be.visible'); cy.contains('[data-cy=record]','Grade 5 A').should('be.visible'); cy.contains('[data-cy=record]','English').should('not.exist');
+    });
 });
