@@ -1,19 +1,20 @@
 CURRENT WORK - 2026-09-09 (this section supersedes older status below)
-- Release 5a3a05e merged and pushed to main. Render deployment is in progress.
+- Release b41b70c is live on Render. Tested database-query improvements are ready to push.
 - Installed Cypress 16, Svelte 5, Flowbite Svelte 1.33. Dependency audit reported zero vulnerabilities.
 - Built role-scoped school records, invitations/access management, contextual popup guides,
   mobile navigation, class attendance entry, invoices/payments, scheduling, grades/publication,
   payroll/leave, notices, audit history and printable records.
-- Latest checks: production frontend build passed; 35 PHPUnit tests passed, 161 assertions;
-  Pint formatting passed. Seven Cypress workflows passed in Chrome with desktop and mobile widths.
+- Latest checks: production frontend build passed; 39 PHPUnit tests passed, 186 assertions;
+  Pint formatting passed. Nine Cypress workflows passed in Chrome with desktop and mobile widths.
 - Cypress runner uses database/browser-testing.sqlite and test-only accounts; never production data.
 - C drive is full. TEMP/TMP, npm cache and Cypress downloads use ignored .local-tools on D.
   PHP formatting additionally needs -d sys_temp_dir=D:/laragon/www/school-system/.local-tools/tmp.
 - Browser command: set PHP_BINARY to installed PHP 8.3; run npm run test:e2e.
-- Pending: complete Cypress desktop/mobile loop, inspect screenshots, verify Turso/deploy.
+- Desktop/mobile screenshots inspected. Live owner login, all 17 modules and logout verified.
+- Encrypted production backup restored successfully in memory: 30 tables verified.
 - Full original PRD is not complete: provider-backed email/SMS/payment/file storage, MFA,
   account recovery, automatic scheduling/fee rules, library/inventory, comprehensive report cards
-  and backup restore validation still need work. Do not describe the whole ERP as production ready.
+  and scheduled off-device backups still need work. Do not describe the whole ERP as production ready.
 - Awaiting school name, currency/timezone and provider/account details from the user.
 
 PRIOR SESSION HISTORY (historical entries retained below)
@@ -132,3 +133,6 @@ LIVE DEPLOYMENT RESULT - 2026-09-08
 
 - Final local application checks: 37 PHPUnit tests passed, 176 assertions; nine Cypress workflows passed in Chrome 152 at desktop/390px/360px widths; production assets rebuilt; Pint passed. Added rapid-navigation race coverage and preserved historical exam access after class changes.
 - Next deployment includes Apache production serving, first-use settings fixes, updated landing copy and the final UI race fix. No production school/sample records were created by browser tests.
+
+- Apache release b41b70c is live in dep-daglcpmk1f9s73al649g. Production verification: health/dashboard/assets/logout HTTP 200, all 17 module list endpoints returned valid JSON, guest API 401, /.env 404, nosniff header present.
+- Reducing remote database round trips in teacher/family authorization using SQL subqueries. Regression checks cover combined Teacher+Parent roles, draft grade isolation, revoked assignments and historical enrollment. Parent roster query budget is now verified at two database queries, independent of family size.

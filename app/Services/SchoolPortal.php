@@ -53,22 +53,20 @@ class SchoolPortal
         return $result;
     }
 
-    public function studentIds(User $user): array
+    private function studentScope(User $user, bool $includeTeaching = true): Builder
     {
-        if ($user->hasRole('teacher')) {
-            $classes = DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->pluck('class_id');
-        } else {
-            $classes = [];
-        }
-        $guardianIds = $user->hasRole('parent')
-            ? DB::table('school_guardian_links')->where('user_id', $user->id)->where('status', 'active')->pluck('student_id')->all() : [];
-
-        return DB::table('school_students')->where(function (Builder $query) use ($user, $classes, $guardianIds): void {
-            $query->whereIn('class_id', $classes)->orWhereIn('id', $guardianIds);
+        return DB::table('school_students')->where(function (Builder $query) use ($user, $includeTeaching): void {
+            $query->whereIn('id', []);
+            if ($includeTeaching && $user->hasRole('teacher')) {
+                $query->orWhereIn('class_id', DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->select('class_id'));
+            }
+            if ($user->hasRole('parent')) {
+                $query->orWhereIn('id', DB::table('school_guardian_links')->where('user_id', $user->id)->where('status', 'active')->select('student_id'));
+            }
             if ($user->hasRole('student')) {
                 $query->orWhere('user_id', $user->id);
             }
-        })->pluck('id')->all();
+        })->select('id');
     }
 
     public function query(string $module, User $user): Builder
@@ -91,24 +89,19 @@ class SchoolPortal
         if ($module === 'leave_requests' || $module === 'teacher_assignments') {
             return $query->where('user_id', $user->id);
         }
-        $students = $this->studentIds($user);
-        $family = DB::table('school_students')->where(function (Builder $query) use ($user): void {
-            $query->whereIn('id', $user->hasRole('parent') ? DB::table('school_guardian_links')->where('user_id', $user->id)->where('status', 'active')->pluck('student_id') : []);
-            if ($user->hasRole('student')) {
-                $query->orWhere('user_id', $user->id);
-            }
-        })->pluck('id');
+        $students = $this->studentScope($user);
+        $family = $this->studentScope($user, false);
         if ($module === 'grades') {
             return $query->where(function (Builder $query) use ($user, $family): void {
                 $query->where(function (Builder $query) use ($family): void {
                     $query->whereIn('student_id', $family)->whereIn('exam_id', DB::table('school_exams')->where('status', 'published')->select('id'));
                 });
                 if ($user->hasRole('teacher')) {
-                    foreach (DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->get() as $assignment) {
-                        $query->orWhere(function (Builder $query) use ($assignment): void {
-                            $query->where('subject_id', $assignment->subject_id)->whereIn('student_id', DB::table('school_students')->where('class_id', $assignment->class_id)->select('id'));
-                        });
-                    }
+                    $query->orWhereExists(DB::table('school_teacher_assignments')
+                        ->join('school_students', 'school_students.class_id', '=', 'school_teacher_assignments.class_id')
+                        ->where('school_teacher_assignments.user_id', $user->id)->where('school_teacher_assignments.status', 'active')
+                        ->whereColumn('school_students.id', 'school_grades.student_id')
+                        ->whereColumn('school_teacher_assignments.subject_id', 'school_grades.subject_id')->select('school_teacher_assignments.id'));
                 }
             });
         }
@@ -128,10 +121,12 @@ class SchoolPortal
                 }
             });
         }
-        $classes = DB::table('school_students')->whereIn('id', $students)->pluck('class_id')->all();
-        if ($user->hasRole('teacher')) {
-            $classes = array_unique([...$classes, ...DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->pluck('class_id')->all()]);
-        }
+        $classes = DB::table('school_classes')->where(function (Builder $query) use ($user): void {
+            $query->whereIn('id', $this->studentScope($user)->select('class_id'));
+            if ($user->hasRole('teacher')) {
+                $query->orWhereIn('id', DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->select('class_id'));
+            }
+        })->select('id');
 
         return match ($module) {
             'students' => $query->whereIn('id', $students),

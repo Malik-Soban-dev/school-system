@@ -116,6 +116,48 @@ class SchoolOperationsTest extends TestCase
         $this->actingAs($teacher)->getJson('/portal/records/invoices')->assertJsonCount(0, 'rows');
     }
 
+    public function test_combined_teacher_parent_role_keeps_draft_results_within_teaching_assignments(): void
+    {
+        $teacher = $this->person('teacher');
+        $teacher->forceFill(['roles' => ['teacher', 'parent']])->save();
+        $pupil = $this->student();
+        $child = $this->student();
+        $class = DB::table('school_students')->find($pupil)->class_id;
+        $childClass = DB::table('school_students')->find($child)->class_id;
+        $math = $this->record('subjects', ['name' => 'Math', 'code' => 'M']);
+        $english = $this->record('subjects', ['name' => 'English', 'code' => 'E']);
+        $assignment = $this->record('teacher_assignments', ['user_id' => $teacher->id, 'class_id' => $class, 'subject_id' => $math, 'status' => 'active']);
+        $this->record('guardian_links', ['student_id' => $child, 'user_id' => $teacher->id, 'relationship' => 'Parent', 'status' => 'active']);
+        $exam = $this->record('exams', ['name' => 'Class exam', 'class_id' => $class, 'date' => today()->toDateString(), 'status' => 'draft']);
+        $childExam = $this->record('exams', ['name' => 'Child exam', 'class_id' => $childClass, 'date' => today()->toDateString(), 'status' => 'draft']);
+        $grade = $this->record('grades', ['student_id' => $pupil, 'exam_id' => $exam, 'subject_id' => $math, 'marks' => 80, 'maximum' => 100]);
+        $this->record('grades', ['student_id' => $pupil, 'exam_id' => $exam, 'subject_id' => $english, 'marks' => 70, 'maximum' => 100]);
+        $this->record('grades', ['student_id' => $child, 'exam_id' => $childExam, 'subject_id' => $math, 'marks' => 90, 'maximum' => 100]);
+        $this->actingAs($teacher)->getJson('/portal/records/grades')->assertJsonCount(1, 'rows')->assertJsonPath('rows.0.id', $grade);
+        $this->getJson('/portal/records/exams')->assertJsonCount(1, 'rows')->assertJsonPath('rows.0.id', $exam);
+        DB::table('school_exams')->where('id', $childExam)->update(['status' => 'published']);
+        $this->getJson('/portal/records/grades')->assertJsonCount(2, 'rows');
+        DB::table('school_teacher_assignments')->where('id', $assignment)->update(['status' => 'ended']);
+        $this->getJson('/portal/records/grades')->assertJsonCount(1, 'rows')->assertJsonPath('rows.0.student_id', $child);
+    }
+
+    public function test_parent_student_list_has_a_bounded_database_query_count(): void
+    {
+        $parent = $this->person('parent');
+        $child = $this->student();
+        $this->record('guardian_links', ['student_id' => $child, 'user_id' => $parent->id, 'relationship' => 'Parent', 'status' => 'active']);
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        try {
+            $result = app(SchoolPortal::class)->listing('students', $parent);
+            $this->assertSame($child, $result['rows'][0]['id']);
+            $this->assertLessThanOrEqual(2, count(DB::getQueryLog()));
+        } finally {
+            DB::disableQueryLog();
+            DB::flushQueryLog();
+        }
+    }
+
     public function test_invitation_cannot_grant_owner_and_is_single_use(): void
     {
         $owner = $this->person('owner');
