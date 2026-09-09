@@ -29,6 +29,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'roles' => 'array',
             'is_active' => 'boolean',
+            'tutorials' => 'array',
         ];
     }
 

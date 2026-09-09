@@ -1,9 +1,22 @@
 @import 'tailwindcss';
+@plugin 'flowbite/plugin';
+@source '../../node_modules/flowbite-svelte/dist';
+@source '../js';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
 @theme {
+    --color-primary-50: #fef6c9;
+    --color-primary-100: #d4dfc7;
+    --color-primary-200: #c1d2bd;
+    --color-primary-300: #96c0b7;
+    --color-primary-400: #878e88;
+    --color-primary-500: #725752;
+    --color-primary-600: #725752;
+    --color-primary-700: #604843;
+    --color-primary-800: #4c3935;
+    --color-primary-900: #302b29;
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }

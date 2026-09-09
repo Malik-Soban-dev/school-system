@@ -1,0 +1,8 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ $definition['singular'] }} — {{ $school }}</title><style>body{font:16px system-ui;color:#302b29;margin:30px auto;padding:20px;max-width:750px}h1{color:#725752}table{width:100%;border-collapse:collapse}th,td{padding:14px;text-align:left;border-bottom:1px solid #d4dfc7}button,a{padding:12px;background:#725752;color:white;border:0;border-radius:8px;display:inline-block;text-decoration:none;margin:8px}@media print{.actions{display:none}} </style></head><body><h1>{{ $school }}</h1><h2>{{ ucfirst($definition['singular']) }} #{{ $row['id'] }}</h2><table>
+@foreach($definition['fields'] as $field)<tr><th>{{ $field['label'] }}</th><td>
+@if($field['type'] === 'money'){{ $currency }} {{ number_format($row[$field['name']] / 100, 2) }}
+@elseif($field['type'] === 'relation'){{ collect($options[$field['relation']] ?? [])->firstWhere('value', $row[$field['name']])['name'] ?? $row[$field['name']] }}
+@else {{ $row[$field['name']] ?? '—' }} @endif
+</td></tr>@endforeach
+@foreach($extra as $label => $value)<tr><th>{{ $label }}</th><td>{{ $currency }} {{ number_format($value / 100, 2) }}</td></tr>@endforeach</table>
+<div class="actions"><button onclick="window.print()">Print / save as PDF</button><a href="{{ route('dashboard') }}">Back to workspace</a></div></body></html>

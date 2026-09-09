@@ -1,3 +1,22 @@
+CURRENT WORK - 2026-09-09 (this section supersedes older status below)
+- Branch: feature/school-workflows. Live main remains the verified login release.
+- Installed Cypress 16, Svelte 5, Flowbite Svelte 1.33. Dependency audit reported zero vulnerabilities.
+- Built role-scoped school records, invitations/access management, contextual popup guides,
+  mobile navigation, class attendance entry, invoices/payments, scheduling, grades/publication,
+  payroll/leave, notices, audit history and printable records.
+- Latest checks: production frontend build passed; 33 PHPUnit tests passed, 148 assertions;
+  Pint formatting passed. Browser tests have NOT passed yet: Cypress binary downloading.
+- Cypress runner uses database/browser-testing.sqlite and test-only accounts; never production data.
+- C drive is full. TEMP/TMP, npm cache and Cypress downloads use ignored .local-tools on D.
+  PHP formatting additionally needs -d sys_temp_dir=D:/laragon/www/school-system/.local-tools/tmp.
+- Browser command: set PHP_BINARY to installed PHP 8.3; run npm run test:e2e.
+- Pending: complete Cypress desktop/mobile loop, inspect screenshots, verify Turso/deploy.
+- Full original PRD is not complete: provider-backed email/SMS/payment/file storage, MFA,
+  account recovery, automatic scheduling/fee rules, library/inventory, comprehensive report cards
+  and backup restore validation still need work. Do not describe the whole ERP as production ready.
+- Awaiting school name, currency/timezone and provider/account details from the user.
+
+PRIOR SESSION HISTORY (historical entries retained below)
 SCHOOL SYSTEM - WORK LOG
 Updated: 2026-09-08
 
@@ -94,3 +113,7 @@ LIVE DEPLOYMENT RESULT - 2026-09-08
 - Render deployment dep-dag7cruk1f9s73c4slg0 went live. Production access migration completed successfully; Owner activation in progress.
 
 - Provisioned malik as active Owner in production Turso through the private command. No email fabricated; password stored only as a hash in the database. Local CLI required a longer connection timeout; no production timeout setting changed.
+
+- 2026-09-09: Installed Cypress 16 and Flowbite Svelte 1.33 with Svelte 5. npm audit: zero vulnerabilities. Build/test downloads use ignored D-drive cache because C drive is full. School workflow backend and mobile portal are in progress on feature/school-workflows; not deployed or certified production ready.
+
+- Workflow implementation now includes 17 module screens, server authorization, single-use invitations, contextual guides, scoped printable records and finance validation. Production frontend build passed. Seven new workflow tests passed (43 assertions); browser runner created with an isolated SQLite database and test-only accounts. Cypress binary download pending; no browser pass claimed yet.

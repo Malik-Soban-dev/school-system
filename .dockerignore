@@ -2,6 +2,13 @@
 .git
 node_modules
 vendor
+.local-tools
+cypress
+tests
+database/browser-testing.sqlite
+cypress.env.json
+.env.*
+!.env.example
 storage/logs/*
 storage/framework/cache/*
 storage/framework/sessions/*
