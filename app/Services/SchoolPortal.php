@@ -118,6 +118,16 @@ class SchoolPortal
         if ($module === 'payments') {
             return $query->whereIn('invoice_id', DB::table('school_invoices')->whereIn('student_id', $family)->select('id'));
         }
+        if ($module === 'exams') {
+            return $query->where(function (Builder $query) use ($family, $user): void {
+                $query->where(function (Builder $query) use ($family): void {
+                    $query->where('status', 'published')->whereIn('class_id', DB::table('school_students')->whereIn('id', $family)->select('class_id'));
+                });
+                if ($user->hasRole('teacher')) {
+                    $query->orWhereIn('class_id', DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->select('class_id'));
+                }
+            });
+        }
         $classes = DB::table('school_students')->whereIn('id', $students)->pluck('class_id')->all();
         if ($user->hasRole('teacher')) {
             $classes = array_unique([...$classes, ...DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->pluck('class_id')->all()]);
@@ -126,13 +136,8 @@ class SchoolPortal
         return match ($module) {
             'students' => $query->whereIn('id', $students),
             'classes' => $query->whereIn('id', $classes),
-            'attendance', 'invoices' => $query->whereIn('student_id', $students),
+            'attendance' => $query->whereIn('student_id', $students),
             'timetables' => $query->whereIn('class_id', $classes),
-            'exams' => $user->hasRole('teacher') ? $query->whereIn('class_id', $classes) : $query->whereIn('class_id', $classes)->where('status', 'published'),
-            'grades' => $user->hasRole('teacher')
-                ? $query->whereIn('student_id', $students)
-                : $query->whereIn('student_id', $students)->whereIn('exam_id', DB::table('school_exams')->where('status', 'published')->select('id')),
-            'payments' => $query->whereIn('invoice_id', DB::table('school_invoices')->whereIn('student_id', $students)->select('id')),
             default => $query->where('id', 0),
         };
     }

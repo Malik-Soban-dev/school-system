@@ -44,14 +44,24 @@ class PortalController extends Controller
     {
         abort_unless($this->portal->can($request->user(), ['owner', 'admin', 'teacher']), 403);
         $data = $request->validate(['records' => ['required', 'array', 'min:1', 'max:500'],
-            'records.*.student_id' => ['required', 'integer', 'distinct', 'exists:school_students,id'],
+            'records.*.student_id' => ['required', 'integer', 'min:1', 'distinct'],
             'records.*.status' => ['required', Rule::in(['present', 'absent', 'late', 'excused'])]]);
         DB::transaction(function () use ($request, $data): void {
-            foreach ($data['records'] as $record) {
-                $date = $this->portal->today();
-                $existing = DB::table('school_attendance')->where('student_id', $record['student_id'])->where('date', $date)->first();
-                $this->portal->save('attendance', $request->user(), [...$record, 'date' => $date, 'note' => $existing?->note], $existing?->id);
+            $ids = array_column($data['records'], 'student_id');
+            $students = DB::table('school_students')->whereIn('id', $ids)->where('status', 'active');
+            if (! $this->portal->admin($request->user())) {
+                $students->whereIn('class_id', DB::table('school_teacher_assignments')->where('user_id', $request->user()->id)->where('status', 'active')->select('class_id'));
             }
+            abort_unless($students->count() === count($ids), 403);
+            $date = $this->portal->today();
+            $before = DB::table('school_attendance')->whereIn('student_id', $ids)->where('date', $date)->get()->keyBy('student_id');
+            $now = now();
+            $rows = array_map(fn (array $record): array => [...$record, 'date' => $date, 'created_at' => $now, 'updated_at' => $now], $data['records']);
+            DB::table('school_attendance')->upsert($rows, ['student_id', 'date'], ['status', 'updated_at']);
+            $saved = DB::table('school_attendance')->whereIn('student_id', $ids)->where('date', $date)->get();
+            DB::table('school_audit')->insert($saved->map(fn ($row): array => ['user_id' => $request->user()->id,
+                'module' => 'attendance', 'record_id' => $row->id, 'action' => 'class_attendance_saved',
+                'changes' => json_encode(['before' => $before->get($row->student_id), 'after' => $row]), 'created_at' => $now])->all());
         });
 
         return response()->json(['message' => 'Attendance saved for '.count($data['records']).' students.']);

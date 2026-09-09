@@ -117,3 +117,7 @@ LIVE DEPLOYMENT RESULT - 2026-09-08
 - 2026-09-09: Installed Cypress 16 and Flowbite Svelte 1.33 with Svelte 5. npm audit: zero vulnerabilities. Build/test downloads use ignored D-drive cache because C drive is full. School workflow backend and mobile portal are in progress on feature/school-workflows; not deployed or certified production ready.
 
 - Workflow implementation now includes 17 module screens, server authorization, single-use invitations, contextual guides, scoped printable records and finance validation. Production frontend build passed. Seven new workflow tests passed (43 assertions); browser runner created with an isolated SQLite database and test-only accounts. Cypress binary download pending; no browser pass claimed yet.
+
+- Latest verification: 35 PHPUnit tests passed (161 assertions); seven Cypress workflows passed in Chrome 152 and an earlier seven passed in Electron. Visual review fixed a tutorial navigation race and UTF-8 punctuation corruption. Desktop width assertion added for final layout check.
+- Encrypted real production snapshot saved only under ignored .local-tools/backups/production-before-workflows.enc. Restored into memory: all 10 tables passed integrity checks. Retain the Render APP_KEY separately; off-device database backup storage still needs a provider.
+- Turso native /dump avoids its interactive transaction time limit. Quick class attendance now uses bulk database writes. Code backup branch is on GitHub; production deployment is next after final checks.

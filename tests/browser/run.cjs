@@ -27,7 +27,7 @@ async function run() {
             await new Promise(resolve => setTimeout(resolve, 500));
         }
         if (!ready) throw new Error('Test server did not start: ' + serverLog);
-        const results = await require('cypress').run({configFile:path.join(root,'cypress.config.cjs'), browser:'electron'});
+        const results = await require('cypress').run({configFile:path.join(root,'cypress.config.cjs'), browser:process.env.TEST_BROWSER || 'electron'});
         process.exitCode = results.totalFailed || results.failures || 0;
     } catch(error) { console.error(error); process.exitCode=1; }
     finally { if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(server.pid), '/T', '/F'], {stdio:'ignore',windowsHide:true}); else server.kill(); }
