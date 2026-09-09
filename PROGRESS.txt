@@ -1,5 +1,7 @@
 CURRENT WORK - 2026-09-09 (this section supersedes older status below)
-- Release 389ab76 is live on Render. Tested invitation management is ready to deploy.
+- Release d09fd24 is live on Render: dep-dagpd2rbc2fs738b01f0.
+- Live URL: https://school-system-wucf.onrender.com. GitHub main contains the release.
+- People & access > Manage invitations now lists unused links and supports audited revocation.
 - Installed Cypress 16, Svelte 5, Flowbite Svelte 1.33. Dependency audit reported zero vulnerabilities.
 - Built role-scoped school records, invitations/access management, contextual popup guides,
   mobile navigation, class attendance entry, invoices/payments, scheduling, grades/publication,
@@ -141,3 +143,7 @@ LIVE DEPLOYMENT RESULT - 2026-09-08
 - Added paginated unused invitation management and audited revocation; administrator invitations remain owner-only. Token hashes are excluded from responses; accepted accounts use People & access. PHP invitation security checks and production frontend build passed; mobile Cypress verification running.
 
 - Invitation release checks: all 41 PHP tests passed (204 assertions), all 10 Chrome Cypress workflows passed, mobile invitation screenshot inspected, production build and Pint passed. Next: push and verify Render deployment.
+
+- Updated USER-WORKFLOW.md to distinguish implemented access/daily operations from the original target diagrams. Remaining priorities cover report cards/grading, assignments/storage, fee/payroll automation, provider integrations, MFA and off-device backup scheduling. Asked for country and provider names; no secrets requested.
+
+- Release d09fd24 live verification: /up, real owner dashboard, authenticated invitation list and logout all HTTP 200; invitation pagination JSON valid. No production invitations or school sample data were created. GitHub and deployment verified. Next internal milestone: comprehensive examination reports and grading; external integrations await provider choices.

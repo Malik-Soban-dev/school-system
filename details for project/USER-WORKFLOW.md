@@ -1,7 +1,33 @@
 # Proposed account and school workflow
 
-Researched 2026-09-08. Proposal only; these features are not implemented.
+Researched 2026-09-08. Implementation status updated 2026-09-09.
 Assumption: first release serves one school.
+
+## Current implementation
+
+Private owner provisioning, expiring single-use invitations, role changes, suspension,
+student enrollment, guardian links, teacher assignments, scoped records, attendance,
+published marks and office-recorded payments are implemented. Invitation management
+also lists unused links and lets authorized staff revoke them. New-user popup guides
+and mobile navigation are implemented. The diagrams below describe the broader target
+workflow; they do not mean every integration is ready.
+
+Accounts currently use one workspace showing the tools permitted by their combined
+roles. Server checks separately constrain teaching records and linked-child records.
+Staff privately share invitation links after verifying the recipient; automated email
+delivery and mailbox verification are not configured. MFA, account recovery, online
+payments, assignments and automatic attendance alerts remain unfinished. Reports
+currently support browser printing/saving as PDF, rather than complete report cards.
+
+Next implementation priorities:
+
+1. Complete examination reports and school-defined grading rules.
+2. Add academic resources, assignments and student submissions with durable storage.
+3. Implement fee plans, scholarships and scheduled invoice/payroll generation.
+4. Configure email recovery, attendance notifications and online payment verification.
+5. Add MFA, scheduled off-device database backups and production load testing.
+
+See PROGRESS.txt for exact verified releases, test results and remaining limitations.
 
 ## Design inspiration
 
