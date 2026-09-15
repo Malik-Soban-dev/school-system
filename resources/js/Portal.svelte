@@ -3,6 +3,7 @@
     import Preferences from './Preferences.svelte';
     import { translator, hydratePreferences } from './preferences.js';
     import { Button, Modal, Spinner } from 'flowbite-svelte';
+    import { BellOutline, BookOpenOutline, BookOpenReaderOutline, BuildingOutline, CalendarMonthOutline, CashOutline, ChartPieOutline, ClipboardCheckOutline, ClipboardListOutline, CogOutline, FileInvoiceOutline, HomeOutline, ReceiptOutline, UserGraduateOutline, UsersGroupOutline, WalletOutline } from 'flowbite-svelte-icons';
 
     let meta = $state(null), section = $state('overview'), rows = $state([]), total = $state(0), page = $state(1);
     let loading = $state(true), busy = $state(false), error = $state(''), message = $state(''), search = $state('');
@@ -12,7 +13,11 @@
     let month = $state(''), unread = $state(0);
     let preferencesOpen = $state(false), preferences = $state({}), preferencePassword = $state('');
     let attendanceSheet = $state(false), attendanceRecords = $state([]), attendanceClass = $state('');
+    const fontOptions = ['Instrument Sans', 'Inter', 'Poppins', 'Nunito', 'DM Sans', 'Manrope', 'Lato', 'Merriweather', 'Noto Nastaliq Urdu', 'system-ui'];
     let definition = $derived(meta?.modules.find(m => m.key === section));
+    function iconFor(key) {
+        return ({overview: HomeOutline, people: UsersGroupOutline, notifications: BellOutline, audit: ChartPieOutline, settings: CogOutline, academic_years: CalendarMonthOutline, classes: BuildingOutline, subjects: BookOpenOutline, staff: UsersGroupOutline, students: UserGraduateOutline, guardian_links: UsersGroupOutline, teacher_assignments: BookOpenReaderOutline, attendance: ClipboardCheckOutline, timetables: CalendarMonthOutline, exams: ClipboardListOutline, grade_bands: ChartPieOutline, exam_subjects: BookOpenOutline, grades: ReceiptOutline, invoices: FileInvoiceOutline, payments: CashOutline, expenses: WalletOutline, leave_requests: CalendarMonthOutline, payroll: WalletOutline, payroll_payments: CashOutline, notices: BellOutline})[key] ?? ClipboardListOutline;
+    }
     let title = $derived(definition?.label ?? ({overview: 'Your school, in one place', people: 'People & access', notifications: 'Notifications', invitations: 'Invitations', settings: 'School settings', audit: 'Activity history'}[section] ?? section));
     let pageHelp = $derived(definition && !definition.canWrite ? ({students:'View the students connected to your account. Contact your school if a student is missing.', attendance:'See recorded attendance for the students connected to your account.', grades:'Your school publishes reviewed results here. Draft results remain private.', invoices:'View your fee invoices and outstanding balances. Contact the school office to arrange payment.', payments:'View recorded payments and print your receipts.', timetables:'Check class times, subjects and rooms for your school week.', exams:'View the exams your school has shared with you.', notices:'Read the latest messages shared with your school community.'}[section] ?? definition.help) : definition?.help);
     let steps = $derived([
@@ -24,13 +29,19 @@
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     let latestRequest = 0;
     async function api(path, method = 'GET', body) {
-        const response = await fetch(path, {method, credentials: 'same-origin', headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf}, ...(body ? {body: JSON.stringify(body)} : {})});
+        const response = await fetch(path, {method, credentials: 'same-origin', headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': csrf, ...(body instanceof FormData ? {} : {'Content-Type': 'application/json'})}, ...(body ? {body: body instanceof FormData ? body : JSON.stringify(body)} : {})});
         if ([401, 419].includes(response.status)) { location.assign('/login'); throw new Error('Your session ended. Please sign in again.'); }
         const data = await response.json();
         if (!response.ok) { const e = new Error(data.message ?? 'Unable to complete this action. Please try again.'); e.errors = data.errors ?? {}; throw e; }
         return data;
     }
-    async function refreshMeta() { meta = await api('/portal/meta'); hydratePreferences(meta.user.interface_preferences); }
+    function applyBranding() {
+        const settings = meta?.settings ?? {};
+        document.documentElement.style.setProperty('--accent', settings.color_primary || '#725752');
+        document.documentElement.style.setProperty('--glow', settings.color_secondary || '#b8dacf');
+        document.body.style.fontFamily = `'${settings.font_family || 'Instrument Sans'}', sans-serif`;
+    }
+    async function refreshMeta() { meta = await api('/portal/meta'); hydratePreferences(meta.user.interface_preferences); applyBranding(); }
     async function loadRows() {
         const requestNumber = ++latestRequest;
         const activeDefinition = definition;
@@ -70,6 +81,10 @@
         if (field.type === 'money') return `${meta.settings.currency ?? ''} ${(value / 100).toFixed(2)}`;
         return String(value).replaceAll('_', ' ');
     }
+    function overviewValue(stat) {
+        if (stat.format === 'money') return `${meta.settings.currency ?? ''} ${(Number(stat.value) / 100).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
+        return Number(stat.value).toLocaleString();
+    }
     async function createInvite(event) {
         event.preventDefault(); busy = true; errors = {};
         try { const result = await api('/portal/invitations', 'POST', draft); inviteUrl = result.url; message = result.message; }
@@ -104,7 +119,7 @@
     }
     async function saveSettings(event) {
         event.preventDefault(); busy = true; error = '';
-        try { await api('/portal/settings', 'PUT', meta.settings); message = 'School settings saved.'; } catch(e) { error = Object.values(e.errors).flat().join(' ') || e.message; } finally { busy = false; }
+        try { const form = new FormData(event.currentTarget); await api('/portal/settings', 'POST', form); await refreshMeta(); message = 'School settings saved.'; } catch(e) { error = Object.values(e.errors).flat().join(' ') || e.message; } finally { busy = false; }
     }
     async function readNotification(row) {
         busy = true;
@@ -137,14 +152,14 @@
 {#if meta}
 <div class="workspace">
     <aside class:expanded={menu}>
-        <a class="brand" href="/dashboard"><span class="mark">{$translator("S")}</span><span>{meta.settings.school_name || 'School System'}<small>{$translator("A little clarity, every day.")}</small></span></a>
+        <a class="brand" href="/dashboard">{#if meta.settings.logo_data}<img class="school-logo" src={meta.settings.logo_data} alt="">{:else}<span class="mark">{$translator("S")}</span>{/if}<span>{meta.settings.school_name || 'School System'}<small>{$translator("A little clarity, every day.")}</small></span></a>
         <nav aria-label={$translator("School tools")}>
-            <button class:active={section === 'overview'} onclick={() => navigate('overview')}>{$translator("Overview")}</button>
-            {#if meta.canManage}<button class:active={section === 'people'} onclick={() => navigate('people')}>{$translator("People & access")}</button>{/if}
-            <button class:active={section === 'notifications'} onclick={() => navigate('notifications')}>{$translator("Notifications")} {unread ? `(${unread} unread)` : ''}</button>
-            {#each meta.modules as item}<button class:active={section === item.key} data-cy={`nav-${item.key}`} onclick={() => navigate(item.key)}>{$translator(item.label)}</button>{/each}
-            {#if meta.canManage}<button class:active={section === 'audit'} onclick={() => navigate('audit')}>{$translator("Activity history")}</button>{/if}
-            {#if meta.user.roles.includes('owner')}<button class:active={section === 'settings'} onclick={() => navigate('settings')}>{$translator("School settings")}</button>{/if}
+            <button class:active={section === 'overview'} onclick={() => navigate('overview')}><HomeOutline size="18" ariaLabel="" />{$translator("Overview")}</button>
+            {#if meta.canManage}<button class:active={section === 'people'} onclick={() => navigate('people')}><UsersGroupOutline size="18" ariaLabel="" />{$translator("People & access")}</button>{/if}
+            <button class:active={section === 'notifications'} onclick={() => navigate('notifications')}><BellOutline size="18" ariaLabel="" />{$translator("Notifications")} {unread ? `(${unread} unread)` : ''}</button>
+            {#each meta.modules as item}{@const Icon = iconFor(item.key)}<button class:active={section === item.key} data-cy={`nav-${item.key}`} onclick={() => navigate(item.key)}><Icon size="18" ariaLabel="" />{$translator(item.label)}</button>{/each}
+            {#if meta.canManage}<button class:active={section === 'audit'} onclick={() => navigate('audit')}><ChartPieOutline size="18" ariaLabel="" />{$translator("Activity history")}</button>{/if}
+            {#if meta.canManage}<button class:active={section === 'settings'} onclick={() => navigate('settings')}><CogOutline size="18" ariaLabel="" />{$translator("School settings")}</button>{/if}
         </nav>
     </aside>
     <div class="content">
@@ -156,8 +171,10 @@
             {#if loading}<div class="empty"><div class="loading-scene" role="status"><div class="loading-orbit" aria-hidden="true">{$translator("S")}</div><p>{$translator("Loading your workspace…")}</p></div></div>
             {:else if section === 'overview'}
                 <section class="welcome"><p class="eyebrow">{$translator("A CLEAR START")}</p><h2>{$translator("Everything you need.")}<br>{$translator("One calm workspace.")}</h2><p>{$translator("Choose a tool below to get started. Your information is shared according to your role and school assignments.")}</p>{#if meta.canManage}<Button onclick={() => navigate('people')}>{$translator("Invite your school team")}</Button>{/if}</section>
+                <section class="overview-stats" aria-label={$translator("School summary")}>{#each meta.overview?.stats ?? [] as stat}{@const Icon = iconFor(stat.icon)}<article class="overview-stat" data-cy="overview-stat"><span class="stat-icon"><Icon size="20" ariaLabel="" /></span><div><p>{$translator(stat.label)}</p><strong>{overviewValue(stat)}</strong></div></article>{/each}</section>
+                <section class="overview-panels"><article class="overview-panel attendance-panel"><div class="panel-heading"><div><p class="eyebrow">{$translator("TODAY")}</p><h2>{$translator("Attendance summary")}</h2></div><span class="panel-value">{meta.overview?.attendance?.percentage ?? 0}%</span></div><div class="progress-track"><span style={`width:${meta.overview?.attendance?.percentage ?? 0}%`}></span></div><p>{meta.overview?.attendance?.attended ?? 0} {$translator("attended")} {$translator("out of")} {meta.overview?.attendance?.total ?? 0} {$translator("recorded today")}</p></article><article class="overview-panel profile-panel"><p class="eyebrow">{$translator("YOUR ACCOUNT")}</p><h2>{meta.user.name}</h2><p>{$translator("Signed in as")} {meta.user.roles.map(role => $translator(role)).join(' · ')}</p><div class="profile-chip"><span>{meta.user.name.slice(0, 1).toUpperCase()}</span><div><strong>{meta.settings.school_name || $translator('School System')}</strong><small>{$translator("Your school workspace")}</small></div></div></article></section>
                 {#if meta.canManage}<div class="setup"><h2>{$translator("Set up your school in order")}</h2><p>{$translator("1. Add an academic year, classes and subjects. 2. Invite teachers, students and parents. 3. Create student records and link accounts. 4. Assign teachers and connect guardians. 5. Begin attendance, lessons and fees.")}</p></div>{/if}
-                <div class="tiles">{#each meta.modules as item}<button class="tile" onclick={() => navigate(item.key)}><span class="tile-icon">{item.label.slice(0, 1)}</span><h2>{$translator(item.label)}</h2><p>{$translator(item.help)}</p><span class="open">{$translator("Open tool →")}</span></button>{/each}</div>
+                <div class="tiles">{#each meta.modules as item}{@const Icon = iconFor(item.key)}<button class="tile" onclick={() => navigate(item.key)}><span class="tile-icon"><Icon size="22" ariaLabel="" /></span><h2>{$translator(item.label)}</h2><p>{$translator(item.help)}</p><span class="open">{$translator("Open tool →")}</span></button>{/each}</div>
             {:else if definition}
                 {#if ['invoices','payments','payroll','payroll_payments'].includes(section)}<div class="actions"><label for="billing-month">{$translator("Fee / salary month")}</label><input id="billing-month" type="month" bind:value={month}><Button color="alternative" onclick={() => {page = 1; loadRows();}}>{$translator("Show month")}</Button><Button color="alternative" onclick={() => {month = ''; page = 1; loadRows();}}>{$translator("All months")}</Button></div>{/if}
                 <div class="toolbar"><form onsubmit={(e) => {e.preventDefault(); page = 1; loadRows();}}><label class="sr-only" for="search">{$translator("Search records")}</label><input id="search" bind:value={search} placeholder={$translator("Search name or reference…")} maxlength="100"><Button type="submit" color="alternative">{$translator("Search")}</Button></form>{#if definition.canWrite}<Button onclick={() => openEditor()} data-cy="add-record">{$translator("Add")} {definition.singular}</Button>{/if}</div>
@@ -180,7 +197,7 @@
                 <div class="records people">{#each rows as invitation}<article class="record" data-cy="invitation"><h2>{invitation.name}</h2><p>{invitation.email}</p><p>{invitation.roles.join(' · ')}</p><p>{invitation.is_pending ? 'Awaiting acceptance' : 'Expired or revoked'}</p>{#if invitation.is_pending}<Button color="alternative" disabled={busy} onclick={() => revokeInvitation(invitation)}>{$translator("Revoke invitation")}</Button>{/if}</article>{/each}</div>
                 {#if !rows.length}<p class="empty">{$translator("No outstanding invitations.")}</p>{/if}
             {:else if section === 'settings'}
-                <form class="settings record" onsubmit={saveSettings}><label for="school_name">{$translator("School name *")}</label><input id="school_name" bind:value={meta.settings.school_name} required maxlength="150"><label for="currency">{$translator("Currency code *")}</label><input id="currency" bind:value={meta.settings.currency} placeholder={$translator("For example PKR")} pattern={'[A-Z]{3}'} required><label for="timezone">{$translator("Timezone *")}</label><input id="timezone" bind:value={meta.settings.timezone} placeholder={$translator("For example Asia/Karachi")} required><p>{$translator("These settings identify your school. Payment entries record payments received outside this application.")}</p><Button type="submit" disabled={busy}>{$translator("Save settings")}</Button></form>
+                <form class="settings record" onsubmit={saveSettings} enctype="multipart/form-data"><label for="school_name">{$translator("School name *")}</label><input id="school_name" name="school_name" value={meta.settings.school_name ?? ''} required maxlength="150"><label for="currency">{$translator("Currency code *")}</label><input id="currency" name="currency" value={meta.settings.currency ?? ''} placeholder={$translator("For example PKR")} pattern={'[A-Z]{3}'} required><label for="timezone">{$translator("Timezone *")}</label><input id="timezone" name="timezone" value={meta.settings.timezone ?? ''} placeholder={$translator("For example Asia/Karachi")} required><h2>{$translator("Brand appearance")}</h2><div class="brand-colors"><label for="color_primary">{$translator("Primary color")}</label><input id="color_primary" name="color_primary" type="color" value={meta.settings.color_primary || '#725752'}><label for="color_secondary">{$translator("Secondary color")}</label><input id="color_secondary" name="color_secondary" type="color" value={meta.settings.color_secondary || '#b8dacf'}></div><label for="font_family">{$translator("Typography")}</label><select id="font_family" name="font_family" value={meta.settings.font_family || 'Instrument Sans'}>{#each fontOptions as font}<option value={font}>{font}</option>{/each}</select><label for="logo">{$translator("School logo")}</label><input id="logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"><p>{$translator("Upload a logo up to 1 MB. It appears in the school identity area.")}</p>{#if meta.settings.logo_data}<img class="school-logo-preview" src={meta.settings.logo_data} alt={$translator("Current school logo")}>{/if}<p>{$translator("These settings identify your school. Payment entries record payments received outside this application.")}</p><Button type="submit" disabled={busy}>{$translator("Save settings")}</Button></form>
             {:else if section === 'audit'}<div class="records">{#each rows as row}<article class="record"><h2>{row.action.replaceAll('_',' ')}</h2><p>{row.name ?? 'Former account'} · {row.module.replaceAll('_',' ')} #{row.record_id}</p><p>{row.created_at}</p></article>{/each}</div>{/if}
             {#if total > (definition ? 20 : 30)}<div class="pagination"><Button color="alternative" disabled={page === 1 || loading} onclick={() => {page--; loadRows();}}>{$translator("Previous")}</Button><span>{$translator("Page")} {page}</span><Button color="alternative" disabled={page * (definition ? 20 : 30) >= total || loading} onclick={() => {page++; loadRows();}}>{$translator("Next")}</Button></div>{/if}
         </main><footer>{$translator("School System · Built around your school day")}</footer>

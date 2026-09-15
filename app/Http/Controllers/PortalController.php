@@ -16,13 +16,14 @@ class PortalController extends Controller
 
     public function meta(Request $request): JsonResponse
     {
-        $settings = DB::table('school_settings')->whereIn('key', ['school_name', 'currency', 'timezone'])->pluck('value', 'key')->all();
+        $settings = DB::table('school_settings')->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family'])->pluck('value', 'key')->all();
 
         return response()->json([
             'user' => [...$request->user()->only(['id', 'name', 'username', 'roles', 'tutorials']), 'interface_preferences' => $request->user()->interfacePreferences()],
             'modules' => $this->portal->modules($request->user()),
             'options' => $this->portal->options($request->user()),
             'settings' => (object) $settings,
+            'overview' => $this->portal->overview($request->user()),
             'canManage' => $this->portal->admin($request->user()),
             'today' => today($settings['timezone'] ?? config('app.timezone'))->toDateString(),
         ]);
@@ -95,12 +96,21 @@ class PortalController extends Controller
 
     public function settings(Request $request): JsonResponse
     {
-        abort_unless($request->user()->hasRole('owner'), 403);
+        abort_unless($this->portal->admin($request->user()), 403);
         $data = $request->validate([
             'school_name' => ['required', 'string', 'max:150'],
             'currency' => ['required', 'regex:/^[A-Z]{3}$/'],
             'timezone' => ['required', 'timezone:all'],
+            'color_primary' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'color_secondary' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'font_family' => ['required', Rule::in(['Instrument Sans', 'Inter', 'Poppins', 'Nunito', 'DM Sans', 'Manrope', 'Lato', 'Merriweather', 'Noto Nastaliq Urdu', 'system-ui'])],
+            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg', 'max:1024'],
         ]);
+        if ($request->hasFile('logo')) {
+            $file = $request->file('logo');
+            $data['logo_data'] = 'data:'.$file->getMimeType().';base64,'.base64_encode(file_get_contents($file->getRealPath()));
+        }
+        unset($data['logo']);
         DB::transaction(function () use ($data, $request): void {
             foreach ($data as $key => $value) {
                 DB::table('school_settings')->updateOrInsert(['key' => $key], ['value' => $value]);

@@ -250,3 +250,49 @@ FUTURE WORK — prioritized handoff:
   - Verification passed: npm run build (802 modules) and git diff --check.
   - Known limitation: the stronger styling is present in the local build only until the pending changes are committed and deployed. No deployment was performed in this milestone.
   - Next bounded UI milestone: polish the login/public experience, then verify it before moving to backend or superadmin work.
+
+
+- 2026-09-15 DEPLOYMENT HANDOFF:
+  - Full backend verification passed before publishing: 54 PHPUnit tests, 337 assertions.
+  - Full isolated browser verification passed: 14 Chrome 152 workflows, including desktop/mobile layout checks and language/theme persistence.
+  - Staged and committed the coherent pending application/UI update as commit 75f8cc5 (30 files, including glass UI, preferences, heartbeat, translations, report-card foundations, requirements and tests).
+  - Pushed 75f8cc5 to origin/main successfully.
+  - Render service school-system is configured for autoDeploy=yes from main with Dockerfile, so the push should trigger a new deployment. Service URL: https://school-system-wucf.onrender.com.
+  - Deployment status and live visual verification remain pending; check the Render deployment logs and hard-refresh the live site after it becomes healthy.
+  - Do not start the next feature until live deployment health is confirmed and this file is updated again.
+
+
+- 2026-09-15 LIVE DEPLOYMENT VERIFIED:
+  - https://school-system-wucf.onrender.com/up returned HTTP 200 through Cloudflare.
+  - Live /login now serves the new built glass assets: glass-Bh4iD8u4.css, glass-CqeZDX8r.js and app-lko51G4P.js.
+  - The glass UI deployment is confirmed live. Users may need a hard refresh to replace cached assets.
+  - No further feature work started after deployment; next work remains the separate login/public UI polish milestone.
+
+
+- 2026-09-15 UI MILESTONE COMPLETE — consistent icon library:
+  - Reused the installed flowbite-svelte-icons package instead of drawing one-off symbols.
+  - Added relevant icons to overview, people, notifications, audit, settings and every configured module; dashboard tiles now use the same icon mapping.
+  - Removed the old sidebar dot markers and used Svelte 5 dynamic component syntax.
+  - Corrected the package import to use the public BookOpenReaderOutline export for teaching assignments.
+  - Verification passed: npm run build (1557 modules) with no icon import errors, and isolated Chrome 152 Cypress suite (14 workflows, 14 passing).
+  - This change is local after the previous deployment commit and still needs its own commit/deployment.
+
+- 2026-09-15 DESIGN REFERENCE HANDOFF:
+  - Found www/school-system/sample app design.webp and inspected it.
+  - Reference direction: emerald icon rail/sidebar, rounded white or glass cards, top search/header controls, summary stat cards, chart panels, and a right-side student profile/reminder column.
+  - Future redesign must preserve the existing database schema, API contracts, role permissions, record structures and school data; only presentation/layout/components should change.
+  - Next bounded UI milestone: redesign the overview screen around these reference sections with real existing data and clear loading/empty states. Do not redesign every module in the same milestone.
+
+- 2026-09-15 OVERVIEW REDESIGN MILESTONE COMPLETE:
+  - Added role-scoped overview metrics to /portal/meta without changing existing tables or record APIs: active students, classes, outstanding fees, upcoming exams, active staff, and today�s attendance percentage where each role has access.
+  - Reworked the overview around the reference direction with glass summary cards, an attendance progress panel, and an account/school profile panel while retaining existing module tiles and navigation.
+  - Verification passed: npm run build (1557 modules), PHP Pint, and git diff --check.
+  - Branding controls remain the next bounded milestone: owner/admin global colors, ten typography choices, school logo upload, and school name controls.
+  - Focused backend verification passed: SchoolOperationsTest (9 tests, 66 assertions).
+
+- 2026-09-15 BRANDING CONTROLS MILESTONE COMPLETE:
+  - Extended the existing school_settings key/value store for primary and secondary colors, ten typography choices, school name, and an uploaded school logo (stored as a validated data URI without changing the relational schema).
+  - Owner and admin users can now open School settings, choose colors and typography, upload a PNG/JPEG/WebP/SVG logo up to 1 MB, and see the identity applied in the portal sidebar.
+  - Branding is applied at runtime to global accent/glow CSS variables and the portal font while preserving existing records and permissions.
+  - Verification passed: npm run build (1557 modules), PHP Pint, and SchoolOperationsTest (9 tests, 66 assertions).
+  - Remaining future work: add dedicated branding API tests, preview/reset controls, and extend the same branding treatment to public report/landing pages.

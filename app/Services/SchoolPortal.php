@@ -225,6 +225,40 @@ class SchoolPortal
         return $options;
     }
 
+    public function overview(User $user): array
+    {
+        $today = $this->today();
+        $stats = [];
+        $attendance = ['total' => 0, 'attended' => 0, 'percentage' => 0];
+
+        if ($this->can($user, $this->definition('students')['read'])) {
+            $stats[] = ['key' => 'students', 'label' => 'Active students', 'value' => $this->query('students', $user)->where('status', 'active')->count(), 'icon' => 'students'];
+        }
+        if ($this->can($user, $this->definition('classes')['read'])) {
+            $stats[] = ['key' => 'classes', 'label' => 'Classes & sections', 'value' => $this->query('classes', $user)->count(), 'icon' => 'classes'];
+        }
+        if ($this->can($user, $this->definition('attendance')['read'])) {
+            $attendanceQuery = $this->query('attendance', $user)->where('date', $today);
+            $attendance['total'] = (clone $attendanceQuery)->count();
+            $attendance['attended'] = (clone $attendanceQuery)->whereIn('status', ['present', 'late'])->count();
+            $attendance['percentage'] = $attendance['total'] > 0 ? (int) round($attendance['attended'] / $attendance['total'] * 100) : 0;
+        }
+        if ($this->can($user, $this->definition('invoices')['read'])) {
+            $invoices = $this->query('invoices', $user);
+            $billed = (int) (clone $invoices)->sum('amount');
+            $paid = (int) DB::table('school_payments')->whereIn('invoice_id', (clone $invoices)->select('id'))->sum('amount');
+            $stats[] = ['key' => 'fees', 'label' => 'Outstanding fees', 'value' => max(0, $billed - $paid), 'icon' => 'fees', 'format' => 'money'];
+        }
+        if ($this->can($user, $this->definition('exams')['read'])) {
+            $stats[] = ['key' => 'exams', 'label' => 'Upcoming exams', 'value' => $this->query('exams', $user)->whereDate('date', '>=', $today)->count(), 'icon' => 'exams'];
+        }
+        if ($this->can($user, $this->definition('staff')['read'])) {
+            $stats[] = ['key' => 'staff', 'label' => 'Active staff', 'value' => $this->query('staff', $user)->where('status', 'active')->count(), 'icon' => 'staff'];
+        }
+
+        return ['stats' => $stats, 'attendance' => $attendance, 'today' => $today];
+    }
+
     public function save(string $module, User $user, array $input, ?int $id = null): int
     {
         $definition = $this->definition($module);
