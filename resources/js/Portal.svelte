@@ -154,12 +154,12 @@
     <aside class:expanded={menu}>
         <a class="brand" href="/dashboard">{#if meta.settings.logo_data}<img class="school-logo" src={meta.settings.logo_data} alt="">{:else}<span class="mark">{$translator("S")}</span>{/if}<span>{meta.settings.school_name || 'School System'}<small>{$translator("A little clarity, every day.")}</small></span></a>
         <nav aria-label={$translator("School tools")}>
-            <button class:active={section === 'overview'} onclick={() => navigate('overview')}><HomeOutline size="18" ariaLabel="" />{$translator("Overview")}</button>
-            {#if meta.canManage}<button class:active={section === 'people'} onclick={() => navigate('people')}><UsersGroupOutline size="18" ariaLabel="" />{$translator("People & access")}</button>{/if}
-            <button class:active={section === 'notifications'} onclick={() => navigate('notifications')}><BellOutline size="18" ariaLabel="" />{$translator("Notifications")} {unread ? `(${unread} unread)` : ''}</button>
-            {#each meta.modules as item}{@const Icon = iconFor(item.key)}<button class:active={section === item.key} data-cy={`nav-${item.key}`} onclick={() => navigate(item.key)}><Icon size="18" ariaLabel="" />{$translator(item.label)}</button>{/each}
-            {#if meta.canManage}<button class:active={section === 'audit'} onclick={() => navigate('audit')}><ChartPieOutline size="18" ariaLabel="" />{$translator("Activity history")}</button>{/if}
-            {#if meta.canManage}<button class:active={section === 'settings'} onclick={() => navigate('settings')}><CogOutline size="18" ariaLabel="" />{$translator("School settings")}</button>{/if}
+            <button class:active={section === 'overview'} onclick={() => navigate('overview')}>{$translator("Overview")}</button>
+            {#if meta.canManage}<button class:active={section === 'people'} onclick={() => navigate('people')}>{$translator("People & access")}</button>{/if}
+            <button class:active={section === 'notifications'} onclick={() => navigate('notifications')}>{$translator("Notifications")} {unread ? `(${unread} unread)` : ''}</button>
+            {#each meta.modules as item}<button class:active={section === item.key} data-cy={`nav-${item.key}`} onclick={() => navigate(item.key)}>{$translator(item.label)}</button>{/each}
+            {#if meta.canManage}<button class:active={section === 'audit'} onclick={() => navigate('audit')}>{$translator("Activity history")}</button>{/if}
+            {#if meta.canManage}<button class:active={section === 'settings'} onclick={() => navigate('settings')}>{$translator("School settings")}</button>{/if}
         </nav>
     </aside>
     <div class="content">
