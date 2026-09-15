@@ -1,3 +1,3 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><meta name="referrer" content="same-origin"><title>School workspace</title>@vite('resources/js/portal.js')</head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><meta name="referrer" content="same-origin"><title>School workspace</title>@include('layouts.preferences-head')@vite('resources/js/portal.js')</head>
 <body><div id="school-portal"></div><noscript><p>Welcome, {{ auth()->user()->name }}.</p><p>Please enable JavaScript to use your school workspace. <a href="{{ route('account') }}">Account settings</a></p></noscript></body></html>

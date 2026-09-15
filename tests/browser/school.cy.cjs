@@ -9,6 +9,24 @@ function open(key) {
     cy.then(() => { if (!seenGuides.includes(key)) { cy.contains('button','Skip guide').click(); seenGuides.push(key); } });
 }
 describe('School workflows', () => {
+    it('owner switches language and theme and persists preferences', () => {
+        login('owner');
+        cy.intercept('PUT', '/portal/interface-preferences').as('saveInterfacePreferences');
+        cy.get('[data-cy=theme-toggle]').click();
+        cy.document().its('documentElement.classList').invoke('contains', 'dark').should('be.true');
+        cy.wait('@saveInterfacePreferences').its('response.statusCode').should('eq', 200);
+        cy.get('[data-cy=language-toggle]').click();
+        cy.document().its('documentElement').should('have.attr', 'lang', 'ur').and('have.attr', 'dir', 'rtl');
+        cy.contains('button', 'English').should('be.visible');
+        cy.wait('@saveInterfacePreferences').its('response.statusCode').should('eq', 200);
+        cy.reload();
+        cy.document().its('documentElement').should('have.attr', 'lang', 'ur').and('have.attr', 'dir', 'rtl').and('have.class', 'dark');
+        cy.get('[data-cy=language-toggle]').click();
+        cy.get('[data-cy=theme-toggle]').click();
+        cy.wait('@saveInterfacePreferences');
+        cy.wait('@saveInterfacePreferences');
+    });
+
     it('owner creates a subject and replays contextual help', () => {
         login('owner'); open('subjects'); cy.get('[data-cy=add-record]').click(); cy.get('#field-name').type('English'); cy.get('#field-code').type('ENG'); cy.contains('button','Save record').click(); cy.contains('[data-cy=record]','English').should('be.visible');
         cy.contains('button','Page guide').click(); cy.contains('STEP 1 OF 4').should('be.visible'); cy.contains('button','Next tip').click(); cy.contains('Find what you need').should('be.visible'); cy.contains('button','Skip guide').click(); cy.get('dialog').should('not.exist'); cy.document().then(doc => expect(doc.documentElement.scrollWidth).to.be.at.most(1280)); cy.screenshot('owner-desktop', {capture:'viewport'});

@@ -33,6 +33,15 @@ class User extends Authenticatable
         ];
     }
 
+    /** @return array{language: string, theme: string} */
+    public function interfacePreferences(): array
+    {
+        return [
+            'language' => $this->preferred_language ?: 'en',
+            'theme' => $this->preferred_theme ?: 'system',
+        ];
+    }
+
     public function hasRole(string $role): bool
     {
         return $this->is_active && in_array($role, $this->roles ?? [], true);

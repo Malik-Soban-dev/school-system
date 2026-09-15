@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\UpdatePasswordRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request): RedirectResponse|JsonResponse
     {
         $key = 'login:'.hash('sha256', $request->validated('username').'|'.$request->ip());
         if (RateLimiter::tooManyAttempts($key, 5)) {
@@ -26,6 +27,10 @@ class AuthController extends Controller
         }
         RateLimiter::clear($key);
         $request->session()->regenerate();
+
+        if ($request->expectsJson()) {
+            return response()->json(['redirect' => route('dashboard')]);
+        }
 
         return redirect()->intended(route('dashboard'));
     }

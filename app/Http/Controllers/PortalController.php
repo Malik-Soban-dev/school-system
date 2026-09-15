@@ -19,7 +19,7 @@ class PortalController extends Controller
         $settings = DB::table('school_settings')->whereIn('key', ['school_name', 'currency', 'timezone'])->pluck('value', 'key')->all();
 
         return response()->json([
-            'user' => $request->user()->only(['id', 'name', 'username', 'roles', 'tutorials']),
+            'user' => [...$request->user()->only(['id', 'name', 'username', 'roles', 'tutorials']), 'interface_preferences' => $request->user()->interfacePreferences()],
             'modules' => $this->portal->modules($request->user()),
             'options' => $this->portal->options($request->user()),
             'settings' => (object) $settings,

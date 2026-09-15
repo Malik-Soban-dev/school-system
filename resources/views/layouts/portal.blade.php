@@ -29,19 +29,21 @@
         footer{padding:30px 0;margin-top:30px;font-size:12px;color:var(--muted);border-top:1px solid #72575225}
         @media(max-width:760px){.shell{padding:0 20px}.split{grid-template-columns:1fr;margin:24px 0;min-height:auto}.story{padding:32px}.art{display:none}.story h1{font-size:38px}.story p{margin-bottom:0}.grid{grid-template-columns:1fr}.topbar{align-items:flex-start}nav{gap:12px}.page-heading,.banner{flex-direction:column}.form-panel{padding:30px}.page-heading h1{font-size:36px}}
     </style>
+@include('layouts.preferences-head')
+@vite('resources/js/app.js')
 </head>
 <body>
 <div class="shell">
     <header class="topbar">
-        <a href="{{ url('/') }}" class="brand"><span class="brand-mark" aria-hidden="true">s</span>School System</a>
-        <nav aria-label="Main navigation">
+        <a href="{{ url('/') }}" class="brand"><span class="brand-mark" aria-hidden="true"><span data-i18n="s">s</span></span><span data-i18n="School System">School System</span></a>
+        <div id="appearance-controls"></div><nav aria-label="Main navigation">
             @auth
-                <a href="{{ route('dashboard') }}">Overview</a>
-                <a href="{{ route('account') }}">My account</a>
-                <form method="POST" action="{{ route('logout') }}">@csrf<button class="button secondary small" type="submit">Sign out</button></form>
+                <a href="{{ route('dashboard') }}"><span data-i18n="Overview">Overview</span></a>
+                <a href="{{ route('account') }}"><span data-i18n="My account">My account</span></a>
+                <form method="POST" action="{{ route('logout') }}">@csrf<button class="button secondary small" type="submit"><span data-i18n="Sign out">Sign out</span></button></form>
             @else
-                <a href="{{ url('/') }}">Home</a>
-                @unless(request()->routeIs('login'))<a class="button small" href="{{ route('login') }}">Sign in</a>@endunless
+                <a href="{{ url('/') }}"><span data-i18n="Home">Home</span></a>
+                @unless(request()->routeIs('login'))<a class="button small" href="{{ route('login') }}"><span data-i18n="Sign in">Sign in</span></a>@endunless
             @endauth
         </nav>
     </header>
@@ -50,7 +52,7 @@
         @if($errors->any())<div class="notice errors" role="alert"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
         @yield('content')
     </main>
-    <footer>School System &middot; A little more connected, every school day.</footer>
+    <footer><span data-i18n="School System · A little more connected, every school day.">School System &middot; A little more connected, every school day.</span></footer>
 </div>
 </body>
 </html>

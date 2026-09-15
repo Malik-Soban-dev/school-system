@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\InterfacePreferenceController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\PortalController;
+use App\Http\Controllers\ReportCardController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Middleware\EnsureActiveAccount;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +27,8 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
     Route::get('/portal/meta', [PortalController::class, 'meta']);
+    Route::get('/portal/interface-preferences', [InterfacePreferenceController::class, 'show']);
+    Route::put('/portal/interface-preferences', [InterfacePreferenceController::class, 'update'])->middleware('throttle:20,1');
     Route::get('/portal/notifications', [NotificationController::class, 'index']);
     Route::get('/portal/notification-preferences', [NotificationPreferenceController::class, 'show']);
     Route::put('/portal/notification-preferences', [NotificationPreferenceController::class, 'update'])->middleware('throttle:5,1');
@@ -43,6 +47,7 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
     Route::post('/portal/records/{module}', [PortalController::class, 'save']);
     Route::put('/portal/records/{module}/{id}', [PortalController::class, 'save'])->whereNumber('id');
     Route::get('/reports/{module}/{id}', [PortalController::class, 'report'])->whereNumber('id')->name('record.report');
+    Route::get('/report-cards/{exam}/{student}', [ReportCardController::class, 'show'])->whereNumber(['exam', 'student'])->name('report-card.show');
     Route::view('/dashboard', 'dashboard')->name('dashboard');
     Route::view('/account', 'auth.account')->name('account');
     Route::put('/account/password', [AuthController::class, 'updatePassword'])->middleware('throttle:5,1')->name('password.update');

@@ -295,6 +295,27 @@ return [
             'choices' => ['draft', 'published'],
         ]],
     ],
+    'grade_bands' => [
+        'label' => 'Grading rules', 'singular' => 'grade band',
+        'help' => 'Define grade labels, minimum percentages and GPA points. Add a band starting at 0 to cover all results. Each band extends up to the next threshold. Published exams retain a copy of these rules.',
+        'read' => ['owner', 'admin', 'teacher', 'student', 'parent'], 'write' => ['owner', 'admin'],
+        'fields' => [
+            ['name' => 'name', 'label' => 'Grade label', 'type' => 'text'],
+            ['name' => 'minimum', 'label' => 'Minimum percentage', 'type' => 'decimal', 'max' => 100],
+            ['name' => 'gpa', 'label' => 'GPA points', 'type' => 'decimal', 'max' => 10],
+        ],
+    ],
+    'exam_subjects' => [
+        'label' => 'Exam subject plans', 'singular' => 'exam subject plan',
+        'help' => 'Plan every subject before entering marks. Set the maximum marks and relative weight. Equal weights count equally. Published exam plans are locked; missing subject marks make the report incomplete.',
+        'read' => ['owner', 'admin', 'teacher', 'student', 'parent'], 'write' => ['owner', 'admin'],
+        'fields' => [
+            ['name' => 'exam_id', 'label' => 'Exam', 'type' => 'relation', 'relation' => 'exams'],
+            ['name' => 'subject_id', 'label' => 'Subject', 'type' => 'relation', 'relation' => 'subjects'],
+            ['name' => 'maximum', 'label' => 'Maximum marks', 'type' => 'decimal', 'min' => 0.01],
+            ['name' => 'weight', 'label' => 'Relative weight', 'type' => 'decimal', 'min' => 0.01, 'max' => 1000],
+        ],
+    ],
     'grades' => [
         'label' => 'Marks & results',
         'singular' => 'mark',

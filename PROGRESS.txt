@@ -159,3 +159,94 @@ NEW REQUEST 2026-09-09: Expand, do not replace, the roadmap with WhatsApp/email 
 - Delivery phase foundation: self-service WhatsApp/email opt-in protected by current password, official WhatsApp template adapter, Laravel email adapter, signed delivery webhooks, bounded rate-limit retries, unknown outcome protection, access/consent rechecks, explicit delivery statuses and external services disabled by default. Five adapter/security tests passed. Full backend suite: 50 tests, 305 assertions. Real provider activation and always-on scheduling remain pending; no external messages were sent.
 
 - Monthly payments/inbox/delivery foundation: all 13 Cypress workflows passed (Chrome 152, desktop and 360/390px mobile), all 50 PHP tests passed (305 assertions), build/Pint passed. Mobile inbox and delivery preferences screenshots reviewed. Preparing GitHub push and Render deployment; external channels remain disabled.
+
+- 2026-09-15: Updated school-system-requirements new.md with all additions from the cancelled save: complete UI redesign, actual-progress login animation for all roles and comprehensive platform superadmin scope. Added glassmorphism, full English/Urdu switching with RTL layouts, and persistent light/dark themes. Original requirements and unfinished report-card changes preserved. Requirements saved only; application implementation and validation remain pending. Next: inspect tenant/role architecture and existing report-card diff before implementation.
+
+
+- 2026-09-15 CONTINUATION RECORD (UI work in this session):
+  - Re-read school-system-requirements new.md. It now contains the original ERP requirements plus the complete UI redesign, glassmorphism, role login loading, English/Urdu RTL switching, light/dark mode, and platform superadmin/multi-school requirements.
+  - Added resources/css/glass.css with responsive glassmorphism surfaces, frosted panels, layered backgrounds, readable light/dark tokens, mobile layouts, print fallback, reduced-motion support and Urdu RTL typography.
+  - Added resources/js/Preferences.svelte and resources/js/preferences.js. The controls expose English/Urdu and Light/Dark buttons, persist the choice in localStorage, respect the device dark preference on first load, and set document language/direction before the page paints.
+  - Added resources/js/ur.json with Urdu translations for the shared portal/login/account/invitation UI and common school module labels. The translation system preserves machine values such as IDs, role values, field names, email addresses and phone numbers.
+  - Added resources/views/layouts/preferences-head.blade.php and connected it to portal pages. Connected the preference controls to the portal layout and imported glass styling in resources/js/portal.js.
+  - Added a real login loading state: the login form submits with fetch, disables duplicate submits, shows an accessible progress indicator, handles validation errors, checks same-origin redirects, then navigates after successful authentication. Dashboard loading now uses the animated loading scene.
+  - Added a JSON success response path in AuthController for AJAX login while retaining the normal redirect path.
+  - Production frontend build completed successfully after these changes: Vite transformed 802 modules and emitted portal, glass and app assets under public/build.
+  - Existing uncommitted report-card/grading changes remain preserved: ReportCardController, report-card view, grading migration, SchoolPortal/config changes and ReportCardTest were not discarded.
+  - Scaffolding was created for interface preferences (migration, controller and InterfacePreferencesTest), but preference account storage/API is NOT complete. The current implementation intentionally persists the selection locally; do not claim server account preference persistence until the migration/controller/routes/tests are finished.
+  - No superadmin dashboard or true multi-tenant school isolation has been implemented yet. The existing schema is still school-wide/shared; do not enable multiple schools in production until tenant scoping, server-enforced superadmin authorization, school onboarding/configuration, billing, audit, switching and isolation tests exist.
+  - Full PHPUnit/Cypress/Pint verification has NOT been completed after the UI changes. The frontend build is the only post-change verification recorded here. Run targeted authentication and browser checks, then Pint for modified PHP before deployment.
+  - The requirements and source changes are currently uncommitted/unpushed. Review the diff for Blade text wrappers and generated UI changes before committing. Do not commit credentials, production data or backup contents.
+
+FUTURE WORK — prioritized handoff:
+  1. Review and correct the generated Blade/Svelte translation bindings; verify IDs, form attributes, role values and route directives remain machine-readable.
+  2. Complete interface preference migration/controller/routes and add tests for local fallback, signed-in persistence, language direction and theme persistence.
+  3. Add translated generated report-card and printable report interfaces, including Urdu RTL tables and language-aware dates/numbers.
+  4. Run focused PHPUnit tests, Pint, npm build, and Cypress login/theme/language/mobile checks; fix any regressions before commit.
+  5. Finish comprehensive report cards/grading and the remaining requirements: Student 360 profile, fee history, academic promotion, guardian siblings, assignments/uploads/submission tracking, events/RSVP, timetable periods, staff attendance/late summaries, school branding.
+  6. Design and implement multi-tenant foundations: schools/branches, tenant ownership on every school record, isolation middleware/query scopes, migration strategy, data-isolation tests and safe school switching.
+  7. Add server-enforced platform superadmin authentication and dashboard with school onboarding, enabled modules, roles, subscriptions/payments, usage/health, delivery/jobs/errors/backups, audit trails and safe sensitive actions. Never expose passwords, tokens, keys or provider secrets.
+  8. Connect real email/WhatsApp/payment/storage providers only after provider choices and credentials are supplied; add always-on scheduling and off-device backup scheduling.
+  9. Re-run full release verification, update this file after every meaningful milestone, then commit/push only tested changes and verify Render deployment.
+
+
+- 2026-09-15 WORKFLOW RULE: Implement one bounded change at a time. After each change, run its focused verification and update PROGRESS.txt with the change, verification result, known limitations and next step before beginning another change. Do not batch unrelated UI, data, superadmin or deployment work in one milestone.
+- Next bounded milestone: audit and correct generated Blade/Svelte translation bindings without adding new features.
+
+
+- 2026-09-15 MILESTONE COMPLETE — translation binding audit:
+  - Reviewed the generated Svelte and Blade bindings for machine-value safety.
+  - Corrected a duplicate nested translation span in the login loading indicator.
+  - Confirmed route directives remain intact, including @unless(request()->routeIs('login')).
+  - Confirmed Svelte form values remain raw machine values for role checkboxes, attendance statuses, field IDs, input types and select values; only visible labels are translated.
+  - Focused verification passed: npm run build (802 modules) and php artisan view:cache --no-interaction.
+  - Known limitation: the audit covered compile safety and obvious machine-value bindings; full browser interaction testing is still pending.
+  - Next bounded milestone: add and finish signed-in interface-preference persistence, or choose another single requirement before implementation.
+
+
+- 2026-09-15 MILESTONE COMPLETE — signed-in interface preferences:
+  - Added users.preferred_language (en/ur) and users.preferred_theme (system/light/dark) migration columns.
+  - Added authenticated GET/PUT /portal/interface-preferences endpoints with server-side validation.
+  - Added User::interfacePreferences() and included preferences in /portal/meta.
+  - Portal hydration now applies the saved account preference after login; changing language/theme still updates the UI immediately and persists through the authenticated endpoint. Local storage remains the pre-login fallback.
+  - Added focused InterfacePreferencesTest coverage for read/update persistence, invalid values and guest rejection.
+  - Verification passed: 2 tests, 11 assertions; npm run build passed with 802 modules; Pint completed; both preference routes listed; git diff --check passed.
+  - Pint also formatted existing dirty AuthController, report-card migration and route imports; review those incidental formatting changes before commit.
+  - Known limitation: no browser test yet covers clicking the controls across a logout/login cycle. The migration has not been deployed to production.
+  - Next bounded milestone: add browser coverage for language/theme persistence, or select another single requirement.
+
+
+- 2026-09-15 MILESTONE COMPLETE — browser verification for interface preferences:
+  - Added an owner workflow covering theme switching, Urdu direction, English restoration, reload persistence and authenticated preference saves.
+  - Fixed the Cypress assertion to check DOMTokenList.contains('dark') correctly.
+  - Fixed test state leakage by waiting for the final language/theme persistence requests before the next workflow.
+  - Focused verification passed in the isolated seeded browser environment: 14 Cypress workflows, 14 passing, Chrome 152, including desktop and mobile workflows. No production data was used.
+  - Known limitation: browser coverage verifies the local/test database and UI flow; production migration/deployment is still pending.
+  - Next bounded milestone: choose one remaining requirement, with report-card translation or production-safe tenant foundations as likely candidates. Do not begin both in one milestone.
+
+
+- 2026-09-15 MILESTONE COMPLETE — application heartbeat:
+  - Added a silent GET /up request every five minutes in resources/js/portal.js while the signed-in portal tab remains open.
+  - The request uses no-store caching and omits credentials; failures are intentionally silent so a health probe cannot disrupt the workspace.
+  - The interval is cleared on pagehide.
+  - Verification passed: npm run build (802 modules), node --check resources/js/portal.js and git diff --check.
+  - Limitation: this only runs while the browser tab is open and JavaScript timers are allowed. It cannot keep a closed tab, sleeping device or free hosting instance permanently awake; an always-on hosting plan is still required for guaranteed uptime and scheduled jobs.
+  - Next bounded milestone: choose one remaining requirement before making another change.
+
+
+- 2026-09-15 UI MILESTONE COMPLETE — portal glass shell:
+  - Inspected the latest desktop screenshot and fixed a real horizontal scrollbar caused by the portal shell exceeding the viewport.
+  - Added viewport-safe width and overflow rules for the workspace/content area, with a mobile override that preserves the slide-out navigation.
+  - Existing glassmorphism surfaces, theme controls, cards and responsive layout remain intact.
+  - Verification passed: npm run build (802 modules) and the isolated Chrome 152 Cypress suite (14 workflows, 14 passing, desktop/mobile width assertions included).
+  - Known limitation: this milestone covers the portal shell and overflow only; login/public pages, detailed form polish and superadmin UI remain separate future UI milestones.
+  - Next bounded milestone: polish one additional UI area, beginning with the login/public experience before backend and superadmin work.
+
+
+- 2026-09-15 UI FOLLOW-UP — visible glassmorphism:
+  - User reported that the glass effect was not visible.
+  - Confirmed the local project had the glass stylesheet and built assets, but all requested source changes are still uncommitted/unpushed; the live Render site therefore still serves the previous UI. Local users may need a hard refresh after a build.
+  - Strengthened the local glass treatment in resources/css/glass.css: more transparent surfaces, separate glass highlight tokens for light/dark themes, stronger borders, inset edge highlights, 28px blur and saturation, while retaining solid fallbacks.
+  - Verification passed: npm run build (802 modules) and git diff --check.
+  - Known limitation: the stronger styling is present in the local build only until the pending changes are committed and deployed. No deployment was performed in this milestone.
+  - Next bounded UI milestone: polish the login/public experience, then verify it before moving to backend or superadmin work.

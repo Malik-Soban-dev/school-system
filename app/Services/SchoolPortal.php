@@ -83,8 +83,11 @@ class SchoolPortal
         if ($module === 'notices') {
             return $query->where('status', 'published')->whereIn('audience', ['all', ...($user->roles ?? [])]);
         }
-        if ($module === 'subjects') {
+        if ($module === 'subjects' || $module === 'grade_bands') {
             return $query;
+        }
+        if ($module === 'exam_subjects') {
+            return $query->whereIn('exam_id', $this->query('exams', $user)->select('id'));
         }
         if (in_array($module, ['payroll', 'payroll_payments'])) {
             $payroll = DB::table('school_payroll')->whereIn('staff_id', DB::table('school_staff')->where('user_id', $user->id)->select('id'))->select('id');
@@ -235,7 +238,7 @@ class SchoolPortal
             $rule = [...$rule, ...match ($field['type']) {
                 'relation' => ['integer', Rule::exists($field['relation'] === 'users' ? 'users' : 'school_'.$field['relation'], 'id')],
                 'number' => ['integer', 'min:'.($field['min'] ?? 0), 'max:'.($field['max'] ?? 1000000)],
-                'decimal' => ['numeric', 'min:0', 'max:999999', 'decimal:0,2'],
+                'decimal' => ['numeric', 'min:'.($field['min'] ?? 0), 'max:'.($field['max'] ?? 999999), 'decimal:0,2'],
                 'money' => ['regex:/^\d{1,9}(\.\d{1,2})?$/'],
                 'date' => ['date_format:Y-m-d'],
                 'time' => ['date_format:H:i'],
@@ -244,7 +247,7 @@ class SchoolPortal
                 default => ['string', 'max:'.($field['type'] === 'textarea' ? 5000 : 255)],
             }];
             $unique = match ($module.'.'.$field['name']) {
-                'subjects.code', 'staff.employee_number', 'students.admission_number', 'invoices.reference', 'payments.reference', 'payroll_payments.reference', 'expenses.reference' => true,
+                'subjects.code', 'staff.employee_number', 'students.admission_number', 'invoices.reference', 'payments.reference', 'payroll_payments.reference', 'expenses.reference', 'grade_bands.minimum' => true,
                 default => false,
             };
             if ($unique) {
@@ -265,6 +268,9 @@ class SchoolPortal
 
         return DB::transaction(function () use ($module, $user, $data, $id, $old): int {
             $this->validateBusiness($module, $data, $user, $id, $old);
+            if ($module === 'exams' && $data['status'] === 'published' && $old?->status !== 'published') {
+                $data['grading_scale'] = DB::table('school_grade_bands')->orderByDesc('minimum')->get(['name', 'minimum', 'gpa'])->toJson();
+            }
             $now = now();
             if ($id) {
                 DB::table('school_'.$module)->where('id', $id)->update([...$data, 'updated_at' => $now]);
@@ -296,6 +302,32 @@ class SchoolPortal
 
     private function validateBusiness(string $module, array $data, User $user, ?int $id, ?object $old): void
     {
+        if ($module === 'exams' && $old && (int) $old->class_id !== (int) $data['class_id'] && DB::table('school_grades')->where('exam_id', $id)->exists()) {
+            $this->fail('class_id', 'An exam with recorded marks cannot move to another class.');
+        }
+        if ($module === 'exam_subjects') {
+            $exam = DB::table('school_exams')->find($data['exam_id']);
+            $oldExam = $old ? DB::table('school_exams')->find($old->exam_id) : null;
+            if ($exam->status === 'published' || $oldExam?->status === 'published') {
+                $this->fail('exam_id', 'Published exam plans are locked. Return the exam to draft before changing its plan.');
+            }
+            if ($old && ((int) $old->exam_id !== (int) $data['exam_id'] || (int) $old->subject_id !== (int) $data['subject_id'])
+                && DB::table('school_grades')->where('exam_id', $old->exam_id)->where('subject_id', $old->subject_id)->exists()) {
+                $this->fail('subject_id', 'A plan with marks cannot change its exam or subject.');
+            }
+            if (DB::table('school_grades')->where('exam_id', $data['exam_id'])->where('subject_id', $data['subject_id'])->where('maximum', '!=', $data['maximum'])->exists()) {
+                $this->fail('maximum', 'Maximum marks must match the marks already recorded for this subject.');
+            }
+        }
+        if ($module === 'grades') {
+            $plans = DB::table('school_exam_subjects')->where('exam_id', $data['exam_id'])->get();
+            if ($plans->isNotEmpty()) {
+                $plan = $plans->firstWhere('subject_id', $data['subject_id']);
+                if (! $plan || (float) $plan->maximum !== (float) $data['maximum']) {
+                    $this->fail('maximum', 'Choose a planned subject and use its configured maximum marks.');
+                }
+            }
+        }
         if ($module === 'classes' && $id && DB::table('school_students')->where('class_id', $id)->where('status', 'active')->count() > $data['capacity']) {
             $this->fail('capacity', 'Capacity cannot be smaller than the current active enrollment.');
         }
@@ -422,6 +454,7 @@ class SchoolPortal
             'teacher_assignments' => ['user_id', 'class_id', 'subject_id'],
             'attendance' => ['student_id', 'date'],
             'grades' => ['exam_id', 'student_id', 'subject_id'],
+            'exam_subjects' => ['exam_id', 'subject_id'],
             'payroll' => ['staff_id', 'month'],
             default => [],
         };
