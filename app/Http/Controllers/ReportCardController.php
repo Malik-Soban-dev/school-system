@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Services\SchoolPortal;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ReportCardController extends Controller
@@ -13,21 +13,22 @@ class ReportCardController extends Controller
     {
         $user = $request->user();
         abort_unless($portal->can($user, ['owner', 'admin', 'parent', 'student']), 403);
-        $examRecord = DB::table('school_exams')->find($exam);
-        $studentRecord = DB::table('school_students')->find($student);
+        $tenant = app(TenantContext::class);
+        $examRecord = $tenant->table('school_exams')->find($exam);
+        $studentRecord = $tenant->table('school_students')->find($student);
         abort_unless($examRecord && $studentRecord, 404);
         if (! $portal->admin($user)) {
             $linked = $user->hasRole('student') && (int) $studentRecord->user_id === $user->id;
-            $linked = $linked || ($user->hasRole('parent') && DB::table('school_guardian_links')->where('student_id', $student)->where('user_id', $user->id)->where('status', 'active')->exists());
+            $linked = $linked || ($user->hasRole('parent') && $tenant->table('school_guardian_links')->where('student_id', $student)->where('user_id', $user->id)->where('status', 'active')->exists());
             abort_unless($linked && $examRecord->status === 'published', 404);
         }
-        abort_unless(DB::table('school_enrollments')->where('student_id', $student)->where('class_id', $examRecord->class_id)->exists(), 404);
-        $grades = DB::table('school_grades')->where('exam_id', $exam)->where('student_id', $student)->get()->keyBy('subject_id');
-        $plans = DB::table('school_exam_subjects')->where('exam_id', $exam)->get()->keyBy('subject_id');
+        abort_unless($tenant->table('school_enrollments')->where('student_id', $student)->where('class_id', $examRecord->class_id)->exists(), 404);
+        $grades = $tenant->table('school_grades')->where('exam_id', $exam)->where('student_id', $student)->get()->keyBy('subject_id');
+        $plans = $tenant->table('school_exam_subjects')->where('exam_id', $exam)->get()->keyBy('subject_id');
         $planned = $plans->isNotEmpty();
         $subjectIds = $plans->keys()->merge($grades->keys())->unique();
-        $subjects = DB::table('school_subjects')->whereIn('id', $subjectIds)->pluck('name', 'id');
-        $scale = $examRecord->status === 'published' ? collect(json_decode($examRecord->grading_scale ?? '[]', true)) : DB::table('school_grade_bands')->get(['name', 'minimum', 'gpa'])->map(fn ($band) => (array) $band);
+        $subjects = $tenant->table('school_subjects')->whereIn('id', $subjectIds)->pluck('name', 'id');
+        $scale = $examRecord->status === 'published' ? collect(json_decode($examRecord->grading_scale ?? '[]', true)) : $tenant->table('school_grade_bands')->get(['name', 'minimum', 'gpa'])->map(fn ($band) => (array) $band);
         $scale = $scale->sortByDesc('minimum');
         $rows = $subjectIds->map(function ($subject) use ($plans, $grades, $subjects, $scale): array {
             $grade = $grades->get($subject);
@@ -45,7 +46,7 @@ class ReportCardController extends Controller
 
         return view('reports.report-card', ['exam' => $examRecord, 'student' => $studentRecord, 'rows' => $rows, 'complete' => $complete,
             'planned' => $planned, 'percentage' => $percentage, 'gpa' => $gpa, 'overallBand' => $overallBand['name'] ?? null,
-            'school' => DB::table('school_settings')->where('key', 'school_name')->value('value') ?: 'School System',
-            'class' => DB::table('school_classes')->where('id', $examRecord->class_id)->value('name')]);
+            'school' => $tenant->table('school_settings')->where('key', 'school_name')->value('value') ?: 'School System',
+            'class' => $tenant->table('school_classes')->where('id', $examRecord->class_id)->value('name')]);
     }
 }

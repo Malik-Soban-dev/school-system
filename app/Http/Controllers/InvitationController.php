@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ class InvitationController extends Controller
     public function index(Request $request): JsonResponse
     {
         abort_unless($request->user()->hasRole('owner') || $request->user()->hasRole('admin'), 403);
-        $query = DB::table('school_invitations')->whereNull('accepted_at');
+        $query = app(TenantContext::class)->table('school_invitations')->whereNull('accepted_at');
         if (! $request->user()->hasRole('owner')) {
             $query->where('roles', 'not like', '%"admin"%');
         }
@@ -33,12 +34,13 @@ class InvitationController extends Controller
     {
         abort_unless($request->user()->hasRole('owner') || $request->user()->hasRole('admin'), 403);
         DB::transaction(function () use ($request, $id): void {
-            $invitation = DB::table('school_invitations')->where('id', $id)->first();
+            $tenant = app(TenantContext::class);
+            $invitation = $tenant->table('school_invitations')->where('id', $id)->first();
             abort_unless($invitation, 404);
             abort_if(in_array('admin', json_decode($invitation->roles, true), true) && ! $request->user()->hasRole('owner'), 403);
             abort_if($invitation->accepted_at !== null, 409, 'This invitation was already accepted. Manage the account from People & access.');
-            DB::table('school_invitations')->where('id', $id)->update(['expires_at' => now(), 'token_hash' => hash('sha256', Str::random(64)), 'updated_at' => now()]);
-            DB::table('school_audit')->insert(['user_id' => $request->user()->id, 'module' => 'invitations', 'record_id' => $id, 'action' => 'revoked', 'changes' => json_encode(['email' => $invitation->email]), 'created_at' => now()]);
+            $tenant->table('school_invitations')->where('id', $id)->update(['expires_at' => now(), 'token_hash' => hash('sha256', Str::random(64)), 'updated_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'user_id' => $request->user()->id, 'module' => 'invitations', 'record_id' => $id, 'action' => 'revoked', 'changes' => json_encode(['email' => $invitation->email]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Invitation revoked. The old link no longer works.']);
@@ -54,18 +56,19 @@ class InvitationController extends Controller
         $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
         $data = $request->validate(['name' => ['required', 'string', 'max:100'], 'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'roles' => ['required', 'array', 'min:1'], 'roles.*' => [Rule::in($allowed), 'distinct']]);
-        $existing = DB::table('school_invitations')->where('email', $data['email'])->first();
+        $tenant = app(TenantContext::class);
+        $existing = $tenant->table('school_invitations')->where('email', $data['email'])->first();
         if ($existing) {
             $oldRoles = json_decode($existing->roles, true);
             abort_if(in_array('admin', $oldRoles, true) && ! $request->user()->hasRole('owner'), 403);
         }
         $token = Str::random(64);
-        DB::transaction(function () use ($data, $token, $request): void {
-            DB::table('school_invitations')->updateOrInsert(['email' => $data['email']], [
+        DB::transaction(function () use ($data, $token, $request, $tenant): void {
+            DB::table('school_invitations')->updateOrInsert(['school_id' => $tenant->id(), 'email' => $data['email']], [
                 'name' => $data['name'], 'roles' => json_encode($data['roles']), 'token_hash' => hash('sha256', $token),
                 'expires_at' => now()->addHours(48), 'accepted_at' => null, 'created_by' => $request->user()->id, 'created_at' => now(), 'updated_at' => now(),
             ]);
-            DB::table('school_audit')->insert(['user_id' => $request->user()->id, 'module' => 'invitations', 'record_id' => 0, 'action' => 'issued',
+            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'user_id' => $request->user()->id, 'module' => 'invitations', 'record_id' => 0, 'action' => 'issued',
                 'changes' => json_encode(['email' => $data['email'], 'roles' => $data['roles']]), 'created_at' => now()]);
         });
 
@@ -99,11 +102,12 @@ class InvitationController extends Controller
         DB::transaction(function () use ($token, $data): void {
             $invitation = $this->find($token);
             abort_if(User::where('email', $invitation->email)->exists(), 409, 'This email already has an account. Ask your administrator to update its access.');
-            $claimed = DB::table('school_invitations')->where('id', $invitation->id)->whereNull('accepted_at')->update(['accepted_at' => now(), 'updated_at' => now()]);
+            $claimed = DB::table('school_invitations')->where('id', $invitation->id)->where('school_id', $invitation->school_id)->whereNull('accepted_at')->update(['accepted_at' => now(), 'updated_at' => now()]);
             abort_unless($claimed === 1, 409);
             $user = new User;
             $user->forceFill(['name' => $invitation->name, 'email' => $invitation->email, 'username' => $data['username'],
                 'password' => $data['password'], 'roles' => json_decode($invitation->roles, true), 'is_active' => true])->save();
+            DB::table('school_user')->insert(['school_id' => $invitation->school_id, 'user_id' => $user->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         });
 
         return redirect()->route('login')->with('status', 'Your account is ready. Sign in with your new username and password.');

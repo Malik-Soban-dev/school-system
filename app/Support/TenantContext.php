@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Database\Query\Builder;
+
 final class TenantContext
 {
     private ?int $schoolId = null;
@@ -14,6 +16,11 @@ final class TenantContext
     public function has(): bool
     {
         return $this->schoolId !== null;
+    }
+
+    public function table(string $table): Builder
+    {
+        return \DB::table($table)->where($table.'.school_id', $this->id());
     }
 
     public function id(): int

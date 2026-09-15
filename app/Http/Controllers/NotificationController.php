@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Services\SchoolNotifications;
+use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class NotificationController extends Controller
 {
@@ -14,7 +14,7 @@ class NotificationController extends Controller
         $request->validate(['page' => ['nullable', 'integer', 'min:1', 'max:100000']]);
 
         $rows = $notifications->visible($request->user())->orderByDesc('id')->paginate(30);
-        $deliveries = DB::table('school_notification_deliveries')->whereIn('notification_id', $rows->pluck('id'))->get(['notification_id', 'channel', 'status'])->groupBy('notification_id');
+        $deliveries = app(TenantContext::class)->table('school_notification_deliveries')->whereIn('notification_id', $rows->pluck('id'))->get(['notification_id', 'channel', 'status'])->groupBy('notification_id');
         $rows->through(function (object $row) use ($deliveries): object {
             $row->deliveries = $deliveries->get($row->id, collect())->values();
 

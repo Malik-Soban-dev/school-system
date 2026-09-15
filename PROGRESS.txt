@@ -319,3 +319,10 @@ FUTURE WORK â€” prioritized handoff:
   - Verification passed: SchoolOperationsTest plus SuperadminAccessTest (12 tests, 72 assertions) and PHP Pint.
   - Safety limitation: several secondary controllers/services still use direct DB::table calls and must be tenant-scoped before a second school is activated. Superadmin school switching remains disabled until that audit is complete.
   - Next step: complete the direct-query tenant audit, add composite school uniqueness constraints, and test every API endpoint for cross-school access.
+
+- 2026-09-15 AUTHENTICATED ENDPOINT TENANT AUDIT MILESTONE COMPLETE:
+  - Tenant-scoped report cards, notifications, notification deliveries, notification preferences, and authenticated invitation listing/revocation/creation were added.
+  - Invitation acceptance now creates the new account’s school membership from the invitation tenant.
+  - Fixed notification preference persistence to respect its existing user_id uniqueness constraint while storing school_id.
+  - Verification passed: ReportCardTest, InvitationSecurityTest, NotificationDeliveryTest and SuperadminAccessTest (15 tests, 80 assertions) plus PHP Pint.
+  - Remaining safety work: audit PortalController direct attendance/audit/report queries, SchoolNotifications and NotificationDelivery workers, and replace global uniqueness constraints with tenant-safe composite constraints before enabling a second school.

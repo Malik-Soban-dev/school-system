@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\NotificationDelivery;
+use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +13,7 @@ class NotificationPreferenceController extends Controller
 {
     public function show(Request $request, NotificationDelivery $delivery): JsonResponse
     {
-        $preferences = DB::table('school_notification_preferences')->where('user_id', $request->user()->id)->first();
+        $preferences = app(TenantContext::class)->table('school_notification_preferences')->where('user_id', $request->user()->id)->first();
 
         return response()->json(['email' => $request->user()->email, 'whatsapp_phone' => $preferences?->whatsapp_phone ?? '',
             'whatsapp_enabled' => $preferences?->whatsapp_consented_at !== null, 'email_enabled' => $preferences?->email_consented_at !== null,
@@ -29,9 +30,10 @@ class NotificationPreferenceController extends Controller
         if ($data['email_enabled'] && ! filter_var($request->user()->email, FILTER_VALIDATE_EMAIL)) {
             throw ValidationException::withMessages(['email_enabled' => 'Ask your school to connect a valid email address to your account first.']);
         }
-        $old = DB::table('school_notification_preferences')->where('user_id', $request->user()->id)->first();
+        $tenant = app(TenantContext::class);
+        $old = $tenant->table('school_notification_preferences')->where('user_id', $request->user()->id)->first();
         $phone = $data['whatsapp_phone'] ?? null;
-        DB::table('school_notification_preferences')->updateOrInsert(['user_id' => $request->user()->id], [
+        DB::table('school_notification_preferences')->updateOrInsert(['user_id' => $request->user()->id], ['school_id' => $tenant->id(),
             'whatsapp_phone' => $phone,
             'whatsapp_consented_at' => $data['whatsapp_enabled'] ? ($old?->whatsapp_phone === $phone ? ($old?->whatsapp_consented_at ?? now()) : now()) : null,
             'email_consented_at' => $data['email_enabled'] ? ($old?->email_consented_at ?? now()) : null,
