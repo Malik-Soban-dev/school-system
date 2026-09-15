@@ -346,3 +346,9 @@ FUTURE WORK — prioritized handoff:
   - Legacy null school_id notification rows remain readable only while exactly one school exists; they are excluded once multiple schools are present.
   - Verification passed: NotificationDeliveryTest and SchoolNotificationTest (7 tests, 72 assertions) plus PHP Pint.
   - Remaining safety work: scope all remaining SchoolPortal validation subqueries and migrate global unique constraints to school-aware composite constraints before activating a second school.
+
+- 2026-09-15 TENANT UNIQUE CONSTRAINT MILESTONE COMPLETE:
+  - Replaced global unique indexes with school-aware composite indexes for subjects, staff, students, guardians, teaching assignments, attendance, grades, invoices, payments, expenses, payroll, enrollments, invitations and notification deliveries.
+  - Existing single-school data remains valid and migration-backed tests pass.
+  - Verification passed: SuperadminAccessTest (4 tests, 9 assertions) and PHP Pint.
+  - Remaining schema safety work: restructure school_settings and notification-preference primary keys, then scope remaining SchoolPortal validation subqueries before a second school is activated.
