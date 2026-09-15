@@ -47,28 +47,29 @@ class PortalController extends Controller
     public function attendanceBatch(Request $request): JsonResponse
     {
         abort_unless($this->portal->can($request->user(), ['owner', 'admin', 'teacher']), 403);
+        $tenant = app(TenantContext::class);
         $data = $request->validate(['records' => ['required', 'array', 'min:1', 'max:500'],
             'records.*.student_id' => ['required', 'integer', 'min:1', 'distinct'],
             'records.*.status' => ['required', Rule::in(['present', 'absent', 'late', 'excused'])]]);
-        DB::transaction(function () use ($request, $data): void {
+        DB::transaction(function () use ($request, $data, $tenant): void {
             $ids = array_column($data['records'], 'student_id');
-            $students = DB::table('school_students')->whereIn('id', $ids)->where('status', 'active');
+            $students = $tenant->table('school_students')->whereIn('id', $ids)->where('status', 'active');
             if (! $this->portal->admin($request->user())) {
-                $students->whereIn('class_id', DB::table('school_teacher_assignments')->where('user_id', $request->user()->id)->where('status', 'active')->select('class_id'));
+                $students->whereIn('class_id', $tenant->table('school_teacher_assignments')->where('user_id', $request->user()->id)->where('status', 'active')->select('class_id'));
             }
             abort_unless($students->count() === count($ids), 403);
             $date = $this->portal->today();
-            $before = DB::table('school_attendance')->whereIn('student_id', $ids)->where('date', $date)->get()->keyBy('student_id');
+            $before = $tenant->table('school_attendance')->whereIn('student_id', $ids)->where('date', $date)->get()->keyBy('student_id');
             $now = now();
-            $rows = array_map(fn (array $record): array => [...$record, 'date' => $date, 'created_at' => $now, 'updated_at' => $now], $data['records']);
-            DB::table('school_attendance')->upsert($rows, ['student_id', 'date'], ['status', 'updated_at']);
-            $saved = DB::table('school_attendance')->whereIn('student_id', $ids)->where('date', $date)->get();
-            DB::table('school_audit')->insert($saved->map(fn ($row): array => ['user_id' => $request->user()->id,
+            $rows = array_map(fn (array $record): array => [...$record, 'school_id' => $tenant->id(), 'date' => $date, 'created_at' => $now, 'updated_at' => $now], $data['records']);
+            $tenant->table('school_attendance')->upsert($rows, ['student_id', 'date'], ['status', 'updated_at']);
+            $saved = $tenant->table('school_attendance')->whereIn('student_id', $ids)->where('date', $date)->get();
+            DB::table('school_audit')->insert($saved->map(fn ($row): array => ['school_id' => $tenant->id(), 'user_id' => $request->user()->id,
                 'module' => 'attendance', 'record_id' => $row->id, 'action' => 'class_attendance_saved',
                 'changes' => json_encode(['before' => $before->get($row->student_id), 'after' => $row]), 'created_at' => $now])->all());
             $events = $saved->map(fn ($row): array => ['module' => 'attendance', 'record_id' => $row->id,
                 'event_key' => 'attendance:'.$row->id.':'.hash('sha256', $row->date.':'.$row->status), 'created_at' => $now])->all();
-            DB::table('school_notification_events')->insertOrIgnore($events);
+            DB::table('school_notification_events')->insertOrIgnore(collect($events)->map(fn (array $event): array => [...$event, 'school_id' => $tenant->id()])->all());
         });
 
         return response()->json(['message' => 'Attendance saved for '.count($data['records']).' students.']);
@@ -78,10 +79,11 @@ class PortalController extends Controller
     {
         abort_unless($this->portal->can($request->user(), ['owner', 'admin', 'teacher']), 403);
         $data = $request->validate(['class_id' => ['required', 'integer', 'exists:school_classes,id']]);
+        $tenant = app(TenantContext::class);
         if (! $this->portal->admin($request->user())) {
-            abort_unless(DB::table('school_teacher_assignments')->where('user_id', $request->user()->id)->where('class_id', $data['class_id'])->where('status', 'active')->exists(), 403);
+            abort_unless($tenant->table('school_teacher_assignments')->where('user_id', $request->user()->id)->where('class_id', $data['class_id'])->where('status', 'active')->exists(), 403);
         }
-        $rows = DB::table('school_students')->where('class_id', $data['class_id'])->where('status', 'active')->orderBy('name')->get(['id', 'name']);
+        $rows = $tenant->table('school_students')->where('class_id', $data['class_id'])->where('status', 'active')->orderBy('name')->get(['id', 'name']);
 
         return response()->json(['rows' => $rows]);
     }
@@ -116,7 +118,7 @@ class PortalController extends Controller
             foreach ($data as $key => $value) {
                 DB::table('school_settings')->updateOrInsert(['school_id' => app(TenantContext::class)->id(), 'key' => $key], ['value' => $value]);
             }
-            DB::table('school_audit')->insert(['user_id' => $request->user()->id, 'module' => 'settings', 'record_id' => 0, 'action' => 'updated', 'changes' => json_encode($data), 'created_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => app(TenantContext::class)->id(), 'user_id' => $request->user()->id, 'module' => 'settings', 'record_id' => 0, 'action' => 'updated', 'changes' => json_encode($data), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'School settings saved.']);
@@ -154,7 +156,7 @@ class PortalController extends Controller
     {
         abort_unless($this->portal->admin($request->user()), 403);
 
-        return response()->json(['rows' => DB::table('school_audit')->leftJoin('users', 'users.id', '=', 'school_audit.user_id')
+        return response()->json(['rows' => app(TenantContext::class)->table('school_audit')->leftJoin('users', 'users.id', '=', 'school_audit.user_id')
             ->select('school_audit.id', 'school_audit.module', 'school_audit.record_id', 'school_audit.action', 'school_audit.created_at', 'users.name')
             ->orderByDesc('school_audit.id')->paginate(30)]);
     }
@@ -162,23 +164,24 @@ class PortalController extends Controller
     public function report(Request $request, string $module, int $id): View
     {
         abort_unless(in_array($module, ['payments', 'invoices', 'payroll', 'payroll_payments', 'grades']), 404);
+        $tenant = app(TenantContext::class);
         $row = $this->portal->query($module, $request->user())->where('id', $id)->first();
         abort_unless($row, 404);
         $definition = $this->portal->definition($module);
         $extra = [];
         if ($module === 'invoices') {
-            $extra['Paid'] = (int) DB::table('school_payments')->where('invoice_id', $id)->sum('amount');
+            $extra['Paid'] = (int) $tenant->table('school_payments')->where('invoice_id', $id)->sum('amount');
             $extra['Balance'] = $row->amount - $extra['Paid'];
         }
         if ($module === 'payroll') {
             $extra['Net pay'] = $row->basic + $row->allowances - $row->deductions;
-            $extra['Paid'] = (int) DB::table('school_payroll_payments')->where('payroll_id', $id)->sum('amount');
+            $extra['Paid'] = (int) $tenant->table('school_payroll_payments')->where('payroll_id', $id)->sum('amount');
             $extra['Balance'] = $extra['Net pay'] - $extra['Paid'];
         }
 
         return view('reports.record', ['row' => (array) $row, 'definition' => $definition,
             'options' => $this->portal->options($request->user()), 'extra' => $extra,
-            'school' => DB::table('school_settings')->where('key', 'school_name')->value('value') ?: 'School System',
-            'currency' => DB::table('school_settings')->where('key', 'currency')->value('value') ?: '']);
+            'school' => $tenant->table('school_settings')->where('key', 'school_name')->value('value') ?: 'School System',
+            'currency' => $tenant->table('school_settings')->where('key', 'currency')->value('value') ?: '']);
     }
 }

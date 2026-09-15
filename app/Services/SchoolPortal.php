@@ -16,7 +16,7 @@ class SchoolPortal
 
     public function today(): string
     {
-        $timezone = DB::table('school_settings')->where('key', 'timezone')->value('value') ?: config('app.timezone');
+        $timezone = $this->tenant->table('school_settings')->where('key', 'timezone')->value('value') ?: config('app.timezone');
 
         return today($timezone)->toDateString();
     }

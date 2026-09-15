@@ -326,3 +326,9 @@ FUTURE WORK — prioritized handoff:
   - Fixed notification preference persistence to respect its existing user_id uniqueness constraint while storing school_id.
   - Verification passed: ReportCardTest, InvitationSecurityTest, NotificationDeliveryTest and SuperadminAccessTest (15 tests, 80 assertions) plus PHP Pint.
   - Remaining safety work: audit PortalController direct attendance/audit/report queries, SchoolNotifications and NotificationDelivery workers, and replace global uniqueness constraints with tenant-safe composite constraints before enabling a second school.
+
+- 2026-09-15 PORTAL CONTROLLER TENANT AUDIT MILESTONE COMPLETE:
+  - Added active-school scoping to attendance batches and rosters, audit history, report payment totals, payroll payment totals, report-card settings and school settings audit writes.
+  - Attendance and notification event writes now include school_id.
+  - Verification passed: SchoolOperationsTest, ReportCardTest, NotificationDeliveryTest and SuperadminAccessTest (19 tests, 117 assertions) plus PHP Pint.
+  - Remaining safety work: tenant-scope SchoolNotifications and NotificationDelivery workers, audit every remaining direct query, and replace global unique constraints with tenant-safe constraints before enabling a second school.
