@@ -42,4 +42,20 @@ class SuperadminAccessTest extends TestCase
         app(TenantContext::class)->set($schoolTwo);
         $this->actingAs($user)->getJson('/portal/records/students')->assertOk()->assertJsonCount(1, 'rows')->assertJsonPath('rows.0.name', 'Second School Student');
     }
+
+    public function test_people_access_cannot_list_or_update_users_from_another_school(): void
+    {
+        $schoolTwo = DB::table('schools')->insertGetId(['name' => 'People School', 'slug' => 'people-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $admin = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        $other = User::factory()->create(['roles' => ['teacher'], 'is_active' => true]);
+        DB::table('school_user')->whereIn('user_id', [$admin->id, $other->id])->delete();
+        DB::table('school_user')->insert([
+            ['school_id' => $schoolTwo, 'user_id' => $admin->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+            ['school_id' => 1, 'user_id' => $other->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        app(TenantContext::class)->set($schoolTwo);
+
+        $this->actingAs($admin)->getJson('/portal/users')->assertOk()->assertJsonMissing(['id' => $other->id]);
+        $this->putJson('/portal/users/'.$other->id, ['roles' => ['teacher'], 'is_active' => true])->assertNotFound();
+    }
 }

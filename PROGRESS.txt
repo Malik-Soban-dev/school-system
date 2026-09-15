@@ -332,3 +332,10 @@ FUTURE WORK — prioritized handoff:
   - Attendance and notification event writes now include school_id.
   - Verification passed: SchoolOperationsTest, ReportCardTest, NotificationDeliveryTest and SuperadminAccessTest (19 tests, 117 assertions) plus PHP Pint.
   - Remaining safety work: tenant-scope SchoolNotifications and NotificationDelivery workers, audit every remaining direct query, and replace global unique constraints with tenant-safe constraints before enabling a second school.
+
+- 2026-09-15 PEOPLE ACCESS TENANT MILESTONE COMPLETE:
+  - Scoped People & access listings to active school memberships.
+  - Blocked cross-school user role/access updates with server-side membership checks.
+  - Added school_id to user access audit records.
+  - Verification passed: SuperadminAccessTest and SchoolOperationsTest (13 tests, 75 assertions) plus PHP Pint.
+  - Remaining safety work: tenant-scope notification workers and all remaining SchoolPortal validation subqueries, then migrate global unique constraints to tenant-safe composite constraints.

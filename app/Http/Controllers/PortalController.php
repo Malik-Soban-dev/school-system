@@ -127,13 +127,21 @@ class PortalController extends Controller
     public function users(Request $request): JsonResponse
     {
         abort_unless($this->portal->admin($request->user()), 403);
+        $schoolId = app(TenantContext::class)->id();
 
-        return response()->json(['users' => User::select('id', 'name', 'username', 'email', 'roles', 'is_active')->orderBy('name')->paginate(30)]);
+        return response()->json(['users' => User::query()->join('school_user', 'school_user.user_id', '=', 'users.id')->where('school_user.school_id', $schoolId)->where('school_user.status', 'active')->select('users.id', 'users.name', 'users.username', 'users.email', 'users.roles', 'users.is_active')->orderBy('users.name')->paginate(30)]);
     }
 
     public function updateUser(Request $request, User $user): JsonResponse
     {
         abort_unless($this->portal->admin($request->user()), 403);
+        $schoolId = app(TenantContext::class)->id();
+        $sameSchool = DB::table('school_user')->where('school_id', $schoolId)->where('user_id', $user->id)->where('status', 'active')->exists();
+        if (! $sameSchool && DB::table('schools')->count() === 1) {
+            DB::table('school_user')->insertOrIgnore(['school_id' => $schoolId, 'user_id' => $user->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+            $sameSchool = true;
+        }
+        abort_unless($sameSchool, 404);
         abort_if($user->id === $request->user()->id, 403, 'You cannot change your own access.');
         abort_if(in_array('owner', $user->roles ?? [], true), 403, 'Owner access must be managed privately.');
         abort_if(in_array('admin', $user->roles ?? [], true) && ! $request->user()->hasRole('owner'), 403);
@@ -146,7 +154,7 @@ class PortalController extends Controller
             $before = $user->only(['roles', 'is_active']);
             $user->forceFill($data)->save();
             DB::table('sessions')->where('user_id', $user->id)->delete();
-            DB::table('school_audit')->insert(['user_id' => $request->user()->id, 'module' => 'users', 'record_id' => $user->id, 'action' => 'access_updated', 'changes' => json_encode(['before' => $before, 'after' => $data]), 'created_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => app(TenantContext::class)->id(), 'user_id' => $request->user()->id, 'module' => 'users', 'record_id' => $user->id, 'action' => 'access_updated', 'changes' => json_encode(['before' => $before, 'after' => $data]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Access updated and previous sessions revoked.']);
