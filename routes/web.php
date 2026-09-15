@@ -20,6 +20,9 @@ Route::get('/', function () {
 
 Route::middleware(['auth', EnsureActiveAccount::class, EnsureSuperadmin::class])->group(function () {
     Route::get('/superadmin', [PlatformController::class, 'index'])->name('superadmin.dashboard');
+    Route::get('/superadmin/data', [PlatformController::class, 'data']);
+    Route::get('/superadmin/schools/{school}', [PlatformController::class, 'school'])->whereNumber('school');
+    Route::put('/superadmin/schools/{school}/status', [PlatformController::class, 'updateStatus'])->whereNumber('school');
 });
 
 Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify']);

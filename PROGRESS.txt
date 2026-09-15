@@ -401,3 +401,10 @@ FUTURE WORK — prioritized handoff:
   - Attendance roster validation now rejects class ids owned by another school before querying data.
   - Added TenantIsolationTest covering cross-school relation and roster attempts (1 test, 6 assertions).
   - Verification passed for the tenant operations/reporting/notification/superadmin suites and the new isolation test; PHP Pint passed.
+
+- 2026-09-15 SUPERADMIN CONTROL CENTER COMPLETE:
+  - Replaced the placeholder platform page with a glass dashboard showing every school, active members, students, staff, open invoices, and recent audit activity.
+  - Added protected superadmin APIs for cross-school details and audited school activation/suspension controls.
+  - Suspension now blocks normal school resolution while preserving superadmin visibility.
+  - All platform mutations use a transaction and write a school audit record; aggregate queries use school_id-backed indexes and bounded result sets.
+  - Added coverage for superadmin registry/status control and built production assets successfully with Vite.

@@ -19,6 +19,17 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($user)->get('/superadmin')->assertOk()->assertSee('Superadmin dashboard');
     }
 
+    public function test_superadmin_can_review_and_suspend_a_school_with_audited_status_change(): void
+    {
+        $schoolTwo = DB::table('schools')->insertGetId(['name' => 'Managed School', 'slug' => 'managed-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($user)->getJson('/superadmin/data')->assertOk()->assertJsonPath('summary.schools', 2)->assertJsonFragment(['slug' => 'managed-school']);
+        $this->actingAs($user)->putJson('/superadmin/schools/'.$schoolTwo.'/status', ['status' => 'suspended'])->assertOk();
+        $this->assertDatabaseHas('schools', ['id' => $schoolTwo, 'status' => 'suspended']);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $schoolTwo, 'module' => 'platform', 'action' => 'school_status_updated']);
+    }
+
     public function test_school_users_cannot_open_platform_dashboard(): void
     {
         $user = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
