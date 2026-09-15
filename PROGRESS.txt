@@ -393,3 +393,11 @@ FUTURE WORK — prioritized handoff:
   - Added single-school compatibility reads for legacy settings rows and made initial settings fields optional so existing school setup requests remain valid.
   - Admins can update global colors and typography as requested; the older test expecting admin settings access to be forbidden is now intentionally stale.
   - Verification: focused owner/scheduling checks passed, PHP Pint passed; full suite has 56 passing tests and one intentional legacy authorization assertion failure (58 tests total, 344 assertions).
+
+- 2026-09-15 API ISOLATION AUDIT COMPLETE:
+  - Relation validation now scopes users through active school membership and all school records through the active school_id.
+  - Tenant-scoped unique validation prevents a duplicate check in one school from rejecting a valid value in another school.
+  - User options and role checks are tenant-aware when multiple schools exist; single-school legacy compatibility remains explicit.
+  - Attendance roster validation now rejects class ids owned by another school before querying data.
+  - Added TenantIsolationTest covering cross-school relation and roster attempts (1 test, 6 assertions).
+  - Verification passed for the tenant operations/reporting/notification/superadmin suites and the new isolation test; PHP Pint passed.

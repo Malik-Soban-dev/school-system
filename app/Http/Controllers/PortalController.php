@@ -84,7 +84,7 @@ class PortalController extends Controller
     public function attendanceRoster(Request $request): JsonResponse
     {
         abort_unless($this->portal->can($request->user(), ['owner', 'admin', 'teacher']), 403);
-        $data = $request->validate(['class_id' => ['required', 'integer', 'exists:school_classes,id']]);
+        $data = $request->validate(['class_id' => ['required', 'integer', Rule::exists('school_classes', 'id')->where(fn ($query) => $query->where('school_id', app(TenantContext::class)->id()))]]);
         $tenant = app(TenantContext::class);
         if (! $this->portal->admin($request->user())) {
             abort_unless($tenant->table('school_teacher_assignments')->where('user_id', $request->user()->id)->where('class_id', $data['class_id'])->where('status', 'active')->exists(), 403);

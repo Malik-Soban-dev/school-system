@@ -8,6 +8,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\ValidationException;
 
 class SchoolPortal
@@ -216,8 +217,12 @@ class SchoolPortal
             $options[$module] = $this->query($module, $user)->select('id', $label)->orderBy($label)->limit(1000)->get()
                 ->map(fn ($row) => ['value' => $row->id, 'name' => $row->$label])->all();
         }
-        $options['users'] = User::query()->where('is_active', true)->when(! $this->admin($user), fn ($q) => $q->where('id', $user->id))
-            ->select('id', 'name')->orderBy('name')->limit(1000)->get()->map(fn ($u) => ['value' => $u->id, 'name' => $u->name])->all();
+        $users = User::query()->where('is_active', true)->when(! $this->admin($user), fn ($q) => $q->where('id', $user->id));
+        if (DB::table('schools')->count() > 1) {
+            $users->join('school_user', 'school_user.user_id', '=', 'users.id')->where('school_user.school_id', $this->tenant->id())->where('school_user.status', 'active');
+        }
+        $options['users'] = $users->when(! $this->admin($user), fn ($q) => $q->where('users.id', $user->id))
+            ->select('users.id', 'users.name')->orderBy('users.name')->limit(1000)->get()->map(fn ($u) => ['value' => $u->id, 'name' => $u->name])->all();
         if ($user->hasRole('accountant') && ! $this->admin($user)) {
             $options['staff'] = $this->tenant->table('school_staff')->select('id', 'name')->orderBy('name')->get()->map(fn ($row) => ['value' => $row->id, 'name' => $row->name])->all();
         }
@@ -279,7 +284,7 @@ class SchoolPortal
         foreach ($definition['fields'] as $field) {
             $rule = [($field['optional'] ?? false) ? 'nullable' : 'required'];
             $rule = [...$rule, ...match ($field['type']) {
-                'relation' => ['integer', Rule::exists($field['relation'] === 'users' ? 'users' : 'school_'.$field['relation'], 'id')],
+                'relation' => ['integer', $this->tenantExistsRule($field['relation'])],
                 'number' => ['integer', 'min:'.($field['min'] ?? 0), 'max:'.($field['max'] ?? 1000000)],
                 'decimal' => ['numeric', 'min:'.($field['min'] ?? 0), 'max:'.($field['max'] ?? 999999), 'decimal:0,2'],
                 'money' => ['regex:/^\d{1,9}(\.\d{1,2})?$/'],
@@ -294,7 +299,7 @@ class SchoolPortal
                 default => false,
             };
             if ($unique) {
-                $rule[] = Rule::unique('school_'.$module, $field['name'])->ignore($id);
+                $rule[] = Rule::unique('school_'.$module, $field['name'])->where(fn ($query) => $query->where('school_id', $this->tenant->id()))->ignore($id);
             }
             $rules[$field['name']] = $rule;
         }
@@ -338,9 +343,27 @@ class SchoolPortal
 
     private function requireRole(int $id, string $role, string $field): void
     {
-        if (! User::find($id)?->hasRole($role)) {
+        $query = User::query()->whereKey($id);
+        if (DB::table('schools')->count() > 1) {
+            $query->whereExists(fn ($subquery) => $subquery->selectRaw('1')->from('school_user')->whereColumn('school_user.user_id', 'users.id')->where('school_user.school_id', $this->tenant->id())->where('school_user.status', 'active'));
+        }
+        $user = $query->first();
+        if (! $user?->hasRole($role)) {
             $this->fail($field, 'Choose an active '.$role.' account.');
         }
+    }
+
+    private function tenantExistsRule(string $relation): Exists
+    {
+        if ($relation === 'users') {
+            if (DB::table('schools')->count() === 1) {
+                return Rule::exists('users', 'id');
+            }
+
+            return Rule::exists('school_user', 'user_id')->where(fn ($query) => $query->where('school_id', $this->tenant->id())->where('status', 'active'));
+        }
+
+        return Rule::exists('school_'.$relation, 'id')->where(fn ($query) => $query->where('school_id', $this->tenant->id()));
     }
 
     private function validateBusiness(string $module, array $data, User $user, ?int $id, ?object $old): void
