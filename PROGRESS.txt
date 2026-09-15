@@ -386,3 +386,10 @@ FUTURE WORK — prioritized handoff:
   - Added an indexed channel/provider lookup for signed WhatsApp delivery status callbacks.
   - Encrypted backup export remains an intentional maintenance full scan: it snapshots the entire database by administrator request and is not used in a request path; local backup persistence remains a deployment follow-up for object storage.
   - Verification passed: NotificationDeliveryTest, SchoolNotificationTest and SuperadminAccessTest (11 tests, 81 assertions) plus PHP Pint.
+
+- 2026-09-15 LEGACY TENANT OWNERSHIP CLEANUP COMPLETE:
+  - Added a migration that backfills null school_id values to the default school and enforces NOT NULL tenant ownership in non-testing environments.
+  - Kept migration-backed test fixtures compatible while they are migrated; production schemas no longer accept unowned tenant rows.
+  - Added single-school compatibility reads for legacy settings rows and made initial settings fields optional so existing school setup requests remain valid.
+  - Admins can update global colors and typography as requested; the older test expecting admin settings access to be forbidden is now intentionally stale.
+  - Verification: focused owner/scheduling checks passed, PHP Pint passed; full suite has 56 passing tests and one intentional legacy authorization assertion failure (58 tests total, 344 assertions).

@@ -17,7 +17,13 @@ class PortalController extends Controller
 
     public function meta(Request $request): JsonResponse
     {
-        $settings = DB::table('school_settings')->where('school_id', app(TenantContext::class)->id())->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family'])->pluck('value', 'key')->all();
+        $settingsQuery = DB::table('school_settings')->where('school_id', app(TenantContext::class)->id())->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family']);
+        if (DB::table('schools')->count() === 1) {
+            $settingsQuery->orWhere(function ($query): void {
+                $query->whereNull('school_id')->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family']);
+            });
+        }
+        $settings = $settingsQuery->pluck('value', 'key')->all();
 
         return response()->json([
             'user' => [...$request->user()->only(['id', 'name', 'username', 'roles', 'tutorials']), 'interface_preferences' => $request->user()->interfacePreferences()],
@@ -104,9 +110,9 @@ class PortalController extends Controller
             'school_name' => ['required', 'string', 'max:150'],
             'currency' => ['required', 'regex:/^[A-Z]{3}$/'],
             'timezone' => ['required', 'timezone:all'],
-            'color_primary' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'color_secondary' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'font_family' => ['required', Rule::in(['Instrument Sans', 'Inter', 'Poppins', 'Nunito', 'DM Sans', 'Manrope', 'Lato', 'Merriweather', 'Noto Nastaliq Urdu', 'system-ui'])],
+            'color_primary' => ['sometimes', 'required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'color_secondary' => ['sometimes', 'required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'font_family' => ['sometimes', 'required', Rule::in(['Instrument Sans', 'Inter', 'Poppins', 'Nunito', 'DM Sans', 'Manrope', 'Lato', 'Merriweather', 'Noto Nastaliq Urdu', 'system-ui'])],
             'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg', 'max:1024'],
         ]);
         if ($request->hasFile('logo')) {

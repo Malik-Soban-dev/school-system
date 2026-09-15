@@ -21,7 +21,13 @@ class CreateSchoolOwner extends Command
 
             return self::FAILURE;
         }
-        if (DB::table('school_settings')->where('school_id', $schoolId)->where('key', 'owner_provisioned')->exists()) {
+        $provisioned = DB::table('school_settings')->where('key', 'owner_provisioned')->where(function ($query) use ($schoolId): void {
+            $query->where('school_id', $schoolId);
+            if (DB::table('schools')->count() === 1) {
+                $query->orWhereNull('school_id');
+            }
+        })->exists();
+        if ($provisioned) {
             $this->error('Owner setup is already complete. No account was changed.');
 
             return self::FAILURE;
