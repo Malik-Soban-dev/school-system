@@ -373,3 +373,8 @@ FUTURE WORK — prioritized handoff:
   - Kept strict tenant query helpers; only notification delivery has an explicit one-school legacy-null compatibility path.
   - Verification passed: SchoolOperationsTest, ReportCardTest, SuperadminAccessTest, NotificationDeliveryTest and SchoolNotificationTest (22 tests, 168 assertions) plus PHP Pint.
   - Remaining before second-school activation: audit WhatsApp webhook/console commands, perform legacy null school_id cleanup, enforce NOT NULL ownership, and run complete API isolation coverage.
+
+- 2026-09-15 ENGINEERING STANDARDS SKILL ADDED:
+  - Added reusable Codex skill at C:\Users\subhan\.codex\skills\school-system-engineering-standards\SKILL.md.
+  - Captures ACID transactions, bcrypt/encryption/HTTPS, SQL tenant design, TTL policy, explicit consistency, indexed queries, async queues, stateless/load-balancer readiness, CDN caching, and required skip-risk checklist.
+  - The current application remains SQL/Laravel, so DynamoDB partition-key guidance is intentionally conditional; no runtime feature or schema was changed in this milestone.
