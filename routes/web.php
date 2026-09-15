@@ -5,14 +5,20 @@ use App\Http\Controllers\InterfacePreferenceController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationPreferenceController;
+use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ReportCardController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Middleware\EnsureActiveAccount;
+use App\Http\Middleware\EnsureSuperadmin;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+Route::middleware(['auth', EnsureActiveAccount::class, EnsureSuperadmin::class])->group(function () {
+    Route::get('/superadmin', [PlatformController::class, 'index'])->name('superadmin.dashboard');
 });
 
 Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify']);

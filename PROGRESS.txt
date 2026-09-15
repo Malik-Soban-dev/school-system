@@ -296,3 +296,10 @@ FUTURE WORK — prioritized handoff:
   - Branding is applied at runtime to global accent/glow CSS variables and the portal font while preserving existing records and permissions.
   - Verification passed: npm run build (1557 modules), PHP Pint, and SchoolOperationsTest (9 tests, 66 assertions).
   - Remaining future work: add dedicated branding API tests, preview/reset controls, and extend the same branding treatment to public report/landing pages.
+
+- 2026-09-15 SUPERADMIN FOUNDATION MILESTONE COMPLETE:
+  - Added a distinct server-enforced superadmin middleware and protected /superadmin route.
+  - Added a platform dashboard shell that intentionally exposes no school records until tenant isolation is implemented.
+  - Existing owner/admin school access remains unchanged.
+  - Verification passed: SuperadminAccessTest (2 tests, 3 assertions), npm run build, PHP Pint.
+  - Next step: design and migrate the schools/tenant registry, then add enforced tenant scoping before cross-school controls.
