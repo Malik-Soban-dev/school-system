@@ -11,6 +11,7 @@ use App\Http\Controllers\ReportCardController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureSuperadmin;
+use App\Http\Middleware\ResolveSchool;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -31,7 +32,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:20,1')->name('login.store');
 });
 
-Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
+Route::middleware(['auth', EnsureActiveAccount::class, ResolveSchool::class])->group(function () {
     Route::get('/portal/meta', [PortalController::class, 'meta']);
     Route::get('/portal/interface-preferences', [InterfacePreferenceController::class, 'show']);
     Route::put('/portal/interface-preferences', [InterfacePreferenceController::class, 'update'])->middleware('throttle:20,1');

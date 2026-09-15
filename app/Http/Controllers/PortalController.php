@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\SchoolPortal;
+use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ class PortalController extends Controller
 
     public function meta(Request $request): JsonResponse
     {
-        $settings = DB::table('school_settings')->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family'])->pluck('value', 'key')->all();
+        $settings = DB::table('school_settings')->where('school_id', app(TenantContext::class)->id())->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family'])->pluck('value', 'key')->all();
 
         return response()->json([
             'user' => [...$request->user()->only(['id', 'name', 'username', 'roles', 'tutorials']), 'interface_preferences' => $request->user()->interfacePreferences()],
@@ -113,7 +114,7 @@ class PortalController extends Controller
         unset($data['logo']);
         DB::transaction(function () use ($data, $request): void {
             foreach ($data as $key => $value) {
-                DB::table('school_settings')->updateOrInsert(['key' => $key], ['value' => $value]);
+                DB::table('school_settings')->updateOrInsert(['school_id' => app(TenantContext::class)->id(), 'key' => $key], ['value' => $value]);
             }
             DB::table('school_audit')->insert(['user_id' => $request->user()->id, 'module' => 'settings', 'record_id' => 0, 'action' => 'updated', 'changes' => json_encode($data), 'created_at' => now()]);
         });

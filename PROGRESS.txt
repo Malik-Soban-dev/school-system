@@ -311,3 +311,11 @@ FUTURE WORK — prioritized handoff:
   - Verification passed: tenant migration loaded through SuperadminAccessTest (2 tests, 3 assertions) and PHP Pint.
   - Next step: add request tenant context, school membership checks and scoped query enforcement before implementing school switching or cross-school record APIs.
   - Permission-note preference recorded: future permission requests will include a concise change summary.
+
+- 2026-09-15 TENANT CONTEXT MILESTONE COMPLETE:
+  - Added singleton TenantContext and ResolveSchool middleware using verified school_user membership and optional session-selected school.
+  - Portal SchoolPortal root queries and writes now carry the active school_id; settings reads/writes use the tenant context.
+  - Added cross-school isolation coverage proving a school-two owner cannot receive school-one student rows through the scoped portal listing.
+  - Verification passed: SchoolOperationsTest plus SuperadminAccessTest (12 tests, 72 assertions) and PHP Pint.
+  - Safety limitation: several secondary controllers/services still use direct DB::table calls and must be tenant-scoped before a second school is activated. Superadmin school switching remains disabled until that audit is complete.
+  - Next step: complete the direct-query tenant audit, add composite school uniqueness constraints, and test every API endpoint for cross-school access.

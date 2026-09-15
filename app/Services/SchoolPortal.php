@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\TenantContext;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -11,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class SchoolPortal
 {
+    public function __construct(private TenantContext $tenant) {}
+
     public function today(): string
     {
         $timezone = DB::table('school_settings')->where('key', 'timezone')->value('value') ?: config('app.timezone');
@@ -55,7 +58,7 @@ class SchoolPortal
 
     private function studentScope(User $user, bool $includeTeaching = true): Builder
     {
-        return DB::table('school_students')->where(function (Builder $query) use ($user, $includeTeaching): void {
+        return DB::table('school_students')->where('school_id', $this->tenant->id())->where(function (Builder $query) use ($user, $includeTeaching): void {
             $query->whereIn('id', []);
             if ($includeTeaching && $user->hasRole('teacher')) {
                 $query->orWhereIn('class_id', DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->select('class_id'));
@@ -73,7 +76,7 @@ class SchoolPortal
     {
         $definition = $this->definition($module);
         abort_unless($this->can($user, $definition['read']), 403);
-        $query = DB::table('school_'.$module);
+        $query = DB::table('school_'.$module)->where('school_id', $this->tenant->id());
         if ($this->admin($user)) {
             return $query;
         }
@@ -307,14 +310,14 @@ class SchoolPortal
             }
             $now = now();
             if ($id) {
-                DB::table('school_'.$module)->where('id', $id)->update([...$data, 'updated_at' => $now]);
+                DB::table('school_'.$module)->where('school_id', $this->tenant->id())->where('id', $id)->update([...$data, 'updated_at' => $now]);
             } else {
-                $id = DB::table('school_'.$module)->insertGetId([...$data, 'created_at' => $now, 'updated_at' => $now]);
+                $id = DB::table('school_'.$module)->insertGetId([...$data, 'school_id' => $this->tenant->id(), 'created_at' => $now, 'updated_at' => $now]);
             }
             if ($module === 'students') {
-                DB::table('school_enrollments')->updateOrInsert(['student_id' => $id, 'class_id' => $data['class_id']], ['created_at' => $now, 'updated_at' => $now]);
+                DB::table('school_enrollments')->updateOrInsert(['school_id' => $this->tenant->id(), 'student_id' => $id, 'class_id' => $data['class_id']], ['created_at' => $now, 'updated_at' => $now]);
             }
-            DB::table('school_audit')->insert(['user_id' => $user->id, 'module' => $module, 'record_id' => $id,
+            DB::table('school_audit')->insert(['school_id' => $this->tenant->id(), 'user_id' => $user->id, 'module' => $module, 'record_id' => $id,
                 'action' => $old ? 'updated' : 'created', 'changes' => json_encode(['before' => $old, 'after' => $data]), 'created_at' => $now]);
             app(SchoolNotifications::class)->enqueue($module, $id, $data);
 
