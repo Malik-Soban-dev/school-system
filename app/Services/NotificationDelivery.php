@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -11,6 +12,8 @@ use Throwable;
 
 class NotificationDelivery
 {
+    public function __construct(private TenantContext $tenant) {}
+
     public function ready(string $channel): bool
     {
         if ($channel === 'email') {
@@ -25,21 +28,33 @@ class NotificationDelivery
 
     public function process(): void
     {
-        DB::table('school_notification_deliveries')->where('status', 'processing')->where('updated_at', '<', now()->subMinutes(10))
+        $this->tenant->table('school_notification_deliveries')->where('status', 'processing')->where('updated_at', '<', now()->subMinutes(10))
             ->update(['status' => 'unknown', 'error_code' => 'interrupted_attempt', 'updated_at' => now()]);
         foreach (['email', 'whatsapp'] as $channel) {
             if (! $this->ready($channel)) {
                 continue;
             }
-            $notifications = DB::table('school_notifications as n')->join('school_notification_preferences as p', 'p.user_id', '=', 'n.user_id')
+            $notifications = DB::table('school_notifications as n')->where(function ($query): void {
+                $query->where('n.school_id', $this->tenant->id());
+                if (DB::table('schools')->count() === 1) {
+                    $query->orWhereNull('n.school_id');
+                }
+            })->join('school_notification_preferences as p', function ($join): void {
+                $join->on('p.user_id', '=', 'n.user_id')->where(function ($query): void {
+                    $query->where('p.school_id', $this->tenant->id());
+                    if (DB::table('schools')->count() === 1) {
+                        $query->orWhereNull('p.school_id');
+                    }
+                });
+            })
                 ->whereNotNull('p.'.$channel.'_consented_at')->whereColumn('n.created_at', '>=', 'p.'.$channel.'_consented_at')
                 ->where('n.created_at', '>=', now()->subDays(2))
-                ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('school_notification_deliveries as d')->whereColumn('d.notification_id', 'n.id')->where('d.channel', $channel))
+                ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('school_notification_deliveries as d')->whereColumn('d.notification_id', 'n.id')->where('d.school_id', $this->tenant->id())->where('d.channel', $channel))
                 ->orderBy('n.id')->limit(100)->get(['n.id']);
             foreach ($notifications as $notification) {
-                DB::table('school_notification_deliveries')->insertOrIgnore(['notification_id' => $notification->id, 'channel' => $channel, 'status' => 'pending', 'attempts' => 0, 'available_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+                DB::table('school_notification_deliveries')->insertOrIgnore(['school_id' => $this->tenant->id(), 'notification_id' => $notification->id, 'channel' => $channel, 'status' => 'pending', 'attempts' => 0, 'available_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
             }
-            foreach (DB::table('school_notification_deliveries')->where('channel', $channel)->where('status', 'pending')->where('available_at', '<=', now())->orderBy('id')->limit(20)->get() as $delivery) {
+            foreach ($this->tenant->table('school_notification_deliveries')->where('channel', $channel)->where('status', 'pending')->where('available_at', '<=', now())->orderBy('id')->limit(20)->get() as $delivery) {
                 $this->send($delivery);
             }
         }
@@ -47,19 +62,19 @@ class NotificationDelivery
 
     private function finish(int $id, string $status, ?string $error = null, ?string $providerId = null): void
     {
-        DB::table('school_notification_deliveries')->where('id', $id)->where('status', 'processing')->update(['status' => $status, 'error_code' => $error, 'provider_id' => $providerId, 'updated_at' => now()]);
+        $this->tenant->table('school_notification_deliveries')->where('id', $id)->where('status', 'processing')->update(['status' => $status, 'error_code' => $error, 'provider_id' => $providerId, 'updated_at' => now()]);
     }
 
     private function send(object $delivery): void
     {
-        $claimed = DB::table('school_notification_deliveries')->where('id', $delivery->id)->where('status', 'pending')
+        $claimed = $this->tenant->table('school_notification_deliveries')->where('id', $delivery->id)->where('status', 'pending')
             ->update(['status' => 'processing', 'attempts' => DB::raw('attempts + 1'), 'updated_at' => now()]);
         if (! $claimed) {
             return;
         }
-        $notification = DB::table('school_notifications')->find($delivery->notification_id);
+        $notification = $this->tenant->table('school_notifications')->find($delivery->notification_id);
         $user = $notification ? User::find($notification->user_id) : null;
-        $preferences = $user ? DB::table('school_notification_preferences')->where('user_id', $user->id)->first() : null;
+        $preferences = $user ? $this->tenant->table('school_notification_preferences')->where('user_id', $user->id)->first() : null;
         $consent = $delivery->channel.'_consented_at';
         if (! $user?->is_active || ! $preferences?->$consent || $notification->created_at < $preferences->$consent
             || $notification->created_at < now()->subDays(2)->toDateTimeString()
@@ -69,7 +84,7 @@ class NotificationDelivery
             return;
         }
         if ($notification->module === 'exams' && str_starts_with($notification->event_key, 'exam-reminder:')) {
-            $exam = DB::table('school_exams')->find($notification->record_id);
+            $exam = $this->tenant->table('school_exams')->find($notification->record_id);
             if ($exam->schedule_status !== 'announced' || ! str_contains($notification->event_key, ':'.$exam->date.':') || $exam->date <= app(SchoolPortal::class)->today()) {
                 $this->finish($delivery->id, 'skipped', 'exam_changed');
 
@@ -110,7 +125,7 @@ class NotificationDelivery
             if ($response->successful() && is_string($response->json('messages.0.id'))) {
                 $this->finish($delivery->id, 'accepted', null, $response->json('messages.0.id'));
             } elseif ($response->status() === 429 && $delivery->attempts < 4) {
-                DB::table('school_notification_deliveries')->where('id', $delivery->id)->where('status', 'processing')
+                $this->tenant->table('school_notification_deliveries')->where('id', $delivery->id)->where('status', 'processing')
                     ->update(['status' => 'pending', 'available_at' => now()->addMinutes(2 ** ($delivery->attempts + 1)), 'error_code' => 'rate_limited', 'updated_at' => now()]);
             } else {
                 $this->finish($delivery->id, $response->clientError() ? 'failed' : 'unknown', 'provider_http_'.$response->status());

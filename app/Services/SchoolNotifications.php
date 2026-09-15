@@ -3,17 +3,20 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\TenantContext;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 class SchoolNotifications
 {
+    public function __construct(private TenantContext $tenant) {}
+
     public function enqueue(string $module, int $id, array $data): void
     {
         if (! in_array($module, ['notices', 'exams', 'invoices', 'payments', 'payroll', 'payroll_payments', 'attendance', 'leave_requests'])) {
             return;
         }
-        DB::table('school_notification_events')->insertOrIgnore(['module' => $module, 'record_id' => $id,
+        DB::table('school_notification_events')->insertOrIgnore(['school_id' => $this->tenant->id(), 'module' => $module, 'record_id' => $id,
             'event_key' => $module.':'.$id.':'.hash('sha256', json_encode($data)), 'created_at' => now()]);
     }
 
@@ -21,7 +24,7 @@ class SchoolNotifications
     {
         $portal = app(SchoolPortal::class);
 
-        return DB::table('school_notifications')->where('user_id', $user->id)->where(function (Builder $query) use ($portal, $user): void {
+        return $this->tenant->table('school_notifications')->where('user_id', $user->id)->where(function (Builder $query) use ($portal, $user): void {
             $query->whereRaw('1 = 0');
             foreach (config('school-modules') as $module => $definition) {
                 if ($portal->can($user, $definition['read'])) {
@@ -35,8 +38,8 @@ class SchoolNotifications
 
     private function family(array $studentIds): array
     {
-        $students = DB::table('school_students')->whereIn('id', $studentIds)->whereNotNull('user_id')->pluck('user_id')->all();
-        $guardians = DB::table('school_guardian_links')->whereIn('student_id', $studentIds)->where('status', 'active')->pluck('user_id')->all();
+        $students = $this->tenant->table('school_students')->whereIn('id', $studentIds)->whereNotNull('user_id')->pluck('user_id')->all();
+        $guardians = $this->tenant->table('school_guardian_links')->whereIn('student_id', $studentIds)->where('status', 'active')->pluck('user_id')->all();
 
         return array_values(array_unique([...$students, ...$guardians]));
     }
@@ -47,18 +50,18 @@ class SchoolNotifications
             return User::where('is_active', true)->get(['id', 'roles', 'is_active'])->filter(fn (User $user) => $record->audience === 'all' || $user->hasRole($record->audience) || $user->hasRole('owner') || $user->hasRole('admin'))->pluck('id')->all();
         }
         if ($module === 'exams') {
-            return $this->family(DB::table('school_students')->where('class_id', $record->class_id)->where('status', 'active')->pluck('id')->all());
+            return $this->family($this->tenant->table('school_students')->where('class_id', $record->class_id)->where('status', 'active')->pluck('id')->all());
         }
         if ($module === 'invoices' || $module === 'attendance') {
             return $this->family([$record->student_id]);
         }
         if ($module === 'payments') {
-            return $this->family([DB::table('school_invoices')->where('id', $record->invoice_id)->value('student_id')]);
+            return $this->family([$this->tenant->table('school_invoices')->where('id', $record->invoice_id)->value('student_id')]);
         }
         if ($module === 'payroll' || $module === 'payroll_payments') {
-            $staffId = $module === 'payroll' ? $record->staff_id : DB::table('school_payroll')->where('id', $record->payroll_id)->value('staff_id');
+            $staffId = $module === 'payroll' ? $record->staff_id : $this->tenant->table('school_payroll')->where('id', $record->payroll_id)->value('staff_id');
 
-            return array_filter([DB::table('school_staff')->where('id', $staffId)->value('user_id')]);
+            return array_filter([$this->tenant->table('school_staff')->where('id', $staffId)->value('user_id')]);
         }
         if ($module === 'leave_requests') {
             $admins = User::where('is_active', true)->get(['id', 'roles', 'is_active'])->filter(fn (User $user) => $user->hasRole('owner') || $user->hasRole('admin'))->pluck('id')->all();
@@ -71,7 +74,7 @@ class SchoolNotifications
 
     public function publish(string $module, int $id, string $eventKey, ?string $reminder = null): void
     {
-        $record = DB::table('school_'.$module)->find($id);
+        $record = $this->tenant->table('school_'.$module)->find($id);
         if (! $record || ($module === 'notices' && $record->status !== 'published') || ($module === 'exams' && $record->schedule_status === 'draft' && $record->status !== 'published')) {
             return;
         }
@@ -89,16 +92,16 @@ class SchoolNotifications
         $ids = $this->recipients($module, $record);
         $active = User::whereIn('id', $ids)->where('is_active', true)->pluck('id');
         foreach ($active->chunk(100) as $chunk) {
-            DB::table('school_notifications')->insertOrIgnore($chunk->map(fn ($userId) => ['user_id' => $userId, 'event_key' => $eventKey, 'module' => $module, 'record_id' => $id, 'title' => $title, 'body' => $body, 'created_at' => now(), 'updated_at' => now()])->all());
+            DB::table('school_notifications')->insertOrIgnore($chunk->map(fn ($userId) => ['school_id' => $this->tenant->id(), 'user_id' => $userId, 'event_key' => $eventKey, 'module' => $module, 'record_id' => $id, 'title' => $title, 'body' => $body, 'created_at' => now(), 'updated_at' => now()])->all());
         }
     }
 
     public function process(int $limit = 100): int
     {
-        $events = DB::table('school_notification_events')->orderBy('id')->limit($limit)->get();
+        $events = $this->tenant->table('school_notification_events')->orderBy('id')->limit($limit)->get();
         foreach ($events as $event) {
             $this->publish($event->module, $event->record_id, $event->event_key);
-            DB::table('school_notification_events')->where('id', $event->id)->delete();
+            $this->tenant->table('school_notification_events')->where('id', $event->id)->delete();
         }
 
         return $events->count();
@@ -106,10 +109,10 @@ class SchoolNotifications
 
     public function remind(): void
     {
-        $timezone = DB::table('school_settings')->where('key', 'timezone')->value('value') ?: config('app.timezone');
+        $timezone = $this->tenant->table('school_settings')->where('key', 'timezone')->value('value') ?: config('app.timezone');
         foreach ([7, 1] as $days) {
             $date = today($timezone)->addDays($days)->toDateString();
-            foreach (DB::table('school_exams')->where('schedule_status', 'announced')->where('date', $date)->get() as $exam) {
+            foreach ($this->tenant->table('school_exams')->where('schedule_status', 'announced')->where('date', $date)->get() as $exam) {
                 $this->publish('exams', $exam->id, 'exam-reminder:'.$exam->id.':'.$date.':'.$days, 'Exam reminder: '.$days.' day'.($days === 1 ? '' : 's').' to go');
             }
         }

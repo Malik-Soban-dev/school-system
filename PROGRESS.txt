@@ -339,3 +339,10 @@ FUTURE WORK — prioritized handoff:
   - Added school_id to user access audit records.
   - Verification passed: SuperadminAccessTest and SchoolOperationsTest (13 tests, 75 assertions) plus PHP Pint.
   - Remaining safety work: tenant-scope notification workers and all remaining SchoolPortal validation subqueries, then migrate global unique constraints to tenant-safe composite constraints.
+
+- 2026-09-15 NOTIFICATION WORKER TENANT MILESTONE COMPLETE:
+  - Tenant-scoped SchoolNotifications events, visible inbox queries, recipients, published records, reminder exams and deletion of processed events.
+  - Tenant-scoped NotificationDelivery recovery, notification/preference joins, delivery claiming, sending and exam checks.
+  - Legacy null school_id notification rows remain readable only while exactly one school exists; they are excluded once multiple schools are present.
+  - Verification passed: NotificationDeliveryTest and SchoolNotificationTest (7 tests, 72 assertions) plus PHP Pint.
+  - Remaining safety work: scope all remaining SchoolPortal validation subqueries and migrate global unique constraints to school-aware composite constraints before activating a second school.
