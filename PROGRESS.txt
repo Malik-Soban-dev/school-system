@@ -359,3 +359,10 @@ FUTURE WORK — prioritized handoff:
   - Corrected attendance upsert conflict target to school_id + student_id + date for the already-published tenant-aware attendance index.
   - Verification restored: InterfacePreferencesTest, NotificationDeliveryTest, SchoolOperationsTest and SuperadminAccessTest (20 tests, 110 assertions) plus PHP Pint.
   - Next step: design a compatibility-safe primary-key migration with explicit data backfill and update all legacy write paths before applying it.
+
+- 2026-09-15 TENANT KEY MIGRATION COMPLETE:
+  - Rebuilt school_settings with a composite school_id + key primary key.
+  - Rebuilt notification preferences with a composite school_id + user_id primary key.
+  - Legacy rows may temporarily retain null school_id for single-school compatibility; new application writes use the active tenant.
+  - Verification passed: InterfacePreferencesTest, NotificationDeliveryTest, SchoolOperationsTest and SuperadminAccessTest (20 tests, 110 assertions) plus PHP Pint.
+  - Multiple-school activation still waits for the remaining SchoolPortal validation-subquery audit and an explicit legacy-null cleanup/NOT NULL migration.
