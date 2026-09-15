@@ -47,7 +47,11 @@ class SchoolNotifications
     private function recipients(string $module, object $record): array
     {
         if ($module === 'notices') {
-            return User::where('is_active', true)->get(['id', 'roles', 'is_active'])->filter(fn (User $user) => $record->audience === 'all' || $user->hasRole($record->audience) || $user->hasRole('owner') || $user->hasRole('admin'))->pluck('id')->all();
+            $users = DB::table('schools')->count() === 1
+                ? User::where('is_active', true)
+                : User::query()->join('school_user', 'school_user.user_id', '=', 'users.id')->where('school_user.school_id', $this->tenant->id())->where('school_user.status', 'active')->select('users.*');
+
+            return $users->get(['users.id', 'users.roles', 'users.is_active'])->filter(fn (User $user) => $record->audience === 'all' || $user->hasRole($record->audience) || $user->hasRole('owner') || $user->hasRole('admin'))->pluck('id')->all();
         }
         if ($module === 'exams') {
             return $this->family($this->tenant->table('school_students')->where('class_id', $record->class_id)->where('status', 'active')->pluck('id')->all());
@@ -64,7 +68,10 @@ class SchoolNotifications
             return array_filter([$this->tenant->table('school_staff')->where('id', $staffId)->value('user_id')]);
         }
         if ($module === 'leave_requests') {
-            $admins = User::where('is_active', true)->get(['id', 'roles', 'is_active'])->filter(fn (User $user) => $user->hasRole('owner') || $user->hasRole('admin'))->pluck('id')->all();
+            $admins = DB::table('schools')->count() === 1
+                ? User::where('is_active', true)
+                : User::query()->join('school_user', 'school_user.user_id', '=', 'users.id')->where('school_user.school_id', $this->tenant->id())->where('school_user.status', 'active')->select('users.*');
+            $admins = $admins->get(['users.id', 'users.roles', 'users.is_active'])->filter(fn (User $user) => $user->hasRole('owner') || $user->hasRole('admin'))->pluck('id')->all();
 
             return array_unique([$record->user_id, ...$admins]);
         }

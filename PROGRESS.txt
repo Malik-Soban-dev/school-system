@@ -378,3 +378,11 @@ FUTURE WORK — prioritized handoff:
   - Added reusable Codex skill at C:\Users\subhan\.codex\skills\school-system-engineering-standards\SKILL.md.
   - Captures ACID transactions, bcrypt/encryption/HTTPS, SQL tenant design, TTL policy, explicit consistency, indexed queries, async queues, stateless/load-balancer readiness, CDN caching, and required skip-risk checklist.
   - The current application remains SQL/Laravel, so DynamoDB partition-key guidance is intentionally conditional; no runtime feature or schema was changed in this milestone.
+
+- 2026-09-15 WEBHOOK AND CONSOLE TENANT AUDIT COMPLETE:
+  - Scoped notification recipients to active school membership when multiple schools exist; retained a single-school compatibility fallback for legacy fixtures.
+  - Updated scheduled notification processing to iterate every active school tenant instead of processing only the default tenant.
+  - Made owner provisioning tenant-safe and transactional, including the default school membership and school-scoped provisioning marker.
+  - Added an indexed channel/provider lookup for signed WhatsApp delivery status callbacks.
+  - Encrypted backup export remains an intentional maintenance full scan: it snapshots the entire database by administrator request and is not used in a request path; local backup persistence remains a deployment follow-up for object storage.
+  - Verification passed: NotificationDeliveryTest, SchoolNotificationTest and SuperadminAccessTest (11 tests, 81 assertions) plus PHP Pint.
