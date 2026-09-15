@@ -20,12 +20,7 @@ final class TenantContext
 
     public function table(string $table): Builder
     {
-        return \DB::table($table)->where(function (Builder $query) use ($table): void {
-            $query->where($table.'.school_id', $this->id());
-            if (\DB::table('schools')->count() === 1) {
-                $query->orWhereNull($table.'.school_id');
-            }
-        });
+        return \DB::table($table)->where($table.'.school_id', $this->id());
     }
 
     public function id(): int

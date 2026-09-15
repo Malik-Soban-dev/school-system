@@ -366,3 +366,10 @@ FUTURE WORK — prioritized handoff:
   - Legacy rows may temporarily retain null school_id for single-school compatibility; new application writes use the active tenant.
   - Verification passed: InterfacePreferencesTest, NotificationDeliveryTest, SchoolOperationsTest and SuperadminAccessTest (20 tests, 110 assertions) plus PHP Pint.
   - Multiple-school activation still waits for the remaining SchoolPortal validation-subquery audit and an explicit legacy-null cleanup/NOT NULL migration.
+
+- 2026-09-15 SCHOOLPORTAL VALIDATION AUDIT MILESTONE COMPLETE:
+  - Tenant-scoped SchoolPortal validation subqueries for teaching assignments, guardians, exams, enrollments, grades, invoices, payments, payroll, classes, students, timetables and leave conflicts.
+  - Attendance upsert now targets the tenant-aware school_id + student_id + date key.
+  - Kept strict tenant query helpers; only notification delivery has an explicit one-school legacy-null compatibility path.
+  - Verification passed: SchoolOperationsTest, ReportCardTest, SuperadminAccessTest, NotificationDeliveryTest and SchoolNotificationTest (22 tests, 168 assertions) plus PHP Pint.
+  - Remaining before second-school activation: audit WhatsApp webhook/console commands, perform legacy null school_id cleanup, enforce NOT NULL ownership, and run complete API isolation coverage.

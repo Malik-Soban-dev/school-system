@@ -72,9 +72,19 @@ class NotificationDelivery
         if (! $claimed) {
             return;
         }
-        $notification = $this->tenant->table('school_notifications')->find($delivery->notification_id);
+        $notification = DB::table('school_notifications')->where('id', $delivery->notification_id)->where(function ($query): void {
+            $query->where('school_id', $this->tenant->id());
+            if (DB::table('schools')->count() === 1) {
+                $query->orWhereNull('school_id');
+            }
+        })->first();
         $user = $notification ? User::find($notification->user_id) : null;
-        $preferences = $user ? $this->tenant->table('school_notification_preferences')->where('user_id', $user->id)->first() : null;
+        $preferences = $user ? DB::table('school_notification_preferences')->where('user_id', $user->id)->where(function ($query): void {
+            $query->where('school_id', $this->tenant->id());
+            if (DB::table('schools')->count() === 1) {
+                $query->orWhereNull('school_id');
+            }
+        })->first() : null;
         $consent = $delivery->channel.'_consented_at';
         if (! $user?->is_active || ! $preferences?->$consent || $notification->created_at < $preferences->$consent
             || $notification->created_at < now()->subDays(2)->toDateTimeString()

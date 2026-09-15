@@ -61,10 +61,10 @@ class SchoolPortal
         return DB::table('school_students')->where('school_id', $this->tenant->id())->where(function (Builder $query) use ($user, $includeTeaching): void {
             $query->whereIn('id', []);
             if ($includeTeaching && $user->hasRole('teacher')) {
-                $query->orWhereIn('class_id', DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->select('class_id'));
+                $query->orWhereIn('class_id', $this->tenant->table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->select('class_id'));
             }
             if ($user->hasRole('parent')) {
-                $query->orWhereIn('id', DB::table('school_guardian_links')->where('user_id', $user->id)->where('status', 'active')->select('student_id'));
+                $query->orWhereIn('id', $this->tenant->table('school_guardian_links')->where('user_id', $user->id)->where('status', 'active')->select('student_id'));
             }
             if ($user->hasRole('student')) {
                 $query->orWhere('user_id', $user->id);
@@ -93,7 +93,7 @@ class SchoolPortal
             return $query->whereIn('exam_id', $this->query('exams', $user)->select('id'));
         }
         if (in_array($module, ['payroll', 'payroll_payments'])) {
-            $payroll = DB::table('school_payroll')->whereIn('staff_id', DB::table('school_staff')->where('user_id', $user->id)->select('id'))->select('id');
+            $payroll = $this->tenant->table('school_payroll')->whereIn('staff_id', $this->tenant->table('school_staff')->where('user_id', $user->id)->select('id'))->select('id');
 
             return $query->whereIn($module === 'payroll' ? 'id' : 'payroll_id', $payroll);
         }
@@ -105,10 +105,10 @@ class SchoolPortal
         if ($module === 'grades') {
             return $query->where(function (Builder $query) use ($user, $family): void {
                 $query->where(function (Builder $query) use ($family): void {
-                    $query->whereIn('student_id', $family)->whereIn('exam_id', DB::table('school_exams')->where('status', 'published')->select('id'));
+                    $query->whereIn('student_id', $family)->whereIn('exam_id', $this->tenant->table('school_exams')->where('status', 'published')->select('id'));
                 });
                 if ($user->hasRole('teacher')) {
-                    $query->orWhereExists(DB::table('school_teacher_assignments')
+                    $query->orWhereExists($this->tenant->table('school_teacher_assignments')
                         ->join('school_students', 'school_students.class_id', '=', 'school_teacher_assignments.class_id')
                         ->where('school_teacher_assignments.user_id', $user->id)->where('school_teacher_assignments.status', 'active')
                         ->whereColumn('school_students.id', 'school_grades.student_id')
@@ -120,24 +120,24 @@ class SchoolPortal
             return $query->whereIn('student_id', $family);
         }
         if ($module === 'payments') {
-            return $query->whereIn('invoice_id', DB::table('school_invoices')->whereIn('student_id', $family)->select('id'));
+            return $query->whereIn('invoice_id', $this->tenant->table('school_invoices')->whereIn('student_id', $family)->select('id'));
         }
         if ($module === 'exams') {
             return $query->where(function (Builder $query) use ($family, $user): void {
                 $query->where(function (Builder $query) use ($family): void {
                     $query->where(function (Builder $visibility): void {
                         $visibility->where('status', 'published')->orWhereIn('schedule_status', ['announced', 'cancelled']);
-                    })->whereIn('class_id', DB::table('school_enrollments')->whereIn('student_id', $family)->select('class_id'));
+                    })->whereIn('class_id', $this->tenant->table('school_enrollments')->whereIn('student_id', $family)->select('class_id'));
                 });
                 if ($user->hasRole('teacher')) {
-                    $query->orWhereIn('class_id', DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->select('class_id'));
+                    $query->orWhereIn('class_id', $this->tenant->table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->select('class_id'));
                 }
             });
         }
-        $classes = DB::table('school_classes')->where(function (Builder $query) use ($user): void {
+        $classes = $this->tenant->table('school_classes')->where(function (Builder $query) use ($user): void {
             $query->whereIn('id', $this->studentScope($user)->select('class_id'));
             if ($user->hasRole('teacher')) {
-                $query->orWhereIn('id', DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->select('class_id'));
+                $query->orWhereIn('id', $this->tenant->table('school_teacher_assignments')->where('user_id', $user->id)->where('status', 'active')->select('class_id'));
             }
         })->select('id');
 
@@ -159,7 +159,7 @@ class SchoolPortal
                 $query->where($module === 'invoices' ? 'billing_month' : 'month', $month);
             } else {
                 $parent = $module === 'payments' ? 'invoices' : 'payroll';
-                $query->whereIn($module === 'payments' ? 'invoice_id' : 'payroll_id', DB::table('school_'.$parent)->where($parent === 'invoices' ? 'billing_month' : 'month', $month)->select('id'));
+                $query->whereIn($module === 'payments' ? 'invoice_id' : 'payroll_id', $this->tenant->table('school_'.$parent)->where($parent === 'invoices' ? 'billing_month' : 'month', $month)->select('id'));
             }
         }
         if ($search !== '') {
@@ -179,13 +179,13 @@ class SchoolPortal
                 unset($data['date_of_birth'], $data['emergency_contact'], $data['user_id']);
             }
             if ($module === 'invoices') {
-                $data['paid'] = (int) DB::table('school_payments')->where('invoice_id', $row->id)->sum('amount');
+                $data['paid'] = (int) $this->tenant->table('school_payments')->where('invoice_id', $row->id)->sum('amount');
                 $data['balance'] = (int) $row->amount - $data['paid'];
                 $data['payment_status'] = $data['balance'] === 0 ? 'paid' : ($data['paid'] > 0 ? 'partially paid' : 'unpaid');
             }
             if ($module === 'payroll') {
                 $data['net'] = (int) $row->basic + (int) $row->allowances - (int) $row->deductions;
-                $data['paid'] = (int) DB::table('school_payroll_payments')->where('payroll_id', $row->id)->sum('amount');
+                $data['paid'] = (int) $this->tenant->table('school_payroll_payments')->where('payroll_id', $row->id)->sum('amount');
                 $data['balance'] = $data['net'] - $data['paid'];
                 $data['payment_status'] = $data['balance'] === 0 ? 'paid' : ($data['paid'] > 0 ? 'partially paid' : 'unpaid');
             }
@@ -213,12 +213,12 @@ class SchoolPortal
         $options['users'] = User::query()->where('is_active', true)->when(! $this->admin($user), fn ($q) => $q->where('id', $user->id))
             ->select('id', 'name')->orderBy('name')->limit(1000)->get()->map(fn ($u) => ['value' => $u->id, 'name' => $u->name])->all();
         if ($user->hasRole('accountant') && ! $this->admin($user)) {
-            $options['staff'] = DB::table('school_staff')->select('id', 'name')->orderBy('name')->get()->map(fn ($row) => ['value' => $row->id, 'name' => $row->name])->all();
+            $options['staff'] = $this->tenant->table('school_staff')->select('id', 'name')->orderBy('name')->get()->map(fn ($row) => ['value' => $row->id, 'name' => $row->name])->all();
         }
 
         if ($this->can($user, $this->definition('payroll')['read'])) {
             $payroll = $this->query('payroll', $user)->get(['id', 'staff_id', 'month']);
-            $staff = DB::table('school_staff')->whereIn('id', $payroll->pluck('staff_id'))->pluck('name', 'id');
+            $staff = $this->tenant->table('school_staff')->whereIn('id', $payroll->pluck('staff_id'))->pluck('name', 'id');
             $options['payroll'] = $payroll->map(fn ($row) => ['value' => $row->id, 'name' => ($staff[$row->staff_id] ?? 'Staff').' — '.$row->month])->all();
             if (! $this->admin($user) && ! $user->hasRole('accountant')) {
                 $options['staff'] = $staff->map(fn ($name, $id) => ['value' => $id, 'name' => $name])->values()->all();
@@ -249,7 +249,7 @@ class SchoolPortal
         if ($this->can($user, $this->definition('invoices')['read'])) {
             $invoices = $this->query('invoices', $user);
             $billed = (int) (clone $invoices)->sum('amount');
-            $paid = (int) DB::table('school_payments')->whereIn('invoice_id', (clone $invoices)->select('id'))->sum('amount');
+            $paid = (int) $this->tenant->table('school_payments')->whereIn('invoice_id', (clone $invoices)->select('id'))->sum('amount');
             $stats[] = ['key' => 'fees', 'label' => 'Outstanding fees', 'value' => max(0, $billed - $paid), 'icon' => 'fees', 'format' => 'money'];
         }
         if ($this->can($user, $this->definition('exams')['read'])) {
@@ -306,7 +306,7 @@ class SchoolPortal
         return DB::transaction(function () use ($module, $user, $data, $id, $old): int {
             $this->validateBusiness($module, $data, $user, $id, $old);
             if ($module === 'exams' && $data['status'] === 'published' && $old?->status !== 'published') {
-                $data['grading_scale'] = DB::table('school_grade_bands')->orderByDesc('minimum')->get(['name', 'minimum', 'gpa'])->toJson();
+                $data['grading_scale'] = $this->tenant->table('school_grade_bands')->orderByDesc('minimum')->get(['name', 'minimum', 'gpa'])->toJson();
             }
             $now = now();
             if ($id) {
@@ -339,25 +339,25 @@ class SchoolPortal
 
     private function validateBusiness(string $module, array $data, User $user, ?int $id, ?object $old): void
     {
-        if ($module === 'exams' && $old && (int) $old->class_id !== (int) $data['class_id'] && DB::table('school_grades')->where('exam_id', $id)->exists()) {
+        if ($module === 'exams' && $old && (int) $old->class_id !== (int) $data['class_id'] && $this->tenant->table('school_grades')->where('exam_id', $id)->exists()) {
             $this->fail('class_id', 'An exam with recorded marks cannot move to another class.');
         }
         if ($module === 'exam_subjects') {
-            $exam = DB::table('school_exams')->find($data['exam_id']);
-            $oldExam = $old ? DB::table('school_exams')->find($old->exam_id) : null;
+            $exam = $this->tenant->table('school_exams')->find($data['exam_id']);
+            $oldExam = $old ? $this->tenant->table('school_exams')->find($old->exam_id) : null;
             if ($exam->status === 'published' || $oldExam?->status === 'published') {
                 $this->fail('exam_id', 'Published exam plans are locked. Return the exam to draft before changing its plan.');
             }
             if ($old && ((int) $old->exam_id !== (int) $data['exam_id'] || (int) $old->subject_id !== (int) $data['subject_id'])
-                && DB::table('school_grades')->where('exam_id', $old->exam_id)->where('subject_id', $old->subject_id)->exists()) {
+                && $this->tenant->table('school_grades')->where('exam_id', $old->exam_id)->where('subject_id', $old->subject_id)->exists()) {
                 $this->fail('subject_id', 'A plan with marks cannot change its exam or subject.');
             }
-            if (DB::table('school_grades')->where('exam_id', $data['exam_id'])->where('subject_id', $data['subject_id'])->where('maximum', '!=', $data['maximum'])->exists()) {
+            if ($this->tenant->table('school_grades')->where('exam_id', $data['exam_id'])->where('subject_id', $data['subject_id'])->where('maximum', '!=', $data['maximum'])->exists()) {
                 $this->fail('maximum', 'Maximum marks must match the marks already recorded for this subject.');
             }
         }
         if ($module === 'grades') {
-            $plans = DB::table('school_exam_subjects')->where('exam_id', $data['exam_id'])->get();
+            $plans = $this->tenant->table('school_exam_subjects')->where('exam_id', $data['exam_id'])->get();
             if ($plans->isNotEmpty()) {
                 $plan = $plans->firstWhere('subject_id', $data['subject_id']);
                 if (! $plan || (float) $plan->maximum !== (float) $data['maximum']) {
@@ -365,20 +365,20 @@ class SchoolPortal
                 }
             }
         }
-        if ($module === 'classes' && $id && DB::table('school_students')->where('class_id', $id)->where('status', 'active')->count() > $data['capacity']) {
+        if ($module === 'classes' && $id && $this->tenant->table('school_students')->where('class_id', $id)->where('status', 'active')->count() > $data['capacity']) {
             $this->fail('capacity', 'Capacity cannot be smaller than the current active enrollment.');
         }
         if (isset($data['starts_on'], $data['ends_on']) && $data['ends_on'] < $data['starts_on']) {
             $this->fail('ends_on', 'The last day must be on or after the first day.');
         }
         if ($module === 'students') {
-            $class = DB::table('school_classes')->find($data['class_id']);
-            if ($data['status'] === 'active' && DB::table('school_students')->where('class_id', $class->id)->where('status', 'active')->when($id, fn ($q) => $q->where('id', '!=', $id))->count() >= $class->capacity) {
+            $class = $this->tenant->table('school_classes')->find($data['class_id']);
+            if ($data['status'] === 'active' && $this->tenant->table('school_students')->where('class_id', $class->id)->where('status', 'active')->when($id, fn ($q) => $q->where('id', '!=', $id))->count() >= $class->capacity) {
                 $this->fail('class_id', 'This class is full.');
             }
             if (! empty($data['user_id'])) {
                 $this->requireRole((int) $data['user_id'], 'student', 'user_id');
-                if (DB::table('school_students')->where('user_id', $data['user_id'])->when($id, fn ($q) => $q->where('id', '!=', $id))->exists()) {
+                if ($this->tenant->table('school_students')->where('user_id', $data['user_id'])->when($id, fn ($q) => $q->where('id', '!=', $id))->exists()) {
                     $this->fail('user_id', 'This account is already linked to another student.');
                 }
             }
@@ -393,8 +393,8 @@ class SchoolPortal
             $this->requireRole((int) $data['user_id'], 'teacher', 'user_id');
         }
         if (in_array($module, ['attendance', 'grades']) && ! $this->admin($user)) {
-            $student = DB::table('school_students')->find($data['student_id']);
-            $assignment = DB::table('school_teacher_assignments')->where('user_id', $user->id)->where('class_id', $student->class_id)->where('status', 'active');
+            $student = $this->tenant->table('school_students')->find($data['student_id']);
+            $assignment = $this->tenant->table('school_teacher_assignments')->where('user_id', $user->id)->where('class_id', $student->class_id)->where('status', 'active');
             if ($module === 'grades') {
                 $assignment->where('subject_id', $data['subject_id']);
             }
@@ -409,12 +409,12 @@ class SchoolPortal
             }
         }
         if ($module === 'grades') {
-            $exam = DB::table('school_exams')->find($data['exam_id']);
-            $student = DB::table('school_students')->find($data['student_id']);
-            if ((int) $exam->class_id !== (int) $student->class_id && ! DB::table('school_enrollments')->where('student_id', $student->id)->where('class_id', $exam->class_id)->exists()) {
+            $exam = $this->tenant->table('school_exams')->find($data['exam_id']);
+            $student = $this->tenant->table('school_students')->find($data['student_id']);
+            if ((int) $exam->class_id !== (int) $student->class_id && ! $this->tenant->table('school_enrollments')->where('student_id', $student->id)->where('class_id', $exam->class_id)->exists()) {
                 $this->fail('student_id', 'The student must have an enrollment in the exam class.');
             }
-            if ($exam->status === 'published' || ($old && DB::table('school_exams')->find($old->exam_id)->status === 'published')) {
+            if ($exam->status === 'published' || ($old && $this->tenant->table('school_exams')->find($old->exam_id)->status === 'published')) {
                 $this->fail('exam_id', 'Published results are locked. An administrator must return the exam to draft before corrections.');
             }
             if ((float) $data['maximum'] <= 0 || (float) $data['marks'] > (float) $data['maximum']) {
@@ -426,11 +426,11 @@ class SchoolPortal
             if ($data['ends_at'] <= $data['starts_at']) {
                 $this->fail('ends_at', 'The lesson must end after it starts.');
             }
-            if (! DB::table('school_teacher_assignments')->where('user_id', $data['teacher_id'])->where('class_id', $data['class_id'])->where('subject_id', $data['subject_id'])->where('status', 'active')->exists()) {
+            if (! $this->tenant->table('school_teacher_assignments')->where('user_id', $data['teacher_id'])->where('class_id', $data['class_id'])->where('subject_id', $data['subject_id'])->where('status', 'active')->exists()) {
                 $this->fail('teacher_id', 'Assign this teacher to the class and subject first.');
             }
-            $year = DB::table('school_classes')->find($data['class_id'])->year_id;
-            $conflicts = DB::table('school_timetables')->whereIn('class_id', DB::table('school_classes')->where('year_id', $year)->select('id'))
+            $year = $this->tenant->table('school_classes')->find($data['class_id'])->year_id;
+            $conflicts = $this->tenant->table('school_timetables')->whereIn('class_id', $this->tenant->table('school_classes')->where('year_id', $year)->select('id'))
                 ->where('weekday', $data['weekday'])->where('starts_at', '<', $data['ends_at'])->where('ends_at', '>', $data['starts_at'])
                 ->when($id, fn ($q) => $q->where('id', '!=', $id))
                 ->where(fn ($q) => $q->where('class_id', $data['class_id'])->orWhere('teacher_id', $data['teacher_id'])->orWhere('room', $data['room']))->exists();
@@ -443,13 +443,13 @@ class SchoolPortal
                 $this->fail('amount', 'An invoice amount must be greater than zero.');
             }
             $billingMonth = array_key_exists('billing_month', $data) ? $data['billing_month'] : $old?->billing_month;
-            if ($old && DB::table('school_payments')->where('invoice_id', $id)->exists() && ((int) $old->amount !== $data['amount'] || (int) $old->student_id !== (int) $data['student_id'] || $old->billing_month !== $billingMonth)) {
+            if ($old && $this->tenant->table('school_payments')->where('invoice_id', $id)->exists() && ((int) $old->amount !== $data['amount'] || (int) $old->student_id !== (int) $data['student_id'] || $old->billing_month !== $billingMonth)) {
                 $this->fail('amount', 'The amount, student and fee month cannot change after a payment is recorded.');
             }
         }
         if ($module === 'payments') {
-            $invoice = DB::table('school_invoices')->find($data['invoice_id']);
-            $balance = (int) $invoice->amount - (int) DB::table('school_payments')->where('invoice_id', $invoice->id)->sum('amount');
+            $invoice = $this->tenant->table('school_invoices')->find($data['invoice_id']);
+            $balance = (int) $invoice->amount - (int) $this->tenant->table('school_payments')->where('invoice_id', $invoice->id)->sum('amount');
             if ($data['amount'] <= 0 || $data['amount'] > $balance) {
                 $this->fail('amount', 'Payment must be greater than zero and no more than the outstanding balance.');
             }
@@ -461,8 +461,8 @@ class SchoolPortal
             $this->fail('deductions', 'Deductions cannot exceed basic pay plus allowances.');
         }
         if ($module === 'payroll_payments') {
-            $payroll = DB::table('school_payroll')->find($data['payroll_id']);
-            $balance = (int) $payroll->basic + (int) $payroll->allowances - (int) $payroll->deductions - (int) DB::table('school_payroll_payments')->where('payroll_id', $payroll->id)->sum('amount');
+            $payroll = $this->tenant->table('school_payroll')->find($data['payroll_id']);
+            $balance = (int) $payroll->basic + (int) $payroll->allowances - (int) $payroll->deductions - (int) $this->tenant->table('school_payroll_payments')->where('payroll_id', $payroll->id)->sum('amount');
             if ($data['amount'] <= 0 || $data['amount'] > $balance) {
                 $this->fail('amount', 'Salary payment must be positive and cannot exceed the unpaid net salary.');
             }
@@ -480,7 +480,7 @@ class SchoolPortal
                     $this->fail('status', 'Only administrators can decide leave requests.');
                 }
             }
-            if (DB::table('school_leave_requests')->where('user_id', $data['user_id'])->where('status', '!=', 'rejected')
+            if ($this->tenant->table('school_leave_requests')->where('user_id', $data['user_id'])->where('status', '!=', 'rejected')
                 ->where('starts_on', '<=', $data['ends_on'])->where('ends_on', '>=', $data['starts_on'])
                 ->when($id, fn ($q) => $q->where('id', '!=', $id))->exists()) {
                 $this->fail('starts_on', 'This person already has a leave request overlapping these dates.');
@@ -496,7 +496,7 @@ class SchoolPortal
             default => [],
         };
         if ($unique !== []) {
-            $query = DB::table('school_'.$module)->when($id, fn ($q) => $q->where('id', '!=', $id));
+            $query = $this->tenant->table('school_'.$module)->when($id, fn ($q) => $q->where('id', '!=', $id));
             foreach ($unique as $field) {
                 $query->where($field, $data[$field]);
             }
