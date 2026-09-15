@@ -303,3 +303,11 @@ FUTURE WORK — prioritized handoff:
   - Existing owner/admin school access remains unchanged.
   - Verification passed: SuperadminAccessTest (2 tests, 3 assertions), npm run build, PHP Pint.
   - Next step: design and migrate the schools/tenant registry, then add enforced tenant scoping before cross-school controls.
+
+- 2026-09-15 TENANT FOUNDATION MILESTONE COMPLETE:
+  - Added a schools registry and school_user membership table.
+  - Added nullable indexed school_id ownership columns to all existing school operations, settings, notification, grading, invitation and audit tables, with existing records backfilled into the default school.
+  - Existing Superadmin dashboard remains record-free until server-enforced tenant scoping is complete; this prevents accidental cross-school exposure.
+  - Verification passed: tenant migration loaded through SuperadminAccessTest (2 tests, 3 assertions) and PHP Pint.
+  - Next step: add request tenant context, school membership checks and scoped query enforcement before implementing school switching or cross-school record APIs.
+  - Permission-note preference recorded: future permission requests will include a concise change summary.
