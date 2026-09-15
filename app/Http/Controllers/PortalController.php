@@ -62,7 +62,7 @@ class PortalController extends Controller
             $before = $tenant->table('school_attendance')->whereIn('student_id', $ids)->where('date', $date)->get()->keyBy('student_id');
             $now = now();
             $rows = array_map(fn (array $record): array => [...$record, 'school_id' => $tenant->id(), 'date' => $date, 'created_at' => $now, 'updated_at' => $now], $data['records']);
-            $tenant->table('school_attendance')->upsert($rows, ['student_id', 'date'], ['status', 'updated_at']);
+            $tenant->table('school_attendance')->upsert($rows, ['school_id', 'student_id', 'date'], ['status', 'updated_at']);
             $saved = $tenant->table('school_attendance')->whereIn('student_id', $ids)->where('date', $date)->get();
             DB::table('school_audit')->insert($saved->map(fn ($row): array => ['school_id' => $tenant->id(), 'user_id' => $request->user()->id,
                 'module' => 'attendance', 'record_id' => $row->id, 'action' => 'class_attendance_saved',

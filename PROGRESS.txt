@@ -352,3 +352,10 @@ FUTURE WORK — prioritized handoff:
   - Existing single-school data remains valid and migration-backed tests pass.
   - Verification passed: SuperadminAccessTest (4 tests, 9 assertions) and PHP Pint.
   - Remaining schema safety work: restructure school_settings and notification-preference primary keys, then scope remaining SchoolPortal validation subqueries before a second school is activated.
+
+- 2026-09-15 PRIMARY-KEY MIGRATION REVIEW:
+  - Attempted to rebuild school_settings and notification-preference keys as tenant composite primary keys, but migration-backed tests revealed incompatibilities with legacy fixtures and attendance upsert conflict targets.
+  - Reverted that unverified migration before commit.
+  - Corrected attendance upsert conflict target to school_id + student_id + date for the already-published tenant-aware attendance index.
+  - Verification restored: InterfacePreferencesTest, NotificationDeliveryTest, SchoolOperationsTest and SuperadminAccessTest (20 tests, 110 assertions) plus PHP Pint.
+  - Next step: design a compatibility-safe primary-key migration with explicit data backfill and update all legacy write paths before applying it.
