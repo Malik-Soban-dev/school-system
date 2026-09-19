@@ -56,7 +56,7 @@
         <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><button type="submit">Search</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>User</th><th>Status</th><th>School / branch access</th><th>Control</th></tr></thead><tbody id="user-rows"><tr><td colspan="4">Loading platform users…</td></tr></tbody></table></div><div id="user-pagination"></div>
     </section>
-    <section class="platform-panel"><div class="platform-panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Platform activity</h2></div></div><form id="audit-search-form"><select id="audit-school" aria-label="Audit school"><option value="">All schools and platform events</option></select><select id="audit-branch" aria-label="Audit branch"><option value="">All branches</option></select><input id="audit-search" maxlength="100" placeholder="Search school, actor, module or action" aria-label="Search audit activity"><button type="submit">Search audit</button></form><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>School</th><th>Branch</th><th>Actor</th><th>Module</th><th>Action</th></tr></thead><tbody id="audit-rows"><tr><td colspan="6">Loading audit trail…</td></tr></tbody></table></div><div id="audit-pagination"></div></section>
+    <section class="platform-panel"><div class="platform-panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Platform activity</h2></div></div><form id="audit-search-form"><select id="audit-school" aria-label="Audit school"><option value="">All schools and platform events</option></select><select id="audit-branch" aria-label="Audit branch"><option value="">All branches</option></select><input id="audit-search" maxlength="100" placeholder="Search school, actor, module or action" aria-label="Search audit activity"><button type="submit">Search audit</button></form><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>School</th><th>Branch</th><th>Actor</th><th>Module</th><th>Action</th><th>Changes</th></tr></thead><tbody id="audit-rows"><tr><td colspan="7">Loading audit trail…</td></tr></tbody></table></div><div id="audit-pagination"></div></section>
 </main>
 <script>
 (() => {
@@ -331,9 +331,9 @@
         if (auditBranch.value) params.set('branch_id', auditBranch.value);
         if (auditSearch.value.trim()) params.set('search', auditSearch.value.trim());
         const data = await request(`/superadmin/audit?${params}`);
-        audit.innerHTML = data.audit.data.map(row => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.school_name)}</td><td>${esc(row.branch_name || 'School-wide')}</td><td>${esc(row.actor || 'System')}</td><td>${esc(row.module)}</td><td>${esc(row.action)}</td></tr>`).join('') || '<tr><td colspan="6">No audit events found.</td></tr>';
+        audit.innerHTML = data.audit.data.map(row => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.school_name)}</td><td>${esc(row.branch_name || 'School-wide')}</td><td>${esc(row.actor || 'System')}</td><td>${esc(row.module)}</td><td>${esc(row.action)}</td><td>${row.changes ? `<details><summary>View</summary><pre>${esc(row.changes)}</pre></details>` : '<small>None</small>'}</td></tr>`).join('') || '<tr><td colspan="7">No audit events found.</td></tr>';
         auditPagination.innerHTML = data.audit.last_page > 1 ? `<button type="button" data-audit-page="${data.audit.current_page - 1}" ${data.audit.current_page === 1 ? 'disabled' : ''}>Previous</button> <span>Page ${data.audit.current_page} of ${data.audit.last_page}</span> <button type="button" data-audit-page="${data.audit.current_page + 1}" ${data.audit.current_page === data.audit.last_page ? 'disabled' : ''}>Next</button>` : '';
-        auditPagination.querySelectorAll('[data-audit-page]').forEach(button => button.addEventListener('click', () => loadAudit(Number(button.dataset.auditPage)).catch(error => { audit.innerHTML = `<tr><td colspan="5">${esc(error.message)}</td></tr>`; })));
+        auditPagination.querySelectorAll('[data-audit-page]').forEach(button => button.addEventListener('click', () => loadAudit(Number(button.dataset.auditPage)).catch(error => { audit.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; })));
     };
     const updateAuditBranches = () => {
         const school = platformSchools.find(item => String(item.id) === String(auditSchool.value));
@@ -469,7 +469,7 @@
     });
     document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
     document.querySelector('#branch-search-form').addEventListener('submit', event => { event.preventDefault(); loadBranches().catch(error => { branchRows.innerHTML = `<tr><td colspan="8">${esc(error.message)}</td></tr>`; }); });
-    document.querySelector('#audit-search-form').addEventListener('submit', event => { event.preventDefault(); loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="6">${esc(error.message)}</td></tr>`; }); });
+    document.querySelector('#audit-search-form').addEventListener('submit', event => { event.preventDefault(); loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; }); });
     auditSchool.addEventListener('change', () => { auditBranch.value = ''; updateAuditBranches(); });
     explorerSchool.addEventListener('change', updateExplorerBranches);
     explorerForm.addEventListener('submit', event => { event.preventDefault(); loadExplorer().catch(error => { explorerRows.innerHTML = `<tr><td>${esc(error.message)}</td></tr>`; }); });

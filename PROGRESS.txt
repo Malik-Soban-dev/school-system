@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN AUDIT EVIDENCE DISPLAY UPDATE:
+  - The dashboard audit trail now exposes each event's stored change payload in an expandable, escaped Changes column, making platform and school actions reviewable without unsafe HTML rendering.
+  - Verification passed: focused audit/explorer tests (2 tests, 19 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN OPERATIONAL VISIBILITY UPDATE:
   - Added protected, branch-filtered explorer coverage for notification delivery attempts and school settings; provider delivery metadata is visible for operations, while logo asset contents are redacted.
   - Added dashboard selector options and regression coverage for failed delivery status, recipient visibility and settings redaction.
