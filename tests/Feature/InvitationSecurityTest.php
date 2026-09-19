@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -55,6 +56,20 @@ class InvitationSecurityTest extends TestCase
         $this->get($new)->assertOk();
         $this->travel(49)->hours();
         $this->get($new)->assertNotFound();
+    }
+
+    public function test_accepted_branch_invitation_is_audited_without_password_material(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $url = $this->actingAs($owner)->postJson('/portal/invitations', ['name' => 'Invited Teacher', 'email' => 'accepted@example.test', 'roles' => ['teacher']])->assertOk()->json('url');
+        $token = basename(parse_url($url, PHP_URL_PATH));
+        auth()->logout();
+
+        $this->post('/invitations/'.$token, ['username' => 'accepted.teacher', 'password' => 'Invitation-test-12345', 'password_confirmation' => 'Invitation-test-12345'])->assertRedirect();
+        $accepted = User::where('email', 'accepted@example.test')->firstOrFail();
+        $this->assertDatabaseHas('school_audit', ['user_id' => $accepted->id, 'branch_id' => app(TenantContext::class)->branchId(), 'module' => 'invitations', 'action' => 'accepted']);
+        $audit = DB::table('school_audit')->where('user_id', $accepted->id)->where('action', 'accepted')->first();
+        $this->assertStringNotContainsString('Invitation-test-12345', (string) $audit->changes);
     }
 
     public function test_suspended_inviter_cannot_activate_new_accounts(): void

@@ -111,6 +111,7 @@ class InvitationController extends Controller
                 'password' => $data['password'], 'roles' => json_decode($invitation->roles, true), 'is_active' => true])->save();
             DB::table('school_user')->insert(['school_id' => $invitation->school_id, 'user_id' => $user->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
             DB::table('school_user_branches')->insert(['school_id' => $invitation->school_id, 'branch_id' => $invitation->branch_id, 'user_id' => $user->id, 'roles' => json_encode(json_decode($invitation->roles, true)), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $invitation->school_id, 'branch_id' => $invitation->branch_id, 'user_id' => $user->id, 'module' => 'invitations', 'record_id' => $user->id, 'action' => 'accepted', 'changes' => json_encode(['email' => $user->email, 'roles' => json_decode($invitation->roles, true)]), 'created_at' => now()]);
         });
 
         return redirect()->route('login')->with('status', 'Your account is ready. Sign in with your new username and password.');

@@ -1,3 +1,8 @@
+- 2026-09-19 INVITATION ACCEPTANCE AUDIT UPDATE:
+  - Branch invitation acceptance now records a branch-scoped invitations/accepted audit event after creating the account and grant.
+  - Regression coverage proves accepted invitation audit changes contain operational identity and roles but never password material.
+  - Verification passed: full PHPUnit suite (82 tests, 457 assertions), focused InvitationSecurityTest (6 tests, 34 assertions), Blade view cache, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN SCHOOL PROFILE UPDATE:
   - Added transactional Superadmin editing of school name and slug with locked rows, unique-slug validation and platform audit records.
   - Added dashboard school profile editing control and regression coverage for duplicate slug rejection.
