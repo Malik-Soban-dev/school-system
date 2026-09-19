@@ -10,6 +10,7 @@ use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ReportCardController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Middleware\EnsureActiveAccount;
+use App\Http\Middleware\EnsureMfa;
 use App\Http\Middleware\EnsureSuperadmin;
 use App\Http\Middleware\ResolveSchool;
 use Illuminate\Support\Facades\Route;
@@ -18,7 +19,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::middleware(['auth', EnsureActiveAccount::class, EnsureSuperadmin::class])->group(function () {
+Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, EnsureSuperadmin::class])->group(function () {
     Route::get('/superadmin', [PlatformController::class, 'index'])->name('superadmin.dashboard');
     Route::get('/superadmin/data', [PlatformController::class, 'data']);
     Route::get('/superadmin/branches', [PlatformController::class, 'branches']);
@@ -61,11 +62,13 @@ Route::middleware('guest')->group(function () {
     Route::post('/invitations/{token}', [InvitationController::class, 'accept'])->middleware('throttle:10,1')->name('invitation.accept');
     Route::get('/password/reset/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
     Route::post('/password/reset/{token}', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1')->name('password.reset.store');
+    Route::get('/mfa/challenge', [AuthController::class, 'showMfaChallenge'])->name('mfa.challenge');
+    Route::post('/mfa/challenge', [AuthController::class, 'verifyMfaChallenge'])->middleware('throttle:10,1')->name('mfa.challenge.verify');
     Route::view('/login', 'auth.login')->name('login');
     Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:20,1')->name('login.store');
 });
 
-Route::middleware(['auth', EnsureActiveAccount::class, ResolveSchool::class])->group(function () {
+Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, ResolveSchool::class])->group(function () {
     Route::get('/portal/meta', [PortalController::class, 'meta']);
     Route::get('/portal/contexts', [PortalController::class, 'contexts']);
     Route::put('/portal/context', [PortalController::class, 'switchContext'])->middleware('throttle:30,1');
@@ -92,7 +95,10 @@ Route::middleware(['auth', EnsureActiveAccount::class, ResolveSchool::class])->g
     Route::get('/reports/{module}/{id}', [PortalController::class, 'report'])->whereNumber('id')->name('record.report');
     Route::get('/report-cards/{exam}/{student}', [ReportCardController::class, 'show'])->whereNumber(['exam', 'student'])->name('report-card.show');
     Route::view('/dashboard', 'dashboard')->name('dashboard');
-    Route::view('/account', 'auth.account')->name('account');
+    Route::get('/account', [AuthController::class, 'account'])->name('account');
     Route::put('/account/password', [AuthController::class, 'updatePassword'])->middleware('throttle:5,1')->name('password.update');
+    Route::post('/account/mfa/setup', [AuthController::class, 'beginMfaEnrollment'])->middleware('throttle:5,1')->name('mfa.setup');
+    Route::post('/account/mfa/confirm', [AuthController::class, 'confirmMfaEnrollment'])->middleware('throttle:5,1')->name('mfa.confirm');
+    Route::delete('/account/mfa', [AuthController::class, 'disableMfa'])->middleware('throttle:5,1')->name('mfa.disable');
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 });

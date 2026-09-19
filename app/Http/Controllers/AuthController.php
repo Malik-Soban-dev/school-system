@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\UpdatePasswordRequest;
+use App\Models\User;
+use App\Support\Totp;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -30,6 +33,19 @@ class AuthController extends Controller
         }
         RateLimiter::clear($key);
         $request->session()->regenerate();
+
+        if ($request->user()?->hasRole('superadmin') && $request->user()->mfa_enabled_at !== null) {
+            $pendingUser = $request->user()->id;
+            Auth::logout();
+            $request->session()->regenerate();
+            $request->session()->put('mfa_pending_user_id', $pendingUser);
+
+            if ($request->expectsJson()) {
+                return response()->json(['redirect' => route('mfa.challenge')]);
+            }
+
+            return redirect()->route('mfa.challenge');
+        }
 
         if ($request->expectsJson()) {
             return response()->json(['redirect' => route('dashboard')]);
@@ -57,6 +73,81 @@ class AuthController extends Controller
         $request->session()->regenerate();
 
         return back()->with('status', 'Your password has been updated.');
+    }
+
+    public function account(Request $request): View
+    {
+        $secret = null;
+        if ($pending = $request->session()->get('mfa_pending_secret')) {
+            $secret = Crypt::decryptString($pending);
+        }
+
+        return view('auth.account', ['mfaPendingSecret' => $secret, 'mfaUri' => $secret ? Totp::uri($secret, $request->user()->username ?: $request->user()->email) : null]);
+    }
+
+    public function beginMfaEnrollment(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->hasRole('superadmin'), 403);
+        $request->validate(['current_password' => ['required', 'current_password']]);
+        $secret = Totp::secret();
+        $request->session()->put('mfa_pending_secret', Crypt::encryptString($secret));
+
+        return redirect()->route('account')->with('status', 'MFA setup started. Add the secret to your authenticator, then confirm the current code below.');
+    }
+
+    public function confirmMfaEnrollment(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->hasRole('superadmin'), 403);
+        $data = $request->validate(['current_password' => ['required', 'current_password'], 'code' => ['required', 'regex:/^\s*\d{6}\s*$/']]);
+        $pending = $request->session()->get('mfa_pending_secret');
+        abort_unless($pending, 422, 'Start MFA setup before confirming a code.');
+        $secret = Crypt::decryptString($pending);
+        abort_unless(Totp::verify($secret, $data['code']), 422, 'That authenticator code is not valid. Check the device time and try again.');
+        DB::transaction(function () use ($request, $secret): void {
+            DB::table('users')->where('id', $request->user()->id)->update(['mfa_secret' => Crypt::encryptString($secret), 'mfa_enabled_at' => now(), 'updated_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $request->user()->id, 'action' => 'mfa_enabled', 'changes' => json_encode(['method' => 'totp']), 'created_at' => now()]);
+        });
+        $request->session()->forget('mfa_pending_secret');
+        $request->session()->put('mfa_verified_user_id', $request->user()->id);
+
+        return redirect()->route('account')->with('status', 'MFA is enabled for this Superadmin account.');
+    }
+
+    public function disableMfa(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->hasRole('superadmin'), 403);
+        $data = $request->validate(['current_password' => ['required', 'current_password'], 'code' => ['required', 'regex:/^\s*\d{6}\s*$/']]);
+        $secret = Crypt::decryptString((string) $request->user()->mfa_secret);
+        abort_unless(Totp::verify($secret, $data['code']), 422, 'That authenticator code is not valid.');
+        DB::transaction(function () use ($request): void {
+            DB::table('users')->where('id', $request->user()->id)->update(['mfa_secret' => null, 'mfa_enabled_at' => null, 'updated_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $request->user()->id, 'action' => 'mfa_disabled', 'changes' => json_encode(['method' => 'totp']), 'created_at' => now()]);
+        });
+        $request->session()->forget(['mfa_pending_secret', 'mfa_verified_user_id']);
+
+        return redirect()->route('account')->with('status', 'MFA has been disabled for this account.');
+    }
+
+    public function showMfaChallenge(Request $request): View
+    {
+        abort_unless($request->session()->has('mfa_pending_user_id'), 404);
+
+        return view('auth.mfa-challenge');
+    }
+
+    public function verifyMfaChallenge(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['code' => ['required', 'regex:/^\s*\d{6}\s*$/']]);
+        $userId = (int) $request->session()->get('mfa_pending_user_id');
+        $user = User::query()->whereKey($userId)->where('is_active', true)->first();
+        abort_unless($user?->hasRole('superadmin') && $user->mfa_enabled_at !== null, 404);
+        abort_unless(Totp::verify(Crypt::decryptString((string) $user->mfa_secret), $data['code']), 422, 'That authenticator code is not valid.');
+        Auth::login($user);
+        $request->session()->forget('mfa_pending_user_id');
+        $request->session()->regenerate();
+        $request->session()->put('mfa_verified_user_id', $user->id);
+
+        return redirect()->intended(route('dashboard'));
     }
 
     public function showResetForm(string $token): View

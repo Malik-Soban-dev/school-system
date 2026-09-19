@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Support\TenantContext;
+use App\Support\Totp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
@@ -13,6 +15,27 @@ use Tests\TestCase;
 class SuperadminAccessTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_superadmin_can_enroll_mfa_and_must_verify_it_on_next_login(): void
+    {
+        $superadmin = User::factory()->create(['username' => 'mfa.superadmin', 'roles' => ['superadmin'], 'is_active' => true]);
+        $this->actingAs($superadmin)->post('/account/mfa/setup', ['current_password' => 'password'])->assertRedirect(route('account'));
+        $secret = Crypt::decryptString($this->app['request']->session()->get('mfa_pending_secret'));
+        $reflection = new \ReflectionClass(Totp::class);
+        $codeMethod = $reflection->getMethod('code');
+        $codeMethod->setAccessible(true);
+        $code = $codeMethod->invoke(null, $secret, intdiv(time(), 30));
+
+        $this->post('/account/mfa/confirm', ['current_password' => 'password', 'code' => $code])->assertRedirect(route('account'));
+        $this->assertDatabaseHas('users', ['id' => $superadmin->id]);
+        $this->assertNotNull(User::find($superadmin->id)->mfa_enabled_at);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $superadmin->id, 'action' => 'mfa_enabled']);
+
+        $this->post('/logout')->assertRedirect(route('login'));
+        $this->post('/login', ['username' => 'mfa.superadmin', 'password' => 'password'])->assertRedirect(route('mfa.challenge'));
+        $this->post('/mfa/challenge', ['code' => $code])->assertRedirect(route('dashboard'));
+        $this->get('/superadmin')->assertOk();
+    }
 
     public function test_superadmin_can_open_platform_dashboard(): void
     {

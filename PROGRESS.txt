@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN MFA HARDENING UPDATE:
+  - Added optional TOTP MFA enrollment, encrypted secret storage, authenticator challenge on Superadmin login, controlled disable flow and platform audit events.
+  - Protected Superadmin and portal routes enforce MFA after enrollment; ordinary client accounts and branch-scoped access remain unchanged.
+  - Verification passed: full PHPUnit suite (100 tests, 611 assertions), focused Superadmin suite (41 tests, 257 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN RECOVERY AUDIT COMPLETION UPDATE:
   - Recorded successful one-time password recovery separately in each client school audit and the platform audit, preserving traceability from issuance through completion.
   - Verification passed: full PHPUnit suite (99 tests, 597 assertions), focused Superadmin suite (40 tests, 243 assertions), PHP Pint and git diff check.

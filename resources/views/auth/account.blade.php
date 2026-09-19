@@ -13,4 +13,34 @@
         <button class="button" type="submit"><span data-i18n="Update password">Update password</span></button>
     </form>
 </section>
+@if(auth()->user()->hasRole('superadmin'))
+<section class="card account-form" style="margin-top:20px">
+    <h2>Multi-factor authentication</h2>
+    @if(auth()->user()->mfa_enabled_at)
+        <p>MFA is enabled for this Superadmin account. An authenticator code is required at every new sign-in.</p>
+        <form method="POST" action="{{ route('mfa.disable') }}">
+            @csrf @method('DELETE')
+            <div class="field"><label for="disable_current_password">Current password</label><input id="disable_current_password" name="current_password" type="password" autocomplete="current-password" required></div>
+            <div class="field"><label for="disable_code">Authenticator code</label><input id="disable_code" name="code" inputmode="numeric" pattern="[0-9 ]{6,7}" autocomplete="one-time-code" required></div>
+            <button class="button secondary" type="submit">Disable MFA</button>
+        </form>
+    @elseif($mfaPendingSecret)
+        <p>Add this secret to an authenticator app. The setup URI can be entered manually if the app does not support scanning.</p>
+        <p><strong>Secret:</strong> <code>{{ $mfaPendingSecret }}</code><br><small>{{ $mfaUri }}</small></p>
+        <form method="POST" action="{{ route('mfa.confirm') }}">
+            @csrf
+            <div class="field"><label for="confirm_current_password">Current password</label><input id="confirm_current_password" name="current_password" type="password" autocomplete="current-password" required></div>
+            <div class="field"><label for="confirm_code">Authenticator code</label><input id="confirm_code" name="code" inputmode="numeric" pattern="[0-9 ]{6,7}" autocomplete="one-time-code" required></div>
+            <button class="button" type="submit">Confirm and enable MFA</button>
+        </form>
+    @else
+        <p>Protect platform-wide school and account administration with a time-based authenticator code.</p>
+        <form method="POST" action="{{ route('mfa.setup') }}">
+            @csrf
+            <div class="field"><label for="setup_current_password">Current password</label><input id="setup_current_password" name="current_password" type="password" autocomplete="current-password" required></div>
+            <button class="button" type="submit">Start MFA setup</button>
+        </form>
+    @endif
+</section>
+@endif
 @endsection
