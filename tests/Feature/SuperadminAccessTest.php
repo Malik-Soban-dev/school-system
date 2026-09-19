@@ -161,6 +161,18 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'platform_invoice', 'entity_id' => $invoice['id'], 'action' => 'invoice_status_updated']);
     }
 
+    public function test_superadmin_billing_registry_supports_pagination_and_status_filters(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Invoice Registry School', 'slug' => 'invoice-registry-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+        foreach (['2026-09-01', '2026-10-01'] as $periodStart) {
+            $this->actingAs($superadmin)->postJson('/superadmin/schools/'.$school.'/billing/invoices', ['amount_cents' => 9900, 'period_start' => $periodStart, 'period_end' => $periodStart === '2026-09-01' ? '2026-09-30' : '2026-10-31', 'due_on' => $periodStart])->assertCreated();
+        }
+
+        $this->actingAs($superadmin)->getJson('/superadmin/billing/invoices?per_page=1&page=2')->assertOk()->assertJsonPath('invoices.total', 2)->assertJsonPath('invoices.last_page', 2);
+        $this->actingAs($superadmin)->getJson('/superadmin/billing/invoices?status=issued')->assertOk()->assertJsonPath('invoices.total', 2);
+    }
+
     public function test_platform_invoice_generation_is_repeat_safe_for_due_subscriptions(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Renewal School', 'slug' => 'renewal-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

@@ -29,7 +29,8 @@
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">CLIENT BILLING</p><h2>Platform invoices</h2></div></div>
         <form id="platform-invoice-form"><select id="platform-invoice-school" name="school_id" required aria-label="Invoice school"></select><input name="amount_cents" type="number" min="1" required placeholder="Amount in cents" aria-label="Invoice amount in cents"><input name="period_start" type="date" required aria-label="Billing period start"><input name="period_end" type="date" required aria-label="Billing period end"><input name="due_on" type="date" required aria-label="Invoice due date"><input name="notes" maxlength="2000" placeholder="Notes" aria-label="Invoice notes"><button type="submit">Issue invoice</button></form>
-        <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Invoice</th><th>Amount</th><th>Period</th><th>Due</th><th>Status</th><th>Control</th></tr></thead><tbody id="platform-invoice-rows"><tr><td colspan="7">Loading platform invoices…</td></tr></tbody></table></div>
+        <form id="platform-invoice-filter"><select id="platform-invoice-status" aria-label="Invoice status"><option value="">All statuses</option><option value="issued">Issued</option><option value="paid">Paid</option><option value="overdue">Overdue</option><option value="void">Void</option></select><button type="submit">Filter invoices</button></form>
+        <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Invoice</th><th>Amount</th><th>Period</th><th>Due</th><th>Status</th><th>Control</th></tr></thead><tbody id="platform-invoice-rows"><tr><td colspan="7">Loading platform invoices…</td></tr></tbody></table></div><div id="platform-invoice-pagination"></div>
     </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL REGISTRY</p><h2>Every school</h2></div><div><button class="platform-refresh" type="button">Refresh data</button></div></div>
@@ -67,6 +68,8 @@
     const planRows = document.querySelector('#plan-rows');
     const platformInvoiceSchool = document.querySelector('#platform-invoice-school');
     const platformInvoiceRows = document.querySelector('#platform-invoice-rows');
+    const platformInvoiceStatus = document.querySelector('#platform-invoice-status');
+    const platformInvoicePagination = document.querySelector('#platform-invoice-pagination');
     const schools = document.querySelector('#school-rows');
     const branchRows = document.querySelector('#branch-rows');
     const branchStatus = document.querySelector('#branch-status');
@@ -147,9 +150,13 @@
             }
         }));
     };
-    const loadPlatformInvoices = async () => {
-        const data = await request('/superadmin/billing/invoices?per_page=50');
+    const loadPlatformInvoices = async (page = 1) => {
+        const params = new URLSearchParams({page, per_page: 50});
+        if (platformInvoiceStatus.value) params.set('status', platformInvoiceStatus.value);
+        const data = await request(`/superadmin/billing/invoices?${params}`);
         platformInvoiceRows.innerHTML = data.invoices.data.map(invoice => { const control = invoice.status === 'paid' ? `<small>Paid · ${esc(invoice.payment_reference || 'reference unavailable')}</small>` : invoice.status === 'void' ? '<small>Voided</small>' : `<button class="platform-invoice-paid" data-id="${esc(invoice.id)}" type="button">Mark paid</button> <button class="platform-invoice-void" data-id="${esc(invoice.id)}" type="button">Void</button>`; return `<tr><td>${esc(invoice.school_name)}</td><td>${esc(invoice.invoice_number)}</td><td>${esc(invoice.currency)} ${(Number(invoice.amount_cents) / 100).toFixed(2)}</td><td>${esc(invoice.period_start)} → ${esc(invoice.period_end)}</td><td>${esc(invoice.due_on)}</td><td><span class="platform-status ${esc(invoice.status)}">${esc(invoice.status)}</span></td><td>${control}</td></tr>`; }).join('') || '<tr><td colspan="7">No platform invoices yet.</td></tr>';
+        platformInvoicePagination.innerHTML = data.invoices.last_page > 1 ? `<button type="button" data-invoice-page="${data.invoices.current_page - 1}" ${data.invoices.current_page === 1 ? 'disabled' : ''}>Previous</button> <span>Page ${data.invoices.current_page} of ${data.invoices.last_page}</span> <button type="button" data-invoice-page="${data.invoices.current_page + 1}" ${data.invoices.current_page === data.invoices.last_page ? 'disabled' : ''}>Next</button>` : '';
+        platformInvoicePagination.querySelectorAll('[data-invoice-page]').forEach(button => button.addEventListener('click', () => loadPlatformInvoices(Number(button.dataset.invoicePage)).catch(error => { platformInvoiceRows.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; })));
         document.querySelectorAll('.platform-invoice-paid').forEach(button => button.addEventListener('click', async () => { const reference = window.prompt('Payment reference'); if (!reference) return; try { await request(`/superadmin/billing/invoices/${button.dataset.id}/status`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({status: 'paid', payment_reference: reference})}); await loadPlatformInvoices(); } catch (error) { window.alert(error.message); } }));
         document.querySelectorAll('.platform-invoice-void').forEach(button => button.addEventListener('click', async () => { if (!window.confirm('Void this platform invoice?')) return; try { await request(`/superadmin/billing/invoices/${button.dataset.id}/status`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({status: 'void'})}); await loadPlatformInvoices(); } catch (error) { window.alert(error.message); } }));
     };
@@ -449,6 +456,7 @@
             window.alert(error.message);
         }
     });
+    document.querySelector('#platform-invoice-filter').addEventListener('submit', event => { event.preventDefault(); loadPlatformInvoices().catch(error => { platformInvoiceRows.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; }); });
     document.querySelector('#school-detail-close').addEventListener('click', () => { detail.hidden = true; });
     document.querySelector('.platform-refresh').addEventListener('click', load);
     document.querySelector('#health-refresh').addEventListener('click', () => { loadHealth().catch(error => { healthContent.textContent = error.message; }); loadFailedJobs().catch(error => { failedJobContent.textContent = error.message; }); });

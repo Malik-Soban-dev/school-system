@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN BILLING LEDGER PAGINATION UPDATE:
+  - Added invoice status filters and page navigation to the Superadmin platform billing ledger, preserving audited payment and void controls on every page.
+  - Added regression coverage for multi-page invoice discovery and issued-status filtering across the platform.
+  - Verification passed: full PHPUnit suite (92 tests, 535 assertions), focused billing tests (2 tests, 16 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN PLAN CREATION UPDATE:
   - Added audited Superadmin creation of active platform pricing plans with unique codes, monthly pricing, branch/student capacity limits and allow-listed feature entitlements.
   - Added the dashboard creation form so new SaaS tiers can be launched without direct database access; existing archive-integrity safeguards remain in force.
