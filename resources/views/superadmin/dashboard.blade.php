@@ -26,6 +26,11 @@
         <div class="platform-table-wrap"><table><thead><tr><th>Plan</th><th>Monthly cents</th><th>Max branches</th><th>Max students</th><th>Features</th><th>Status</th><th>Control</th></tr></thead><tbody id="plan-rows"><tr><td colspan="7">Loading plan catalog…</td></tr></tbody></table></div>
     </section>
     <section class="platform-panel">
+        <div class="platform-panel-heading"><div><p class="eyebrow">CLIENT BILLING</p><h2>Platform invoices</h2></div></div>
+        <form id="platform-invoice-form"><select id="platform-invoice-school" name="school_id" required aria-label="Invoice school"></select><input name="amount_cents" type="number" min="1" required placeholder="Amount in cents" aria-label="Invoice amount in cents"><input name="period_start" type="date" required aria-label="Billing period start"><input name="period_end" type="date" required aria-label="Billing period end"><input name="due_on" type="date" required aria-label="Invoice due date"><input name="notes" maxlength="2000" placeholder="Notes" aria-label="Invoice notes"><button type="submit">Issue invoice</button></form>
+        <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Invoice</th><th>Amount</th><th>Period</th><th>Due</th><th>Status</th><th>Control</th></tr></thead><tbody id="platform-invoice-rows"><tr><td colspan="7">Loading platform invoices…</td></tr></tbody></table></div>
+    </section>
+    <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL REGISTRY</p><h2>Every school</h2></div><div><button class="platform-refresh" type="button">Refresh data</button></div></div>
         <form id="create-school-form"><input name="name" required maxlength="150" placeholder="New school name" aria-label="New school name"><input name="slug" required maxlength="80" pattern="[A-Za-z0-9_-]+" placeholder="Slug" aria-label="New school slug"><select id="onboard-plan" name="plan_id" aria-label="Initial school plan"><option value="">Starter trial</option></select><button type="submit">Onboard school</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Status</th><th>Branches</th><th>Members</th><th>Students</th><th>Staff</th><th>Teachers</th><th>Open invoices</th><th>Control</th></tr></thead><tbody id="school-rows"><tr><td colspan="9">Loading school registry…</td></tr></tbody></table></div>
@@ -52,6 +57,8 @@
     const summary = document.querySelector('#platform-summary');
     const healthContent = document.querySelector('#health-content');
     const planRows = document.querySelector('#plan-rows');
+    const platformInvoiceSchool = document.querySelector('#platform-invoice-school');
+    const platformInvoiceRows = document.querySelector('#platform-invoice-rows');
     const schools = document.querySelector('#school-rows');
     const audit = document.querySelector('#audit-rows');
     const auditSchool = document.querySelector('#audit-school');
@@ -96,6 +103,12 @@
                 window.alert(error.message);
             }
         }));
+    };
+    const loadPlatformInvoices = async () => {
+        const data = await request('/superadmin/billing/invoices?per_page=50');
+        platformInvoiceRows.innerHTML = data.invoices.data.map(invoice => { const control = invoice.status === 'paid' ? `<small>Paid · ${esc(invoice.payment_reference || 'reference unavailable')}</small>` : invoice.status === 'void' ? '<small>Voided</small>' : `<button class="platform-invoice-paid" data-id="${esc(invoice.id)}" type="button">Mark paid</button> <button class="platform-invoice-void" data-id="${esc(invoice.id)}" type="button">Void</button>`; return `<tr><td>${esc(invoice.school_name)}</td><td>${esc(invoice.invoice_number)}</td><td>${esc(invoice.currency)} ${(Number(invoice.amount_cents) / 100).toFixed(2)}</td><td>${esc(invoice.period_start)} → ${esc(invoice.period_end)}</td><td>${esc(invoice.due_on)}</td><td><span class="platform-status ${esc(invoice.status)}">${esc(invoice.status)}</span></td><td>${control}</td></tr>`; }).join('') || '<tr><td colspan="7">No platform invoices yet.</td></tr>';
+        document.querySelectorAll('.platform-invoice-paid').forEach(button => button.addEventListener('click', async () => { const reference = window.prompt('Payment reference'); if (!reference) return; try { await request(`/superadmin/billing/invoices/${button.dataset.id}/status`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({status: 'paid', payment_reference: reference})}); await loadPlatformInvoices(); } catch (error) { window.alert(error.message); } }));
+        document.querySelectorAll('.platform-invoice-void').forEach(button => button.addEventListener('click', async () => { if (!window.confirm('Void this platform invoice?')) return; try { await request(`/superadmin/billing/invoices/${button.dataset.id}/status`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({status: 'void'})}); await loadPlatformInvoices(); } catch (error) { window.alert(error.message); } }));
     };
     const showSchoolDetail = async schoolId => {
         detail.hidden = false;
@@ -222,6 +235,7 @@
         platformSchools = data.schools;
         platformPlans = data.plans || [];
         document.querySelector('#onboard-plan').innerHTML = '<option value="">Starter trial</option>' + platformPlans.filter(plan => plan.status === 'active').map(plan => `<option value="${esc(plan.id)}">${esc(plan.name)} trial</option>`).join('');
+        platformInvoiceSchool.innerHTML = platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
         auditSchool.innerHTML = '<option value="">All schools and platform events</option>' + platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
         updateAuditBranches();
         renderPlans();
@@ -234,6 +248,7 @@
         summary.innerHTML = [['schools','Schools'],['branches','Branches'],['members','Members'],['students','Students'],['teachers','Teachers'],['open_invoices','Open invoices'],['mrr','Projected MRR'],['past_due','Past due']].map(([key,label]) => { const value = key === 'mrr' ? `$${mrr.toFixed(2)}` : key === 'past_due' ? (data.billing?.subscriptions?.past_due || 0) : data.summary[key]; return `<article><strong>${esc(value)}</strong><span>${label}</span></article>`; }).join('');
         schools.innerHTML = data.schools.map(school => `<tr><td><button class="platform-school-detail" data-id="${school.id}" type="button"><strong>${esc(school.name)}</strong></button><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.branches)}</td><td>${esc(school.members)}</td><td>${esc(school.students)}</td><td>${esc(school.staff)}</td><td>${esc(school.teachers)}</td><td>${esc(school.open_invoices)}</td><td><button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="9">No schools registered.</td></tr>';
         loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="5">${esc(error.message)}</td></tr>`; });
+        loadPlatformInvoices().catch(error => { platformInvoiceRows.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; });
         document.querySelectorAll('.platform-school-detail').forEach(button => button.addEventListener('click', () => showSchoolDetail(button.dataset.id).catch(error => { detailContent.innerHTML = esc(error.message); })));
         document.querySelectorAll('.platform-action').forEach(button => button.addEventListener('click', async () => {
             const action = button.dataset.status === 'suspended' ? 'suspend' : 'activate';
@@ -304,6 +319,17 @@
             await request('/superadmin/schools', {method: 'POST', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({name: formData.get('name'), slug: formData.get('slug'), plan_id: formData.get('plan_id') ? Number(formData.get('plan_id')) : null})});
             event.currentTarget.reset();
             await load();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
+    document.querySelector('#platform-invoice-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        try {
+            await request(`/superadmin/schools/${formData.get('school_id')}/billing/invoices`, {method: 'POST', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({amount_cents: Number(formData.get('amount_cents')), period_start: formData.get('period_start'), period_end: formData.get('period_end'), due_on: formData.get('due_on'), notes: formData.get('notes') || null})});
+            event.currentTarget.reset();
+            await loadPlatformInvoices();
         } catch (error) {
             window.alert(error.message);
         }

@@ -62,6 +62,20 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->assertJsonPath('billing.mrr_cents', (int) $plan->monthly_price_cents)->assertJsonPath('billing.subscriptions.active', 1)->assertJsonFragment(['code' => 'starter', 'name' => 'Starter', 'total' => 1]);
     }
 
+    public function test_superadmin_can_issue_and_reconcile_a_platform_invoice(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Invoice School', 'slug' => 'invoice-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $invoice = $this->actingAs($superadmin)->postJson('/superadmin/schools/'.$school.'/billing/invoices', ['amount_cents' => 14900, 'period_start' => '2026-09-01', 'period_end' => '2026-09-30', 'due_on' => '2026-10-01', 'notes' => 'Growth subscription'])->assertCreated()->json('invoice');
+        $this->assertDatabaseHas('platform_billing_invoices', ['id' => $invoice['id'], 'school_id' => $school, 'amount_cents' => 14900, 'status' => 'issued']);
+        $this->actingAs($superadmin)->putJson('/superadmin/billing/invoices/'.$invoice['id'].'/status', ['status' => 'paid'])->assertUnprocessable();
+        $this->actingAs($superadmin)->putJson('/superadmin/billing/invoices/'.$invoice['id'].'/status', ['status' => 'paid', 'payment_reference' => 'manual-rcpt-1'])->assertOk();
+        $this->assertDatabaseHas('platform_billing_invoices', ['id' => $invoice['id'], 'status' => 'paid', 'payment_reference' => 'manual-rcpt-1']);
+        $this->actingAs($superadmin)->getJson('/superadmin/billing/invoices?school_id='.$school)->assertOk()->assertJsonPath('invoices.total', 1)->assertJsonPath('invoices.data.0.invoice_number', $invoice['invoice_number']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'platform_invoice', 'entity_id' => $invoice['id'], 'action' => 'invoice_status_updated']);
+    }
+
     public function test_superadmin_can_update_a_plan_with_platform_auditing(): void
     {
         $plan = DB::table('platform_plans')->where('code', 'starter')->value('id');

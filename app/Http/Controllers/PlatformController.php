@@ -51,6 +51,44 @@ class PlatformController extends Controller
         ]);
     }
 
+    public function billingInvoices(Request $request): JsonResponse
+    {
+        $data = $request->validate(['school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'status' => ['nullable', Rule::in(['issued', 'paid', 'void', 'overdue'])], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        $invoices = DB::table('platform_billing_invoices as invoice')->join('schools as school', 'school.id', '=', 'invoice.school_id')->when(isset($data['school_id']), fn ($query) => $query->where('invoice.school_id', $data['school_id']))->when(isset($data['status']), fn ($query) => $query->where('invoice.status', $data['status']))->orderByDesc('invoice.id')->paginate((int) ($data['per_page'] ?? 50), ['invoice.id', 'invoice.school_id', 'school.name as school_name', 'invoice.invoice_number', 'invoice.amount_cents', 'invoice.currency', 'invoice.period_start', 'invoice.period_end', 'invoice.due_on', 'invoice.status', 'invoice.paid_at', 'invoice.payment_reference', 'invoice.notes', 'invoice.created_at']);
+
+        return response()->json(['invoices' => $invoices]);
+    }
+
+    public function createBillingInvoice(Request $request, int $school): JsonResponse
+    {
+        $data = $request->validate(['amount_cents' => ['required', 'integer', 'min:1', 'max:1000000000'], 'currency' => ['nullable', 'string', 'size:3'], 'period_start' => ['required', 'date'], 'period_end' => ['required', 'date', 'after_or_equal:period_start'], 'due_on' => ['required', 'date'], 'notes' => ['nullable', 'string', 'max:2000']]);
+        $invoice = DB::transaction(function () use ($request, $school, $data): object {
+            abort_unless(DB::table('schools')->where('id', $school)->lockForUpdate()->exists(), 404);
+            $subscription = DB::table('school_subscriptions')->where('school_id', $school)->whereIn('status', ['trialing', 'active'])->first(['id']);
+            $invoiceId = DB::table('platform_billing_invoices')->insertGetId(['school_id' => $school, 'subscription_id' => $subscription?->id, 'created_by' => $request->user()->id, 'invoice_number' => 'PLAT-'.str_pad((string) $school, 6, '0', STR_PAD_LEFT).'-'.now()->format('Ym').'-'.Str::upper(Str::random(6)), 'amount_cents' => $data['amount_cents'], 'currency' => strtoupper($data['currency'] ?? 'USD'), 'period_start' => $data['period_start'], 'period_end' => $data['period_end'], 'due_on' => $data['due_on'], 'status' => 'issued', 'notes' => $data['notes'] ?? null, 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'platform_invoice', 'entity_id' => $invoiceId, 'action' => 'invoice_created', 'changes' => json_encode(['school_id' => $school, 'amount_cents' => $data['amount_cents'], 'currency' => strtoupper($data['currency'] ?? 'USD'), 'period_start' => $data['period_start'], 'period_end' => $data['period_end'], 'due_on' => $data['due_on']]), 'created_at' => now()]);
+
+            return DB::table('platform_billing_invoices')->where('id', $invoiceId)->first();
+        });
+
+        return response()->json(['invoice' => $invoice], 201);
+    }
+
+    public function updateBillingInvoiceStatus(Request $request, int $invoice): JsonResponse
+    {
+        $data = $request->validate(['status' => ['required', Rule::in(['issued', 'paid', 'void', 'overdue'])], 'payment_reference' => ['nullable', 'string', 'max:255']]);
+        DB::transaction(function () use ($request, $invoice, $data): void {
+            $before = DB::table('platform_billing_invoices')->where('id', $invoice)->lockForUpdate()->first(['school_id', 'status', 'payment_reference', 'paid_at']);
+            abort_unless($before, 404);
+            abort_if($data['status'] === 'paid' && blank($data['payment_reference'] ?? $before->payment_reference), 422, 'A payment reference is required before marking an invoice paid.');
+            $paidAt = $data['status'] === 'paid' ? ($before->paid_at ?? now()) : null;
+            DB::table('platform_billing_invoices')->where('id', $invoice)->update(['status' => $data['status'], 'payment_reference' => $data['payment_reference'] ?? $before->payment_reference, 'paid_at' => $paidAt, 'updated_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'platform_invoice', 'entity_id' => $invoice, 'action' => 'invoice_status_updated', 'changes' => json_encode(['school_id' => $before->school_id, 'before' => $before, 'after' => ['status' => $data['status'], 'payment_reference' => $data['payment_reference'] ?? $before->payment_reference, 'paid_at' => $paidAt]]), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'Platform invoice status updated.']);
+    }
+
     public function health(): JsonResponse
     {
         $database = 'ok';

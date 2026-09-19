@@ -1,3 +1,9 @@
+- 2026-09-19 SUPERADMIN PLATFORM BILLING LEDGER UPDATE:
+  - Added an indexed platform_billing_invoices ledger separate from school student invoices, with school/subscription linkage, billing periods, due dates, currency, payment references and audited statuses.
+  - Superadmin can issue invoices, list/filter them, require a payment reference before marking paid, reconcile paid/void/overdue states and review the ledger in the dashboard.
+  - No external payment provider is assumed; this records verified/manual platform payments until provider credentials and webhook rules are configured.
+  - Verification passed: full PHPUnit suite (80 tests, 448 assertions), focused SuperadminAccessTest (23 tests, 100 assertions), Blade view cache and PHP Pint.
+
 - 2026-09-19 SUPERADMIN BRANCH METADATA UPDATE:
   - Added audited Superadmin branch rename/code editing with school-scoped uniqueness and locked updates.
   - Added dashboard controls for correcting branch metadata while preserving branch status, access and audit behavior.
