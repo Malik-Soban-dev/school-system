@@ -9,9 +9,12 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class AuthController extends Controller
 {
@@ -54,5 +57,40 @@ class AuthController extends Controller
         $request->session()->regenerate();
 
         return back()->with('status', 'Your password has been updated.');
+    }
+
+    public function showResetForm(string $token): View
+    {
+        $this->findReset($token);
+
+        return view('auth.password-reset', compact('token'));
+    }
+
+    public function resetPassword(Request $request, string $token): RedirectResponse
+    {
+        $data = $request->validate(['password' => ['required', 'string', Password::min(10), 'max:72', 'confirmed']]);
+        DB::transaction(function () use ($data, $token): void {
+            $reset = $this->findReset($token, true);
+            $user = DB::table('users')->where('email', $reset->email)->lockForUpdate()->first(['id']);
+            abort_unless($user, 404);
+            DB::table('users')->where('id', $user->id)->update(['password' => Hash::make($data['password']), 'remember_token' => Str::random(60), 'updated_at' => now()]);
+            DB::table('password_reset_tokens')->where('email', $reset->email)->delete();
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+        });
+
+        return redirect()->route('login')->with('status', 'Your password has been updated. You can sign in now.');
+    }
+
+    private function findReset(string $token, bool $lock = false): object
+    {
+        abort_unless(strlen($token) === 64, 404);
+        $query = DB::table('password_reset_tokens')->where('token', hash('sha256', $token))->where('created_at', '>', now()->subMinutes(60));
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+        $reset = $query->first();
+        abort_unless($reset, 404, 'This password reset link has expired or has already been used.');
+
+        return $reset;
     }
 }

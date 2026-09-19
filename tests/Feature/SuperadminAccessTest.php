@@ -511,6 +511,27 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'user_profile_updated']);
     }
 
+    public function test_superadmin_can_issue_a_single_use_password_reset_link_for_a_client(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Recovery School', 'slug' => 'recovery-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['email' => 'recovery-client@example.test', 'roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $client->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $response = $this->actingAs($superadmin)->postJson('/superadmin/users/'.$client->id.'/password-reset')->assertOk();
+        $url = $response->json('url');
+        $token = basename(parse_url($url, PHP_URL_PATH));
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $client->email]);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $client->id, 'action' => 'password_reset_issued']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'password_reset_issued']);
+
+        $this->post('/logout');
+        $this->get('/password/reset/'.$token)->assertOk();
+        $this->post('/password/reset/'.$token, ['password' => 'New-recovery-password-123', 'password_confirmation' => 'New-recovery-password-123'])->assertRedirect(route('login'));
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => $client->email]);
+        $this->post('/password/reset/'.$token, ['password' => 'Another-password-123', 'password_confirmation' => 'Another-password-123'])->assertNotFound();
+    }
+
     public function test_superadmin_can_inspect_branch_scoped_school_records_without_secrets(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Explorer School', 'slug' => 'explorer-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

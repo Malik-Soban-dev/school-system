@@ -34,6 +34,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureSuperadmin::class])
     Route::get('/superadmin/users', [PlatformController::class, 'users']);
     Route::get('/superadmin/schools/{school}/records/{module}', [PlatformController::class, 'records'])->whereNumber('school')->whereIn('module', ['academic_years', 'students', 'staff', 'classes', 'subjects', 'teacher_assignments', 'guardian_links', 'attendance', 'timetables', 'exams', 'grade_bands', 'exam_subjects', 'grades', 'invoices', 'payments', 'expenses', 'leave_requests', 'payroll', 'payroll_payments', 'notices', 'enrollments', 'invitations', 'notifications', 'notification_deliveries', 'notification_preferences', 'notification_events', 'settings', 'users', 'audit']);
     Route::put('/superadmin/users/{user}', [PlatformController::class, 'updateUserProfile'])->whereNumber('user');
+    Route::post('/superadmin/users/{user}/password-reset', [PlatformController::class, 'issuePasswordReset'])->whereNumber('user');
     Route::put('/superadmin/users/{user}/status', [PlatformController::class, 'updateUserStatus'])->whereNumber('user');
     Route::post('/superadmin/schools', [PlatformController::class, 'createSchool']);
     Route::put('/superadmin/schools/{school}/subscription', [PlatformController::class, 'updateSubscription'])->whereNumber('school');
@@ -58,6 +59,8 @@ Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'receive'])
 Route::middleware('guest')->group(function () {
     Route::get('/invitations/{token}', [InvitationController::class, 'show'])->name('invitation.show');
     Route::post('/invitations/{token}', [InvitationController::class, 'accept'])->middleware('throttle:10,1')->name('invitation.accept');
+    Route::get('/password/reset/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/password/reset/{token}', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1')->name('password.reset.store');
     Route::view('/login', 'auth.login')->name('login');
     Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:20,1')->name('login.store');
 });

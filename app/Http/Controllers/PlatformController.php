@@ -289,6 +289,25 @@ class PlatformController extends Controller
         return response()->json(['message' => 'User profile updated and previous sessions revoked.']);
     }
 
+    public function issuePasswordReset(Request $request, int $user): JsonResponse
+    {
+        $token = Str::random(64);
+        DB::transaction(function () use ($request, $user, $token): void {
+            $userRecord = DB::table('users')->where('id', $user)->lockForUpdate()->first(['id', 'email', 'roles']);
+            abort_unless($userRecord, 404);
+            abort_if(in_array('superadmin', json_decode((string) $userRecord->roles, true) ?: [], true), 422, 'Platform Superadmin accounts are managed separately.');
+            DB::table('password_reset_tokens')->updateOrInsert(['email' => $userRecord->email], ['token' => hash('sha256', $token), 'created_at' => now()]);
+            DB::table('sessions')->where('user_id', $user)->delete();
+            $memberships = DB::table('school_user')->where('user_id', $user)->pluck('school_id');
+            foreach ($memberships as $schoolId) {
+                DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'password_reset_issued', 'changes' => json_encode(['expires_at' => now()->addMinutes(60)->toIso8601String()]), 'created_at' => now()]);
+            }
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'password_reset_issued', 'changes' => json_encode(['school_ids' => $memberships->values()->all(), 'expires_at' => now()->addMinutes(60)->toIso8601String()]), 'created_at' => now()]);
+        });
+
+        return response()->json(['url' => route('password.reset', ['token' => $token]), 'message' => 'One-time password reset link created. Share it privately; it expires in 60 minutes and creating another link revokes this one.']);
+    }
+
     public function updateUserStatus(Request $request, int $user): JsonResponse
     {
         $data = $request->validate(['is_active' => ['required', 'boolean']]);
