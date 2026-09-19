@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN SECURITY NAVIGATION UPDATE:
+  - Added a direct Account security link to the Superadmin dashboard so MFA enrollment, recovery-code management and password controls are discoverable from the platform control center.
+  - Verification passed: focused Superadmin suite (41 tests, 259 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN MFA RECOVERY-CODE UPDATE:
   - Added eight single-use MFA recovery codes, hashed at rest and consumed transactionally during challenge or controlled disable; regeneration invalidates the previous set and is audited.
   - Recovery codes are displayed only once after enrollment or regeneration, providing a secure lost-device path without weakening Superadmin protection.

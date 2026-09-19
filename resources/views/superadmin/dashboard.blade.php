@@ -12,6 +12,7 @@
 <main class="platform-shell" id="platform-dashboard">
     <header class="platform-header">
         <div><p class="eyebrow">PLATFORM CONTROL CENTER</p><h1>Superadmin dashboard</h1><p>Welcome, {{ $user->name }}. Manage every school, account, and platform signal from one protected view.</p></div>
+        <a href="{{ route('account') }}">Account security</a>
         <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit">Sign out</button></form>
     </header>
     <section class="platform-grid" id="platform-summary" aria-live="polite">
