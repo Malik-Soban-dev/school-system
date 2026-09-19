@@ -7,6 +7,7 @@ use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class SuperadminAccessTest extends TestCase
@@ -25,6 +26,25 @@ class SuperadminAccessTest extends TestCase
         $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
         $this->actingAs($user)->getJson('/superadmin/health')->assertOk()->assertJsonPath('database', 'ok')->assertJsonStructure(['status', 'queue' => ['pending', 'failed'], 'schools' => ['active', 'suspended'], 'backups']);
+    }
+
+    public function test_superadmin_can_create_an_encrypted_backup_without_receiving_contents(): void
+    {
+        $directory = storage_path('app/private/backups');
+        File::deleteDirectory($directory);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        try {
+            $response = $this->actingAs($superadmin)->postJson('/superadmin/operations/backups')->assertCreated()->assertJsonStructure(['backup' => ['name', 'bytes', 'modified_at'], 'message']);
+            $backup = $response->json('backup');
+            $this->assertStringEndsWith('.enc', $backup['name']);
+            $this->assertGreaterThan(0, $backup['bytes']);
+            $this->assertFileExists($directory.DIRECTORY_SEPARATOR.$backup['name']);
+            $this->assertDatabaseHas('platform_audit', ['entity_type' => 'backup', 'entity_id' => 0, 'action' => 'backup_created']);
+            $response->assertJsonMissing(['contents' => '']);
+        } finally {
+            File::deleteDirectory($directory);
+        }
     }
 
     public function test_superadmin_can_review_and_forget_failed_job_metadata_without_payload_exposure(): void

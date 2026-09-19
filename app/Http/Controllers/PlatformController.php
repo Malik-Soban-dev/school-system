@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
@@ -107,6 +108,19 @@ class PlatformController extends Controller
         }
 
         return response()->json(['status' => $database === 'ok' && $failedJobs === 0 ? 'ok' : 'attention', 'database' => $database, 'queue' => ['pending' => $pendingJobs, 'failed' => $failedJobs], 'sessions' => $sessions, 'schools' => ['active' => DB::table('schools')->where('status', 'active')->count(), 'suspended' => DB::table('schools')->where('status', 'suspended')->count()], 'last_audit_at' => DB::table('school_audit')->max('created_at'), 'backups' => $backups]);
+    }
+
+    public function createBackup(Request $request): JsonResponse
+    {
+        $directory = storage_path('app/private/backups');
+        $filename = 'school-'.now()->format('Ymd-His').'-'.Str::lower(Str::random(8)).'.enc';
+        $path = $directory.DIRECTORY_SEPARATOR.$filename;
+        $exitCode = Artisan::call('school:backup', ['--path' => $path]);
+        abort_if($exitCode !== 0 || ! File::isFile($path), 422, 'The encrypted backup could not be created.');
+        $backup = ['name' => $filename, 'bytes' => File::size($path), 'modified_at' => date(DATE_ATOM, File::lastModified($path))];
+        DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'backup', 'entity_id' => 0, 'action' => 'backup_created', 'changes' => json_encode(['name' => $filename, 'bytes' => $backup['bytes']]), 'created_at' => now()]);
+
+        return response()->json(['backup' => $backup, 'message' => 'Encrypted backup created.'], 201);
     }
 
     public function failedJobs(Request $request): JsonResponse

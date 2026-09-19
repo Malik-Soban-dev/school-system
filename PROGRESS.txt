@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN ENCRYPTED BACKUP CONTROL UPDATE:
+  - Added a protected dashboard action to create encrypted database backups through the existing backup command; the server generates the destination name and returns metadata only.
+  - Backup creation is recorded in platform_audit, and the dashboard never exposes backup contents or accepts arbitrary filesystem paths.
+  - Verification passed: focused backup tests (2 tests, 21 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN GLOBAL ACCOUNT AUDIT UPDATE:
   - Global client account activation/suspension now records a platform_audit event in addition to school-level audit events, preserving a durable platform-wide history of the action and affected schools.
   - Verification passed: focused account-control test (1 test, 6 assertions), PHP Pint and git diff check.

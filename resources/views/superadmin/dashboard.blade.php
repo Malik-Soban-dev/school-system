@@ -18,7 +18,7 @@
         <article><strong>Loading…</strong><span>Schools</span></article><article><strong>Loading…</strong><span>Branches</span></article><article><strong>Loading…</strong><span>Members</span></article><article><strong>Loading…</strong><span>Students</span></article><article><strong>Loading…</strong><span>Open invoices</span></article>
     </section>
     <section class="platform-panel" id="platform-health">
-        <div class="platform-panel-heading"><div><p class="eyebrow">OPERATIONS</p><h2>Platform health</h2></div><button class="platform-refresh" id="health-refresh" type="button">Refresh health</button></div>
+        <div class="platform-panel-heading"><div><p class="eyebrow">OPERATIONS</p><h2>Platform health</h2></div><div><button class="platform-refresh" id="backup-create" type="button">Create encrypted backup</button> <button class="platform-refresh" id="health-refresh" type="button">Refresh health</button></div></div>
         <div id="health-content">Loading operational health…</div><div id="failed-job-content">Loading failed jobs…</div>
     </section>
     <section class="platform-panel">
@@ -57,6 +57,7 @@
     const summary = document.querySelector('#platform-summary');
     const healthContent = document.querySelector('#health-content');
     const failedJobContent = document.querySelector('#failed-job-content');
+    const backupCreate = document.querySelector('#backup-create');
     const planRows = document.querySelector('#plan-rows');
     const platformInvoiceSchool = document.querySelector('#platform-invoice-school');
     const platformInvoiceRows = document.querySelector('#platform-invoice-rows');
@@ -97,6 +98,19 @@
         failedJobContent.innerHTML = `<h3>Failed job records</h3><div class="platform-table-wrap"><table><thead><tr><th>UUID</th><th>Queue</th><th>Connection</th><th>Failed at</th><th>Control</th></tr></thead><tbody>${data.failed_jobs.data.map(job => `<tr><td>${esc(job.uuid)}</td><td>${esc(job.queue)}</td><td>${esc(job.connection)}</td><td>${esc(job.failed_at)}</td><td><button class="failed-job-forget" data-id="${esc(job.id)}" type="button">Forget record</button></td></tr>`).join('') || '<tr><td colspan="5">No failed job records.</td></tr>'}</tbody></table></div>`;
         document.querySelectorAll('.failed-job-forget').forEach(button => button.addEventListener('click', async () => { if (!window.confirm('Remove this failed-job record? The serialized payload is not retried.')) return; try { await request(`/superadmin/operations/failed-jobs/${button.dataset.id}`, {method: 'DELETE', headers: {'X-CSRF-TOKEN': csrf}}); await loadHealth(); await loadFailedJobs(); } catch (error) { window.alert(error.message); } }));
     };
+    backupCreate.addEventListener('click', async () => {
+        if (!window.confirm('Create a new encrypted database backup now?')) return;
+        backupCreate.disabled = true;
+        try {
+            const data = await request('/superadmin/operations/backups', {method: 'POST', headers: {'X-CSRF-TOKEN': csrf}});
+            window.alert(`Encrypted backup created: ${data.backup.name}`);
+            await loadHealth();
+        } catch (error) {
+            window.alert(error.message);
+        } finally {
+            backupCreate.disabled = false;
+        }
+    });
     const renderPlans = () => {
         planRows.innerHTML = platformPlans.map(plan => `<tr><td><input class="plan-name" value="${esc(plan.name)}" aria-label="Plan name"><small>${esc(plan.code)}</small></td><td><input class="plan-price" type="number" min="0" value="${esc(plan.monthly_price_cents)}" aria-label="Monthly price for ${esc(plan.name)}"></td><td><input class="plan-branches" type="number" min="1" value="${esc(plan.max_branches ?? '')}" aria-label="Maximum branches for ${esc(plan.name)}"></td><td><input class="plan-students" type="number" min="1" value="${esc(plan.max_students ?? '')}" aria-label="Maximum students for ${esc(plan.name)}"></td><td><input class="plan-features" value="${esc((JSON.parse(plan.features || '[]')).join(', '))}" aria-label="Features for ${esc(plan.name)}"><small>attendance, grades, invoices, payroll, notifications, *</small></td><td><select class="plan-status" aria-label="Status for ${esc(plan.name)}"><option value="active" ${plan.status === 'active' ? 'selected' : ''}>Active</option><option value="archived" ${plan.status === 'archived' ? 'selected' : ''}>Archived</option></select></td><td><button class="plan-save" data-id="${esc(plan.id)}" type="button">Save</button></td></tr>`).join('') || '<tr><td colspan="7">No plans registered.</td></tr>';
         document.querySelectorAll('.plan-save').forEach(button => button.addEventListener('click', async event => {
