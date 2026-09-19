@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN LARGE ROSTER VISIBILITY UPDATE:
+  - Removed the school-detail member hard cap so Superadmin can review and manage every member in a client school, including rosters larger than 100 accounts.
+  - Added a 101-member regression test to protect complete roster visibility while retaining branch access controls.
+  - Verification passed: full PHPUnit suite (90 tests, 524 assertions), focused roster test (1 test, 2 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUSPENDED BRANCH ACCESS SAFETY REGRESSION:
   - Added coverage proving a normal branch administrator receives 403 when the selected branch is suspended, while Superadmin can still perform and audit the suspension.
   - This locks the server-side branch status invariant used by ResolveSchool and prevents future control-plane changes from reopening suspended client access.

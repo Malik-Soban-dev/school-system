@@ -366,7 +366,7 @@ class PlatformController extends Controller
                 return $branch;
             });
         }
-        $members = DB::table('school_user as su')->join('users as u', 'u.id', '=', 'su.user_id')->where('su.school_id', $school)->orderBy('u.name')->limit(100)->get(['u.id', 'u.name', 'u.email', 'u.roles', 'u.is_active', 'su.status as membership_status']);
+        $members = DB::table('school_user as su')->join('users as u', 'u.id', '=', 'su.user_id')->where('su.school_id', $school)->orderBy('u.name')->get(['u.id', 'u.name', 'u.email', 'u.roles', 'u.is_active', 'su.status as membership_status']);
         $access = DB::table('school_user_branches as access')->join('school_branches as b', 'b.id', '=', 'access.branch_id')->where('access.school_id', $school)->orderBy('access.user_id')->orderBy('b.name')->get(['access.user_id', 'access.branch_id', 'b.name as branch_name', 'access.roles', 'access.status']);
         $invitations = DB::table('school_invitations as invitation')->leftJoin('school_branches as branch', 'branch.id', '=', 'invitation.branch_id')->where('invitation.school_id', $school)->whereNull('invitation.accepted_at')->orderByDesc('invitation.id')->get(['invitation.id', 'invitation.name', 'invitation.email', 'invitation.roles', 'invitation.expires_at', 'branch.id as branch_id', 'branch.name as branch_name']);
         $audit = DB::table('school_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->where('a.school_id', $school)->orderByDesc('a.id')->limit(50)->get(['a.id', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);

@@ -33,6 +33,16 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/branches?status=active&search=North&per_page=1')->assertOk()->assertJsonPath('branches.total', 1)->assertJsonPath('branches.data.0.school_name', 'Branch Registry School')->assertJsonPath('branches.data.0.name', 'North Branch')->assertJsonPath('branches.data.0.students', 0);
     }
 
+    public function test_superadmin_school_detail_does_not_truncate_large_member_rosters(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Large Roster School', 'slug' => 'large-roster-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $users = User::factory()->count(101)->create(['roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert($users->map(fn (User $user): array => ['school_id' => $school, 'user_id' => $user->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()])->all());
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->assertJsonCount(101, 'members');
+    }
+
     public function test_superadmin_user_registry_preserves_pagination_and_branch_access_metadata(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'User Registry School', 'slug' => 'user-registry-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
