@@ -26,6 +26,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureSuperadmin::class])
     Route::put('/superadmin/billing/invoices/{invoice}/status', [PlatformController::class, 'updateBillingInvoiceStatus'])->whereNumber('invoice');
     Route::get('/superadmin/health', [PlatformController::class, 'health']);
     Route::post('/superadmin/operations/backups', [PlatformController::class, 'createBackup']);
+    Route::post('/superadmin/operations/backups/verify', [PlatformController::class, 'verifyBackup']);
     Route::get('/superadmin/operations/failed-jobs', [PlatformController::class, 'failedJobs']);
     Route::delete('/superadmin/operations/failed-jobs/{job}', [PlatformController::class, 'forgetFailedJob'])->whereNumber('job');
     Route::get('/superadmin/audit', [PlatformController::class, 'audit']);

@@ -90,8 +90,19 @@
     };
     const loadHealth = async () => {
         const data = await request('/superadmin/health');
-        const backupRows = data.backups.map(backup => `<tr><td>${esc(backup.name)}</td><td>${esc(backup.bytes)} bytes</td><td>${esc(backup.modified_at)}</td></tr>`).join('') || '<tr><td colspan="3">No encrypted backups found.</td></tr>';
-        healthContent.innerHTML = `<p><span class="platform-status ${esc(data.status)}">${esc(data.status)}</span> Database: <strong>${esc(data.database)}</strong> · Active schools: <strong>${esc(data.schools.active)}</strong> · Suspended schools: <strong>${esc(data.schools.suspended)}</strong> · Pending jobs: <strong>${esc(data.queue.pending)}</strong> · Failed jobs: <strong>${esc(data.queue.failed)}</strong> · Sessions: <strong>${esc(data.sessions ?? 'not configured')}</strong> · Last audit: <strong>${esc(data.last_audit_at || 'none')}</strong></p><h3>Recent encrypted backups</h3><div class="platform-table-wrap"><table><thead><tr><th>File</th><th>Size</th><th>Modified</th></tr></thead><tbody>${backupRows}</tbody></table></div>`;
+        const backupRows = data.backups.map(backup => `<tr><td>${esc(backup.name)}</td><td>${esc(backup.bytes)} bytes</td><td>${esc(backup.modified_at)}</td><td><button class="backup-verify" data-name="${esc(backup.name)}" type="button">Verify integrity</button></td></tr>`).join('') || '<tr><td colspan="4">No encrypted backups found.</td></tr>';
+        healthContent.innerHTML = `<p><span class="platform-status ${esc(data.status)}">${esc(data.status)}</span> Database: <strong>${esc(data.database)}</strong> · Active schools: <strong>${esc(data.schools.active)}</strong> · Suspended schools: <strong>${esc(data.schools.suspended)}</strong> · Pending jobs: <strong>${esc(data.queue.pending)}</strong> · Failed jobs: <strong>${esc(data.queue.failed)}</strong> · Sessions: <strong>${esc(data.sessions ?? 'not configured')}</strong> · Last audit: <strong>${esc(data.last_audit_at || 'none')}</strong></p><h3>Recent encrypted backups</h3><div class="platform-table-wrap"><table><thead><tr><th>File</th><th>Size</th><th>Modified</th><th>Control</th></tr></thead><tbody>${backupRows}</tbody></table></div>`;
+        healthContent.querySelectorAll('.backup-verify').forEach(button => button.addEventListener('click', async () => {
+            button.disabled = true;
+            try {
+                const result = await request('/superadmin/operations/backups/verify', {method: 'POST', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({name: button.dataset.name})});
+                window.alert(result.message);
+            } catch (error) {
+                window.alert(error.message);
+            } finally {
+                button.disabled = false;
+            }
+        }));
     };
     const loadFailedJobs = async () => {
         const data = await request('/superadmin/operations/failed-jobs?per_page=50');

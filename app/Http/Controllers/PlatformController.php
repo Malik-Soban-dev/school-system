@@ -123,6 +123,19 @@ class PlatformController extends Controller
         return response()->json(['backup' => $backup, 'message' => 'Encrypted backup created.'], 201);
     }
 
+    public function verifyBackup(Request $request): JsonResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9._-]+\.enc$/']]);
+        abort_if(basename($data['name']) !== $data['name'], 422, 'Invalid backup name.');
+        $path = storage_path('app/private/backups'.DIRECTORY_SEPARATOR.$data['name']);
+        abort_unless(File::isFile($path), 404, 'Backup not found.');
+        $exitCode = Artisan::call('school:verify-backup', ['path' => $path]);
+        abort_if($exitCode !== 0, 422, 'Backup integrity verification failed.');
+        DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'backup', 'entity_id' => 0, 'action' => 'backup_verified', 'changes' => json_encode(['name' => $data['name']]), 'created_at' => now()]);
+
+        return response()->json(['message' => 'Backup passed integrity verification.', 'name' => $data['name']]);
+    }
+
     public function failedJobs(Request $request): JsonResponse
     {
         $data = $request->validate(['per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
