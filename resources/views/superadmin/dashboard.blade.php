@@ -53,7 +53,7 @@
     </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">PLATFORM ACCOUNTS</p><h2>Every user</h2></div></div>
-        <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><button type="submit">Search</button></form>
+        <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><select id="user-school" aria-label="Filter users by school"><option value="">All schools</option></select><select id="user-branch" aria-label="Filter users by branch"><option value="">All branches</option></select><select id="user-status" aria-label="Filter users by account status"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><button type="submit">Search</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>User</th><th>Status</th><th>School / branch access</th><th>Control</th></tr></thead><tbody id="user-rows"><tr><td colspan="4">Loading platform users…</td></tr></tbody></table></div><div id="user-pagination"></div>
     </section>
     <section class="platform-panel"><div class="platform-panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Platform activity</h2></div></div><form id="audit-search-form"><select id="audit-school" aria-label="Audit school"><option value="">All schools and platform events</option></select><select id="audit-branch" aria-label="Audit branch"><option value="">All branches</option></select><input id="audit-search" maxlength="100" placeholder="Search school, actor, module or action" aria-label="Search audit activity"><button type="submit">Search audit</button></form><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>School</th><th>Branch</th><th>Actor</th><th>Module</th><th>Action</th><th>Changes</th></tr></thead><tbody id="audit-rows"><tr><td colspan="7">Loading audit trail…</td></tr></tbody></table></div><div id="audit-pagination"></div></section>
@@ -85,6 +85,9 @@
     const detailContent = document.querySelector('#school-detail-content');
     const userRows = document.querySelector('#user-rows');
     const userPagination = document.querySelector('#user-pagination');
+    const userSchool = document.querySelector('#user-school');
+    const userBranch = document.querySelector('#user-branch');
+    const userStatus = document.querySelector('#user-status');
     const explorerForm = document.querySelector('#data-explorer-form');
     const explorerSchool = document.querySelector('#explorer-school');
     const explorerBranch = document.querySelector('#explorer-branch');
@@ -366,6 +369,10 @@
         document.querySelector('#onboard-plan').innerHTML = '<option value="">Starter trial</option>' + platformPlans.filter(plan => plan.status === 'active').map(plan => `<option value="${esc(plan.id)}">${esc(plan.name)} trial</option>`).join('');
         platformInvoiceSchool.innerHTML = platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
         auditSchool.innerHTML = '<option value="">All schools and platform events</option>' + platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
+        const selectedUserSchool = userSchool.value;
+        userSchool.innerHTML = '<option value="">All schools</option>' + platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
+        if (platformSchools.some(school => String(school.id) === selectedUserSchool)) userSchool.value = selectedUserSchool;
+        userSchool.dispatchEvent(new Event('change'));
         updateAuditBranches();
         renderPlans();
         const selectedSchool = explorerSchool.value;
@@ -412,6 +419,9 @@
         const search = document.querySelector('#user-search').value.trim();
         const params = new URLSearchParams({page, per_page: 50});
         if (search) params.set('search', search);
+        if (userSchool.value) params.set('school_id', userSchool.value);
+        if (userBranch.value) params.set('branch_id', userBranch.value);
+        if (userStatus.value) params.set('status', userStatus.value);
         const data = await request(`/superadmin/users?${params}`);
         userRows.innerHTML = data.users.data.map(user => {
             const access = user.is_superadmin ? 'Platform Superadmin' : (user.access.map(item => `${esc(item.school_name)} / ${esc(item.branch_name)} (${esc(item.roles.join(', '))})`).join('<br>') || 'No active branch access');
@@ -485,7 +495,8 @@
             window.alert(error.message);
         }
     });
-    document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
+        document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
+    userSchool.addEventListener('change', () => { const school = platformSchools.find(item => String(item.id) === String(userSchool.value)); userBranch.innerHTML = '<option value="">All branches</option>' + (school?.branch_options || []).map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)}</option>`).join(''); });
     document.querySelector('#branch-search-form').addEventListener('submit', event => { event.preventDefault(); loadBranches().catch(error => { branchRows.innerHTML = `<tr><td colspan="8">${esc(error.message)}</td></tr>`; }); });
     document.querySelector('#audit-search-form').addEventListener('submit', event => { event.preventDefault(); loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; }); });
     auditSchool.addEventListener('change', () => { auditBranch.value = ''; updateAuditBranches(); });

@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN USER REGISTRY FILTER UPDATE:
+  - Added server-side school, branch and active/suspended account filters to the global Superadmin user registry, with branch ownership validation and existing pagination/search behavior preserved.
+  - Dashboard filters now let Superadmin locate branch administrators and inactive accounts across the platform without weakening cross-school visibility.
+  - Verification passed: full PHPUnit suite (97 tests, 582 assertions), focused registry test (1 test, 11 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN NOTIFICATION OPERATIONS COVERAGE UPDATE:
   - Added protected, branch-filtered explorer views for notification preferences and notification event deduplication records; phone numbers are represented only by a configured flag, with consent timestamps retained for operations.
   - Verification passed: full PHPUnit suite (97 tests, 579 assertions), focused notification coverage (1 test, 18 assertions), Vite production build, PHP Pint and git diff check.

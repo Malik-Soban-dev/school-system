@@ -69,6 +69,7 @@ class SuperadminAccessTest extends TestCase
 
         $this->actingAs($superadmin)->getJson('/superadmin/users?search=paginated-client&per_page=1')->assertOk()->assertJsonPath('users.total', 2)->assertJsonPath('users.last_page', 2)->assertJsonPath('users.data.0.access.0.branch_name', 'User Branch')->assertJsonPath('users.data.0.access.0.roles.0', 'admin');
         $this->actingAs($superadmin)->getJson('/superadmin/users?search=paginated-client&per_page=1&page=2')->assertOk()->assertJsonPath('users.current_page', 2)->assertJsonPath('users.data.0.email', 'paginated-client-b@example.test');
+        $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_id='.$branch.'&status=active')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.email', 'paginated-client-a@example.test');
     }
 
     public function test_superadmin_can_review_platform_health_without_backup_contents(): void

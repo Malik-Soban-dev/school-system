@@ -192,12 +192,18 @@ class PlatformController extends Controller
 
     public function users(Request $request): JsonResponse
     {
-        $data = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        $data = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'branch_id' => ['nullable', 'integer'], 'status' => ['nullable', Rule::in(['active', 'suspended'])], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        if (isset($data['branch_id'])) {
+            abort_unless(DB::table('school_branches')->where('id', $data['branch_id'])->when(isset($data['school_id']), fn ($query) => $query->where('school_id', $data['school_id']))->exists(), 404);
+        }
         $search = trim((string) ($data['search'] ?? ''));
         $users = DB::table('users as u')
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search): void {
                 $searchQuery->where('u.name', 'like', '%'.$search.'%')->orWhere('u.email', 'like', '%'.$search.'%')->orWhere('u.username', 'like', '%'.$search.'%');
             }))
+            ->when(isset($data['status']), fn ($query) => $query->where('u.is_active', $data['status'] === 'active'))
+            ->when(isset($data['school_id']), fn ($query) => $query->whereExists(fn ($membership) => $membership->selectRaw('1')->from('school_user as membership')->whereColumn('membership.user_id', 'u.id')->where('membership.school_id', $data['school_id'])))
+            ->when(isset($data['branch_id']), fn ($query) => $query->whereExists(fn ($access) => $access->selectRaw('1')->from('school_user_branches as access')->whereColumn('access.user_id', 'u.id')->where('access.branch_id', $data['branch_id'])->where('access.status', 'active')))
             ->orderBy('u.name')
             ->paginate((int) ($data['per_page'] ?? 50), ['u.id', 'u.name', 'u.username', 'u.email', 'u.roles', 'u.is_active']);
         $userIds = collect($users->items())->pluck('id');
