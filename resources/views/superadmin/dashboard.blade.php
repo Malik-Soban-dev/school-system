@@ -58,10 +58,10 @@
         detailTitle.textContent = data.school.name;
         const counts = Object.entries(data.counts).map(([key, value]) => `<span><strong>${esc(value)}</strong> ${esc(key)}</span>`).join(' · ');
         const branchOptions = data.branches.map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)} (${esc(branch.code)})</option>`).join('');
-        const branchRows = data.branches.map(branch => `<tr><td>${esc(branch.name)}</td><td>${esc(branch.code)}</td><td>${esc(branch.status)}</td><td>${branch.is_default ? 'Default' : ''}</td></tr>`).join('') || '<tr><td colspan="4">No branches registered.</td></tr>';
+        const branchRows = data.branches.map(branch => `<tr><td>${esc(branch.name)}${branch.is_default ? ' <small>Default</small>' : ''}</td><td>${esc(branch.code)}</td><td><span class="platform-status ${esc(branch.status)}">${esc(branch.status)}</span></td><td>${esc(branch.students)} students · ${esc(branch.staff)} staff · ${esc(branch.classes)} classes</td><td><button class="branch-status" data-branch="${esc(branch.id)}" data-status="${branch.status === 'active' ? 'suspended' : 'active'}">${branch.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="5">No branches registered.</td></tr>';
         const members = data.members.map(member => `<tr><td>${esc(member.name)}</td><td>${esc(member.email)}</td><td>${esc(member.is_active ? 'Active' : 'Inactive')}</td><td><form class="branch-access-form" data-school="${esc(data.school.id)}" data-user="${esc(member.id)}"><select name="branch_id" aria-label="Branch for ${esc(member.name)}">${branchOptions}</select><select name="role" aria-label="Role for ${esc(member.name)}"><option value="admin">Admin</option><option value="owner">Owner</option><option value="teacher">Teacher</option><option value="accountant">Accountant</option></select><button type="submit">Grant access</button></form></td></tr>`).join('') || '<tr><td colspan="4">No active members.</td></tr>';
         const activity = data.audit.map(row => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.actor || 'System')}</td><td>${esc(row.module)}</td><td>${esc(row.action)}</td></tr>`).join('') || '<tr><td colspan="4">No school activity yet.</td></tr>';
-        detailContent.innerHTML = `<p>${counts}</p><h3>Branches</h3><form id="create-branch-form"><input name="name" required maxlength="120" placeholder="Branch name" aria-label="Branch name"><input name="code" required maxlength="40" pattern="[A-Za-z0-9_-]+" placeholder="Code" aria-label="Branch code"><button type="submit">Create branch</button></form><div class="platform-table-wrap"><table><thead><tr><th>Name</th><th>Code</th><th>Status</th><th>Type</th></tr></thead><tbody>${branchRows}</tbody></table></div><h3>Active members</h3><div class="platform-table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Branch access</th></tr></thead><tbody>${members}</tbody></table></div><h3>Recent activity</h3><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Module</th><th>Action</th></tr></thead><tbody>${activity}</tbody></table></div>`;
+        detailContent.innerHTML = `<p>${counts}</p><h3>Branches</h3><form id="create-branch-form"><input name="name" required maxlength="120" placeholder="Branch name" aria-label="Branch name"><input name="code" required maxlength="40" pattern="[A-Za-z0-9_-]+" placeholder="Code" aria-label="Branch code"><button type="submit">Create branch</button></form><div class="platform-table-wrap"><table><thead><tr><th>Name</th><th>Code</th><th>Status</th><th>Records</th><th>Control</th></tr></thead><tbody>${branchRows}</tbody></table></div><h3>Active members</h3><div class="platform-table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Branch access</th></tr></thead><tbody>${members}</tbody></table></div><h3>Current branch grants</h3><div class="platform-table-wrap"><table><thead><tr><th>Member</th><th>Branch</th><th>Roles</th><th>Status</th><th>Control</th></tr></thead><tbody>${data.access.map(access => { const member = data.members.find(item => item.id === access.user_id); return `<tr><td>${esc(member?.name || 'Unknown user')}</td><td>${esc(access.branch_name)}</td><td>${esc(JSON.parse(access.roles || '[]').join(', '))}</td><td>${esc(access.status)}</td><td><button class="access-status" data-user="${esc(access.user_id)}" data-branch="${esc(access.branch_id)}" data-status="${access.status === 'active' ? 'suspended' : 'active'}">${access.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`; }).join('') || '<tr><td colspan="5">No branch grants registered.</td></tr>'}</tbody></table></div><h3>Recent activity</h3><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Module</th><th>Action</th></tr></thead><tbody>${activity}</tbody></table></div>`;
         document.querySelector('#create-branch-form').addEventListener('submit', async event => {
             event.preventDefault();
             const form = event.currentTarget;
@@ -80,6 +80,28 @@
             try {
                 await request(`/superadmin/schools/${event.currentTarget.dataset.school}/members/${event.currentTarget.dataset.user}/branch-access`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({branch_id: Number(formData.get('branch_id')), roles: [formData.get('role')], status: 'active'})});
                 window.alert('Branch access granted and audited.');
+            } catch (error) {
+                window.alert(error.message);
+            }
+        }));
+        document.querySelectorAll('.branch-status').forEach(button => button.addEventListener('click', async event => {
+            const target = event.currentTarget;
+            const status = target.dataset.status;
+            if (!window.confirm(`Are you sure you want to ${status === 'suspended' ? 'suspend' : 'activate'} this branch?`)) return;
+            try {
+                await request(`/superadmin/schools/${schoolId}/branches/${target.dataset.branch}/status`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({status})});
+                await showSchoolDetail(schoolId);
+            } catch (error) {
+                window.alert(error.message);
+            }
+        }));
+        document.querySelectorAll('.access-status').forEach(button => button.addEventListener('click', async event => {
+            const target = event.currentTarget;
+            const access = data.access.find(item => String(item.user_id) === String(target.dataset.user) && String(item.branch_id) === String(target.dataset.branch));
+            if (!access || !window.confirm(`Are you sure you want to ${target.dataset.status === 'suspended' ? 'suspend' : 'activate'} this branch access?`)) return;
+            try {
+                await request(`/superadmin/schools/${schoolId}/members/${target.dataset.user}/branch-access`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({branch_id: Number(target.dataset.branch), roles: JSON.parse(access.roles || '[]'), status: target.dataset.status})});
+                await showSchoolDetail(schoolId);
             } catch (error) {
                 window.alert(error.message);
             }

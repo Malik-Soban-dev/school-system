@@ -1,3 +1,9 @@
+- 2026-09-19 SUPERADMIN BRANCH OPERATIONS UPDATE:
+  - Added branch-level student, staff and class counts to school detail responses so Superadmin can inspect each campus independently.
+  - Added audited branch activation/suspension with row locking and tenant-safe route validation.
+  - Added dashboard controls for branch lifecycle and existing branch-grant activation/suspension.
+  - Verification passed: full PHPUnit suite (65 tests, 375 assertions), focused SuperadminAccessTest (10 tests, 32 assertions), Blade view cache, Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN USER REGISTRY UPDATE:
   - Added a platform-wide user registry with bounded search across name, email and username; responses expose only operational identity, status and school/branch roles, never passwords or secrets.
   - Superadmins can suspend or reactivate client accounts; the transactional action revokes active sessions and writes an audit record for every active school membership. Superadmin accounts are protected from this control.

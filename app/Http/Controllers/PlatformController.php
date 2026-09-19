@@ -94,6 +94,14 @@ class PlatformController extends Controller
             $counts[$key] = DB::table($table)->where('school_id', $school)->count();
         }
         $branches = DB::table('school_branches')->where('school_id', $school)->orderBy('name')->get(['id', 'name', 'code', 'status', 'is_default']);
+        foreach (['school_students' => 'students', 'school_staff' => 'staff', 'school_classes' => 'classes'] as $table => $key) {
+            $countsByBranch = DB::table($table)->where('school_id', $school)->whereNotNull('branch_id')->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id')->pluck('total', 'branch_id');
+            $branches = $branches->map(function (object $branch) use ($countsByBranch, $key): object {
+                $branch->{$key} = (int) ($countsByBranch[$branch->id] ?? 0);
+
+                return $branch;
+            });
+        }
         $members = DB::table('school_user as su')->join('users as u', 'u.id', '=', 'su.user_id')->where('su.school_id', $school)->where('su.status', 'active')->orderBy('u.name')->limit(100)->get(['u.id', 'u.name', 'u.email', 'u.roles', 'u.is_active']);
         $access = DB::table('school_user_branches as access')->join('school_branches as b', 'b.id', '=', 'access.branch_id')->where('access.school_id', $school)->orderBy('access.user_id')->orderBy('b.name')->get(['access.user_id', 'access.branch_id', 'b.name as branch_name', 'access.roles', 'access.status']);
         $audit = DB::table('school_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->where('a.school_id', $school)->orderByDesc('a.id')->limit(50)->get(['a.id', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);
@@ -113,6 +121,24 @@ class PlatformController extends Controller
         });
 
         return response()->json(['branch' => $branch], 201);
+    }
+
+    public function updateBranchStatus(Request $request, int $school, int $branch): JsonResponse
+    {
+        $data = $request->validate(['status' => ['required', Rule::in(['active', 'suspended'])]]);
+        DB::transaction(function () use ($request, $school, $branch, $data): void {
+            $branchRecord = DB::table('school_branches')->where('school_id', $school)->where('id', $branch)->lockForUpdate()->first(['id', 'status']);
+            abort_unless($branchRecord, 404);
+
+            if ($branchRecord->status === $data['status']) {
+                return;
+            }
+
+            DB::table('school_branches')->where('id', $branch)->update(['status' => $data['status'], 'updated_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_status_updated', 'changes' => json_encode(['before' => ['status' => $branchRecord->status], 'after' => ['status' => $data['status']]]), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'Branch status updated.']);
     }
 
     public function updateBranchAccess(Request $request, int $school, int $user): JsonResponse
