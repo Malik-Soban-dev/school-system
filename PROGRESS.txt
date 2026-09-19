@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN INVITATION REVOCATION UPDATE:
+  - Added pending branch-invitation listing without token hashes and a school/branch-validated Superadmin revoke action that rotates the old token hash and expires the invitation.
+  - Revocation is recorded in both branch-scoped school_audit and platform_audit; the dashboard exposes the control beside pending invitations.
+  - Verification passed: full PHPUnit suite (89 tests, 521 assertions), focused invitation test (1 test, 9 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN DATA EXPLORER PAGINATION UPDATE:
   - Added page navigation to the Superadmin data explorer and configurable per_page handling for every allow-listed school module.
   - Branch-scoped records remain filtered server-side; regression coverage proves page two remains scoped and excludes sensitive fields.

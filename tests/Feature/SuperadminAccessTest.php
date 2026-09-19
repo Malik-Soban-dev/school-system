@@ -359,8 +359,13 @@ class SuperadminAccessTest extends TestCase
         $response = $this->actingAs($superadmin)->postJson('/superadmin/schools/'.$school.'/branches/'.$branch.'/invitations', ['name' => 'New Branch Admin', 'email' => 'new-branch-admin@example.test', 'roles' => ['admin']]);
 
         $response->assertCreated()->assertJsonStructure(['url', 'message']);
+        $invitation = DB::table('school_invitations')->where('school_id', $school)->where('email', 'new-branch-admin@example.test')->first();
+        $this->assertNotNull($invitation);
         $this->assertDatabaseHas('school_invitations', ['school_id' => $school, 'branch_id' => $branch, 'email' => 'new-branch-admin@example.test', 'accepted_at' => null]);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $branch, 'action' => 'branch_invitation_issued']);
+        $this->actingAs($superadmin)->deleteJson('/superadmin/schools/'.$school.'/invitations/'.$invitation->id)->assertOk();
+        $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $invitation->id, 'action' => 'invitation_revoked']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'invitation', 'entity_id' => $invitation->id, 'action' => 'invitation_revoked']);
     }
 
     public function test_superadmin_can_search_and_suspend_a_client_account_with_auditing(): void

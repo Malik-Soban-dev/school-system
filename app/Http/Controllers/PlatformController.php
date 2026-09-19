@@ -368,10 +368,11 @@ class PlatformController extends Controller
         }
         $members = DB::table('school_user as su')->join('users as u', 'u.id', '=', 'su.user_id')->where('su.school_id', $school)->orderBy('u.name')->limit(100)->get(['u.id', 'u.name', 'u.email', 'u.roles', 'u.is_active', 'su.status as membership_status']);
         $access = DB::table('school_user_branches as access')->join('school_branches as b', 'b.id', '=', 'access.branch_id')->where('access.school_id', $school)->orderBy('access.user_id')->orderBy('b.name')->get(['access.user_id', 'access.branch_id', 'b.name as branch_name', 'access.roles', 'access.status']);
+        $invitations = DB::table('school_invitations as invitation')->leftJoin('school_branches as branch', 'branch.id', '=', 'invitation.branch_id')->where('invitation.school_id', $school)->whereNull('invitation.accepted_at')->orderByDesc('invitation.id')->get(['invitation.id', 'invitation.name', 'invitation.email', 'invitation.roles', 'invitation.expires_at', 'branch.id as branch_id', 'branch.name as branch_name']);
         $audit = DB::table('school_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->where('a.school_id', $school)->orderByDesc('a.id')->limit(50)->get(['a.id', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);
         $subscription = DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->where('subscription.school_id', $school)->first(['subscription.id', 'subscription.plan_id', 'subscription.status', 'subscription.starts_at', 'subscription.renews_at', 'subscription.canceled_at', 'plan.code as plan_code', 'plan.name as plan_name', 'plan.monthly_price_cents', 'plan.max_branches', 'plan.max_students', 'plan.features']);
 
-        return response()->json(['school' => DB::table('schools')->where('id', $school)->first(), 'branches' => $branches, 'counts' => $counts, 'subscription' => $subscription, 'members' => $members, 'access' => $access, 'audit' => $audit]);
+        return response()->json(['school' => DB::table('schools')->where('id', $school)->first(), 'branches' => $branches, 'counts' => $counts, 'subscription' => $subscription, 'members' => $members, 'access' => $access, 'invitations' => $invitations, 'audit' => $audit]);
     }
 
     public function createBranch(Request $request, int $school): JsonResponse
@@ -445,6 +446,21 @@ class PlatformController extends Controller
         });
 
         return response()->json(['url' => route('invitation.show', ['token' => $token]), 'message' => 'Share this single-use link privately. It expires in 48 hours.'], 201);
+    }
+
+    public function revokeInvitation(Request $request, int $school, int $invitation): JsonResponse
+    {
+        DB::transaction(function () use ($request, $school, $invitation): void {
+            $record = DB::table('school_invitations')->where('id', $invitation)->where('school_id', $school)->lockForUpdate()->first(['id', 'branch_id', 'email', 'accepted_at']);
+            abort_unless($record, 404);
+            abort_if($record->accepted_at !== null, 409, 'This invitation was already accepted. Manage the account from People & access.');
+            DB::table('school_invitations')->where('id', $invitation)->update(['expires_at' => now(), 'token_hash' => hash('sha256', Str::random(64)), 'updated_at' => now()]);
+            $changes = ['school_id' => $school, 'branch_id' => $record->branch_id, 'email' => $record->email];
+            DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $record->branch_id, 'user_id' => $request->user()->id, 'module' => 'invitations', 'record_id' => $invitation, 'action' => 'invitation_revoked', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'invitation', 'entity_id' => $invitation, 'action' => 'invitation_revoked', 'changes' => json_encode($changes), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'Invitation revoked. The old link no longer works.']);
     }
 
     public function updateBranchAccess(Request $request, int $school, int $user): JsonResponse
