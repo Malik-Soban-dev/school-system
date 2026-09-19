@@ -151,6 +151,19 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->postJson('/superadmin/schools/'.$school.'/branches', ['name' => 'Over Limit', 'code' => 'over-limit'])->assertStatus(422);
     }
 
+    public function test_superadmin_can_update_branch_metadata_with_school_scoped_uniqueness(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Branch Edit School', 'slug' => 'branch-edit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Old Campus', 'code' => 'old', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_branches')->insert(['school_id' => $school, 'name' => 'Other Campus', 'code' => 'other', 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/branches/'.$branch, ['name' => 'North Campus', 'code' => 'north'])->assertOk();
+        $this->assertDatabaseHas('school_branches', ['id' => $branch, 'name' => 'North Campus', 'code' => 'north']);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'branch_id' => $branch, 'action' => 'branch_updated']);
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/branches/'.$branch, ['name' => 'Duplicate', 'code' => 'other'])->assertUnprocessable();
+    }
+
     public function test_superadmin_can_suspend_a_school_membership_and_all_branch_access(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Membership School', 'slug' => 'membership-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

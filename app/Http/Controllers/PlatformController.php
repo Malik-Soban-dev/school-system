@@ -251,6 +251,22 @@ class PlatformController extends Controller
         return response()->json(['branch' => $branch], 201);
     }
 
+    public function updateBranch(Request $request, int $school, int $branch): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'code' => ['required', 'alpha_dash', 'max:40', Rule::unique('school_branches', 'code')->where(fn ($query) => $query->where('school_id', $school))->ignore($branch)],
+        ]);
+        DB::transaction(function () use ($request, $school, $branch, $data): void {
+            $before = DB::table('school_branches')->where('school_id', $school)->where('id', $branch)->lockForUpdate()->first(['id', 'name', 'code']);
+            abort_unless($before, 404);
+            DB::table('school_branches')->where('id', $branch)->update(['name' => $data['name'], 'code' => $data['code'], 'updated_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_updated', 'changes' => json_encode(['before' => $before, 'after' => $data]), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'Branch details updated.']);
+    }
+
     public function updateBranchStatus(Request $request, int $school, int $branch): JsonResponse
     {
         $data = $request->validate(['status' => ['required', Rule::in(['active', 'suspended'])]]);

@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN BRANCH METADATA UPDATE:
+  - Added audited Superadmin branch rename/code editing with school-scoped uniqueness and locked updates.
+  - Added dashboard controls for correcting branch metadata while preserving branch status, access and audit behavior.
+  - Verification passed: full PHPUnit suite (79 tests, 439 assertions), focused SuperadminAccessTest (22 tests, 91 assertions), Blade view cache and PHP Pint.
+
 - 2026-09-19 BRANCH-SCOPED AUDIT UPDATE:
   - Added nullable indexed branch_id ownership to school_audit; school-wide and legacy events remain explicitly unscoped while new branch events carry their branch.
   - Portal CRUD, attendance, settings, user access, invitations and Superadmin branch actions now record branch scope where applicable.
