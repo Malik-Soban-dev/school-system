@@ -15,11 +15,11 @@
         <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit">Sign out</button></form>
     </header>
     <section class="platform-grid" id="platform-summary" aria-live="polite">
-        <article><strong>Loading…</strong><span>Schools</span></article><article><strong>Loading…</strong><span>Members</span></article><article><strong>Loading…</strong><span>Students</span></article><article><strong>Loading…</strong><span>Open invoices</span></article>
+        <article><strong>Loading…</strong><span>Schools</span></article><article><strong>Loading…</strong><span>Branches</span></article><article><strong>Loading…</strong><span>Members</span></article><article><strong>Loading…</strong><span>Students</span></article><article><strong>Loading…</strong><span>Open invoices</span></article>
     </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL REGISTRY</p><h2>Every school</h2></div><button class="platform-refresh" type="button">Refresh data</button></div>
-        <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Status</th><th>Members</th><th>Students</th><th>Staff</th><th>Open invoices</th><th>Control</th></tr></thead><tbody id="school-rows"><tr><td colspan="7">Loading school registry…</td></tr></tbody></table></div>
+        <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Status</th><th>Branches</th><th>Members</th><th>Students</th><th>Staff</th><th>Open invoices</th><th>Control</th></tr></thead><tbody id="school-rows"><tr><td colspan="8">Loading school registry…</td></tr></tbody></table></div>
     </section>
     <section class="platform-panel" id="school-detail" hidden>
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL DETAIL</p><h2 id="school-detail-title">Selected school</h2></div><button class="platform-refresh" id="school-detail-close" type="button">Close</button></div>
@@ -37,24 +37,53 @@
     const detailTitle = document.querySelector('#school-detail-title');
     const detailContent = document.querySelector('#school-detail-content');
     const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+    const request = async (url, options = {}) => {
+        const response = await fetch(url, {credentials: 'same-origin', headers: {Accept: 'application/json', ...options.headers}, ...options});
+        if (!response.ok) {
+            throw new Error((await response.json().catch(() => ({}))).message || 'The platform request failed.');
+        }
+        return response.status === 204 ? null : response.json();
+    };
     const showSchoolDetail = async schoolId => {
         detail.hidden = false;
         detailContent.innerHTML = 'Loading school detail…';
-        const response = await fetch(`/superadmin/schools/${schoolId}`, {headers: {Accept: 'application/json'}, credentials: 'same-origin'});
-        if (!response.ok) throw new Error('Unable to load school detail.');
-        const data = await response.json();
+        const data = await request(`/superadmin/schools/${schoolId}`);
         detailTitle.textContent = data.school.name;
         const counts = Object.entries(data.counts).map(([key, value]) => `<span><strong>${esc(value)}</strong> ${esc(key)}</span>`).join(' · ');
-        const members = data.members.map(member => `<tr><td>${esc(member.name)}</td><td>${esc(member.email)}</td><td>${esc(member.is_active ? 'Active' : 'Inactive')}</td></tr>`).join('') || '<tr><td colspan="3">No active members.</td></tr>';
+        const branchOptions = data.branches.map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)} (${esc(branch.code)})</option>`).join('');
+        const branchRows = data.branches.map(branch => `<tr><td>${esc(branch.name)}</td><td>${esc(branch.code)}</td><td>${esc(branch.status)}</td><td>${branch.is_default ? 'Default' : ''}</td></tr>`).join('') || '<tr><td colspan="4">No branches registered.</td></tr>';
+        const members = data.members.map(member => `<tr><td>${esc(member.name)}</td><td>${esc(member.email)}</td><td>${esc(member.is_active ? 'Active' : 'Inactive')}</td><td><form class="branch-access-form" data-school="${esc(data.school.id)}" data-user="${esc(member.id)}"><select name="branch_id" aria-label="Branch for ${esc(member.name)}">${branchOptions}</select><select name="role" aria-label="Role for ${esc(member.name)}"><option value="admin">Admin</option><option value="owner">Owner</option><option value="teacher">Teacher</option><option value="accountant">Accountant</option></select><button type="submit">Grant access</button></form></td></tr>`).join('') || '<tr><td colspan="4">No active members.</td></tr>';
         const activity = data.audit.map(row => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.actor || 'System')}</td><td>${esc(row.module)}</td><td>${esc(row.action)}</td></tr>`).join('') || '<tr><td colspan="4">No school activity yet.</td></tr>';
-        detailContent.innerHTML = `<p>${counts}</p><h3>Active members</h3><div class="platform-table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Status</th></tr></thead><tbody>${members}</tbody></table></div><h3>Recent activity</h3><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Module</th><th>Action</th></tr></thead><tbody>${activity}</tbody></table></div>`;
+        detailContent.innerHTML = `<p>${counts}</p><h3>Branches</h3><form id="create-branch-form"><input name="name" required maxlength="120" placeholder="Branch name" aria-label="Branch name"><input name="code" required maxlength="40" pattern="[A-Za-z0-9_-]+" placeholder="Code" aria-label="Branch code"><button type="submit">Create branch</button></form><div class="platform-table-wrap"><table><thead><tr><th>Name</th><th>Code</th><th>Status</th><th>Type</th></tr></thead><tbody>${branchRows}</tbody></table></div><h3>Active members</h3><div class="platform-table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Branch access</th></tr></thead><tbody>${members}</tbody></table></div><h3>Recent activity</h3><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Module</th><th>Action</th></tr></thead><tbody>${activity}</tbody></table></div>`;
+        document.querySelector('#create-branch-form').addEventListener('submit', async event => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const formData = new FormData(form);
+            try {
+                await request(`/superadmin/schools/${schoolId}/branches`, {method: 'POST', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({name: formData.get('name'), code: formData.get('code')})});
+                await showSchoolDetail(schoolId);
+            } catch (error) {
+                window.alert(error.message);
+            }
+        });
+        document.querySelectorAll('.branch-access-form').forEach(form => form.addEventListener('submit', async event => {
+            event.preventDefault();
+            if (!window.confirm('Grant this role access to the selected branch?')) return;
+            const formData = new FormData(event.currentTarget);
+            try {
+                await request(`/superadmin/schools/${event.currentTarget.dataset.school}/members/${event.currentTarget.dataset.user}/branch-access`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({branch_id: Number(formData.get('branch_id')), roles: [formData.get('role')], status: 'active'})});
+                window.alert('Branch access granted and audited.');
+            } catch (error) {
+                window.alert(error.message);
+            }
+        }));
     };
     const load = async () => {
         const response = await fetch('/superadmin/data', {headers: {Accept: 'application/json'}, credentials: 'same-origin'});
         if (!response.ok) throw new Error('Unable to load platform data.');
         const data = await response.json();
-        summary.innerHTML = [['schools','Schools'],['members','Members'],['students','Students'],['open_invoices','Open invoices']].map(([key,label]) => `<article><strong>${esc(data.summary[key])}</strong><span>${label}</span></article>`).join('');
-        schools.innerHTML = data.schools.map(school => `<tr><td><button class="platform-school-detail" data-id="${school.id}" type="button"><strong>${esc(school.name)}</strong></button><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.members)}</td><td>${esc(school.students)}</td><td>${esc(school.staff)}</td><td>${esc(school.open_invoices)}</td><td><button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="7">No schools registered.</td></tr>';
+        summary.innerHTML = [['schools','Schools'],['branches','Branches'],['members','Members'],['students','Students'],['open_invoices','Open invoices']].map(([key,label]) => `<article><strong>${esc(data.summary[key])}</strong><span>${label}</span></article>`).join('');
+        schools.innerHTML = data.schools.map(school => `<tr><td><button class="platform-school-detail" data-id="${school.id}" type="button"><strong>${esc(school.name)}</strong></button><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.branches)}</td><td>${esc(school.members)}</td><td>${esc(school.students)}</td><td>${esc(school.staff)}</td><td>${esc(school.open_invoices)}</td><td><button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="8">No schools registered.</td></tr>';
         audit.innerHTML = data.audit.map(row => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.school_name)}</td><td>${esc(row.actor || 'System')}</td><td>${esc(row.module)}</td><td>${esc(row.action)}</td></tr>`).join('') || '<tr><td colspan="5">No audit events yet.</td></tr>';
         document.querySelectorAll('.platform-school-detail').forEach(button => button.addEventListener('click', () => showSchoolDetail(button.dataset.id).catch(error => { detailContent.innerHTML = esc(error.message); })));
         document.querySelectorAll('.platform-action').forEach(button => button.addEventListener('click', async () => {
