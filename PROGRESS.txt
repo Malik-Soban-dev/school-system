@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN RECOVERY AUDIT COMPLETION UPDATE:
+  - Recorded successful one-time password recovery separately in each client school audit and the platform audit, preserving traceability from issuance through completion.
+  - Verification passed: full PHPUnit suite (99 tests, 597 assertions), focused Superadmin suite (40 tests, 243 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN ACCOUNT RECOVERY UPDATE:
   - Added a Superadmin-only, audited one-time password reset link for client accounts, expiring after 60 minutes, revoking active sessions and never exposing or storing plaintext passwords.
   - Added the guest reset form and single-use completion flow, with protected platform Superadmin accounts and school/platform audit records.

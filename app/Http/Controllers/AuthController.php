@@ -76,6 +76,11 @@ class AuthController extends Controller
             DB::table('users')->where('id', $user->id)->update(['password' => Hash::make($data['password']), 'remember_token' => Str::random(60), 'updated_at' => now()]);
             DB::table('password_reset_tokens')->where('email', $reset->email)->delete();
             DB::table('sessions')->where('user_id', $user->id)->delete();
+            $memberships = DB::table('school_user')->where('user_id', $user->id)->pluck('school_id');
+            foreach ($memberships as $schoolId) {
+                DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $user->id, 'module' => 'platform', 'record_id' => $user->id, 'action' => 'password_reset_completed', 'changes' => json_encode(['method' => 'one_time_link']), 'created_at' => now()]);
+            }
+            DB::table('platform_audit')->insert(['user_id' => null, 'entity_type' => 'user', 'entity_id' => $user->id, 'action' => 'password_reset_completed', 'changes' => json_encode(['school_ids' => $memberships->values()->all(), 'method' => 'one_time_link']), 'created_at' => now()]);
         });
 
         return redirect()->route('login')->with('status', 'Your password has been updated. You can sign in now.');

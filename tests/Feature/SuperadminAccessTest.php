@@ -529,6 +529,8 @@ class SuperadminAccessTest extends TestCase
         $this->get('/password/reset/'.$token)->assertOk();
         $this->post('/password/reset/'.$token, ['password' => 'New-recovery-password-123', 'password_confirmation' => 'New-recovery-password-123'])->assertRedirect(route('login'));
         $this->assertDatabaseMissing('password_reset_tokens', ['email' => $client->email]);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $client->id, 'action' => 'password_reset_completed']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'password_reset_completed']);
         $this->post('/password/reset/'.$token, ['password' => 'Another-password-123', 'password_confirmation' => 'Another-password-123'])->assertNotFound();
     }
 
