@@ -52,7 +52,7 @@
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">PLATFORM ACCOUNTS</p><h2>Every user</h2></div></div>
         <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><button type="submit">Search</button></form>
-        <div class="platform-table-wrap"><table><thead><tr><th>User</th><th>Status</th><th>School / branch access</th><th>Control</th></tr></thead><tbody id="user-rows"><tr><td colspan="4">Loading platform users…</td></tr></tbody></table></div>
+        <div class="platform-table-wrap"><table><thead><tr><th>User</th><th>Status</th><th>School / branch access</th><th>Control</th></tr></thead><tbody id="user-rows"><tr><td colspan="4">Loading platform users…</td></tr></tbody></table></div><div id="user-pagination"></div>
     </section>
     <section class="platform-panel"><div class="platform-panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Platform activity</h2></div></div><form id="audit-search-form"><select id="audit-school" aria-label="Audit school"><option value="">All schools and platform events</option></select><select id="audit-branch" aria-label="Audit branch"><option value="">All branches</option></select><input id="audit-search" maxlength="100" placeholder="Search school, actor, module or action" aria-label="Search audit activity"><button type="submit">Search audit</button></form><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>School</th><th>Branch</th><th>Actor</th><th>Module</th><th>Action</th></tr></thead><tbody id="audit-rows"><tr><td colspan="6">Loading audit trail…</td></tr></tbody></table></div><div id="audit-pagination"></div></section>
 </main>
@@ -80,6 +80,7 @@
     const detailTitle = document.querySelector('#school-detail-title');
     const detailContent = document.querySelector('#school-detail-content');
     const userRows = document.querySelector('#user-rows');
+    const userPagination = document.querySelector('#user-pagination');
     const explorerForm = document.querySelector('#data-explorer-form');
     const explorerSchool = document.querySelector('#explorer-school');
     const explorerBranch = document.querySelector('#explorer-branch');
@@ -328,14 +329,18 @@
             }
         }));
     };
-    const loadUsers = async () => {
+    const loadUsers = async (page = 1) => {
         const search = document.querySelector('#user-search').value.trim();
-        const data = await request(`/superadmin/users?search=${encodeURIComponent(search)}`);
+        const params = new URLSearchParams({page, per_page: 50});
+        if (search) params.set('search', search);
+        const data = await request(`/superadmin/users?${params}`);
         userRows.innerHTML = data.users.data.map(user => {
             const access = user.is_superadmin ? 'Platform Superadmin' : (user.access.map(item => `${esc(item.school_name)} / ${esc(item.branch_name)} (${esc(item.roles.join(', '))})`).join('<br>') || 'No active branch access');
             const control = user.is_superadmin ? '<span>Protected</span>' : `<button class="platform-user-status" data-id="${esc(user.id)}" data-active="${user.is_active ? '1' : '0'}">${user.is_active ? 'Suspend' : 'Activate'}</button>`;
             return `<tr><td><strong>${esc(user.name)}</strong><small>${esc(user.email)} · ${esc(user.username)}</small></td><td><span class="platform-status ${user.is_active ? 'active' : 'suspended'}">${user.is_active ? 'Active' : 'Suspended'}</span></td><td>${access}</td><td>${control}</td></tr>`;
         }).join('') || '<tr><td colspan="4">No matching users.</td></tr>';
+        userPagination.innerHTML = data.users.last_page > 1 ? `<button type="button" data-user-page="${data.users.current_page - 1}" ${data.users.current_page === 1 ? 'disabled' : ''}>Previous</button> <span>Page ${data.users.current_page} of ${data.users.last_page}</span> <button type="button" data-user-page="${data.users.current_page + 1}" ${data.users.current_page === data.users.last_page ? 'disabled' : ''}>Next</button>` : '';
+        userPagination.querySelectorAll('[data-user-page]').forEach(button => button.addEventListener('click', () => loadUsers(Number(button.dataset.userPage)).catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; })));
         document.querySelectorAll('.platform-user-status').forEach(button => button.addEventListener('click', async () => {
             const nextActive = button.dataset.active !== '1';
             if (!window.confirm(`Are you sure you want to ${nextActive ? 'activate' : 'suspend'} this account?`)) return;

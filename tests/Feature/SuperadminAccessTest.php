@@ -33,6 +33,20 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/branches?status=active&search=North&per_page=1')->assertOk()->assertJsonPath('branches.total', 1)->assertJsonPath('branches.data.0.school_name', 'Branch Registry School')->assertJsonPath('branches.data.0.name', 'North Branch')->assertJsonPath('branches.data.0.students', 0);
     }
 
+    public function test_superadmin_user_registry_preserves_pagination_and_branch_access_metadata(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'User Registry School', 'slug' => 'user-registry-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'User Branch', 'code' => 'users', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['name' => 'Paginated Client A', 'email' => 'paginated-client-a@example.test', 'roles' => ['admin'], 'is_active' => true]);
+        User::factory()->create(['name' => 'Paginated Client B', 'email' => 'paginated-client-b@example.test', 'roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $client->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $client->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/users?search=paginated-client&per_page=1')->assertOk()->assertJsonPath('users.total', 2)->assertJsonPath('users.last_page', 2)->assertJsonPath('users.data.0.access.0.branch_name', 'User Branch')->assertJsonPath('users.data.0.access.0.roles.0', 'admin');
+        $this->actingAs($superadmin)->getJson('/superadmin/users?search=paginated-client&per_page=1&page=2')->assertOk()->assertJsonPath('users.current_page', 2)->assertJsonPath('users.data.0.email', 'paginated-client-b@example.test');
+    }
+
     public function test_superadmin_can_review_platform_health_without_backup_contents(): void
     {
         $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);

@@ -192,14 +192,14 @@ class PlatformController extends Controller
 
     public function users(Request $request): JsonResponse
     {
-        $data = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $data = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
         $search = trim((string) ($data['search'] ?? ''));
         $users = DB::table('users as u')
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search): void {
                 $searchQuery->where('u.name', 'like', '%'.$search.'%')->orWhere('u.email', 'like', '%'.$search.'%')->orWhere('u.username', 'like', '%'.$search.'%');
             }))
             ->orderBy('u.name')
-            ->paginate(50, ['u.id', 'u.name', 'u.username', 'u.email', 'u.roles', 'u.is_active']);
+            ->paginate((int) ($data['per_page'] ?? 50), ['u.id', 'u.name', 'u.username', 'u.email', 'u.roles', 'u.is_active']);
         $userIds = collect($users->items())->pluck('id');
         $access = DB::table('school_user_branches as a')->join('schools as s', 's.id', '=', 'a.school_id')->join('school_branches as b', 'b.id', '=', 'a.branch_id')->whereIn('a.user_id', $userIds)->get(['a.user_id', 's.id as school_id', 's.name as school_name', 'b.id as branch_id', 'b.name as branch_name', 'a.roles', 'a.status'])->groupBy('user_id');
 
