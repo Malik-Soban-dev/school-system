@@ -33,7 +33,7 @@ class NotificationPreferenceController extends Controller
         $tenant = app(TenantContext::class);
         $old = $tenant->table('school_notification_preferences')->where('user_id', $request->user()->id)->first();
         $phone = $data['whatsapp_phone'] ?? null;
-        DB::table('school_notification_preferences')->updateOrInsert(['user_id' => $request->user()->id], ['school_id' => $tenant->id(),
+        DB::table('school_notification_preferences')->updateOrInsert(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $request->user()->id], [
             'whatsapp_phone' => $phone,
             'whatsapp_consented_at' => $data['whatsapp_enabled'] ? ($old?->whatsapp_phone === $phone ? ($old?->whatsapp_consented_at ?? now()) : now()) : null,
             'email_consented_at' => $data['email_enabled'] ? ($old?->email_consented_at ?? now()) : null,

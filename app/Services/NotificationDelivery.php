@@ -35,13 +35,13 @@ class NotificationDelivery
                 continue;
             }
             $notifications = DB::table('school_notifications as n')->where(function ($query): void {
-                $query->where('n.school_id', $this->tenant->id());
+                $query->where('n.school_id', $this->tenant->id())->where('n.branch_id', $this->tenant->branchId());
                 if (DB::table('schools')->count() === 1) {
                     $query->orWhereNull('n.school_id');
                 }
             })->join('school_notification_preferences as p', function ($join): void {
                 $join->on('p.user_id', '=', 'n.user_id')->where(function ($query): void {
-                    $query->where('p.school_id', $this->tenant->id());
+                    $query->where('p.school_id', $this->tenant->id())->where('p.branch_id', $this->tenant->branchId());
                     if (DB::table('schools')->count() === 1) {
                         $query->orWhereNull('p.school_id');
                     }
@@ -49,10 +49,10 @@ class NotificationDelivery
             })
                 ->whereNotNull('p.'.$channel.'_consented_at')->whereColumn('n.created_at', '>=', 'p.'.$channel.'_consented_at')
                 ->where('n.created_at', '>=', now()->subDays(2))
-                ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('school_notification_deliveries as d')->whereColumn('d.notification_id', 'n.id')->where('d.school_id', $this->tenant->id())->where('d.channel', $channel))
+                ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('school_notification_deliveries as d')->whereColumn('d.notification_id', 'n.id')->where('d.school_id', $this->tenant->id())->where('d.branch_id', $this->tenant->branchId())->where('d.channel', $channel))
                 ->orderBy('n.id')->limit(100)->get(['n.id']);
             foreach ($notifications as $notification) {
-                DB::table('school_notification_deliveries')->insertOrIgnore(['school_id' => $this->tenant->id(), 'notification_id' => $notification->id, 'channel' => $channel, 'status' => 'pending', 'attempts' => 0, 'available_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+                DB::table('school_notification_deliveries')->insertOrIgnore(['school_id' => $this->tenant->id(), 'branch_id' => $this->tenant->branchId(), 'notification_id' => $notification->id, 'channel' => $channel, 'status' => 'pending', 'attempts' => 0, 'available_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
             }
             foreach ($this->tenant->table('school_notification_deliveries')->where('channel', $channel)->where('status', 'pending')->where('available_at', '<=', now())->orderBy('id')->limit(20)->get() as $delivery) {
                 $this->send($delivery);
@@ -73,14 +73,14 @@ class NotificationDelivery
             return;
         }
         $notification = DB::table('school_notifications')->where('id', $delivery->notification_id)->where(function ($query): void {
-            $query->where('school_id', $this->tenant->id());
+            $query->where('school_id', $this->tenant->id())->where('branch_id', $this->tenant->branchId());
             if (DB::table('schools')->count() === 1) {
                 $query->orWhereNull('school_id');
             }
         })->first();
         $user = $notification ? User::find($notification->user_id) : null;
         $preferences = $user ? DB::table('school_notification_preferences')->where('user_id', $user->id)->where(function ($query): void {
-            $query->where('school_id', $this->tenant->id());
+            $query->where('school_id', $this->tenant->id())->where('branch_id', $this->tenant->branchId());
             if (DB::table('schools')->count() === 1) {
                 $query->orWhereNull('school_id');
             }

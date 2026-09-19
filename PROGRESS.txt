@@ -1,3 +1,10 @@
+- 2026-09-19 BRANCH CONTROL-PLANE FOUNDATION:
+  - Added school_branches and branch-scoped user access with a default-branch backfill for existing schools and records.
+  - Tenant context, portal authorization, invitations, users, module writes, report cards and notifications now resolve normal access through the active branch; Superadmin remains platform-wide.
+  - Added protected Superadmin APIs to create branches and grant audited branch roles.
+  - Verification passed: full PHPUnit suite (62 tests, 364 assertions), PHP Pint and git diff check.
+  - Remaining: replace testing-only legacy fixture compatibility with migrated fixtures, add branch controls to the dashboard UI, and continue the platform control-plane modules.
+
 - 2026-09-19 SUPERADMIN SCHOOL DETAIL UPDATE:
   - Connected the school registry to the protected school detail endpoint so Superadmins can inspect counts, active members and recent school activity.
   - Detail rendering escapes server values and reports failed requests in the dashboard.

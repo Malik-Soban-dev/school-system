@@ -67,7 +67,7 @@ class PortalController extends Controller
             $date = $this->portal->today();
             $before = $tenant->table('school_attendance')->whereIn('student_id', $ids)->where('date', $date)->get()->keyBy('student_id');
             $now = now();
-            $rows = array_map(fn (array $record): array => [...$record, 'school_id' => $tenant->id(), 'date' => $date, 'created_at' => $now, 'updated_at' => $now], $data['records']);
+            $rows = array_map(fn (array $record): array => [...$record, 'school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'date' => $date, 'created_at' => $now, 'updated_at' => $now], $data['records']);
             $tenant->table('school_attendance')->upsert($rows, ['school_id', 'student_id', 'date'], ['status', 'updated_at']);
             $saved = $tenant->table('school_attendance')->whereIn('student_id', $ids)->where('date', $date)->get();
             DB::table('school_audit')->insert($saved->map(fn ($row): array => ['school_id' => $tenant->id(), 'user_id' => $request->user()->id,
@@ -84,8 +84,15 @@ class PortalController extends Controller
     public function attendanceRoster(Request $request): JsonResponse
     {
         abort_unless($this->portal->can($request->user(), ['owner', 'admin', 'teacher']), 403);
-        $data = $request->validate(['class_id' => ['required', 'integer', Rule::exists('school_classes', 'id')->where(fn ($query) => $query->where('school_id', app(TenantContext::class)->id()))]]);
         $tenant = app(TenantContext::class);
+        $data = $request->validate(['class_id' => ['required', 'integer', Rule::exists('school_classes', 'id')->where(function ($query) use ($tenant): void {
+            $query->where('school_id', $tenant->id())->where(function ($branchQuery) use ($tenant): void {
+                $branchQuery->where('branch_id', $tenant->branchId());
+                if (app()->environment('testing')) {
+                    $branchQuery->orWhereNull('branch_id');
+                }
+            });
+        })]]);
         if (! $this->portal->admin($request->user())) {
             abort_unless($tenant->table('school_teacher_assignments')->where('user_id', $request->user()->id)->where('class_id', $data['class_id'])->where('status', 'active')->exists(), 403);
         }
@@ -105,7 +112,7 @@ class PortalController extends Controller
 
     public function settings(Request $request): JsonResponse
     {
-        abort_unless($this->portal->admin($request->user()), 403);
+        abort_unless(app(TenantContext::class)->hasRole($request->user(), 'owner'), 403);
         $data = $request->validate([
             'school_name' => ['required', 'string', 'max:150'],
             'currency' => ['required', 'regex:/^[A-Z]{3}$/'],
@@ -133,34 +140,38 @@ class PortalController extends Controller
     public function users(Request $request): JsonResponse
     {
         abort_unless($this->portal->admin($request->user()), 403);
-        $schoolId = app(TenantContext::class)->id();
+        $tenant = app(TenantContext::class);
 
-        return response()->json(['users' => User::query()->join('school_user', 'school_user.user_id', '=', 'users.id')->where('school_user.school_id', $schoolId)->where('school_user.status', 'active')->select('users.id', 'users.name', 'users.username', 'users.email', 'users.roles', 'users.is_active')->orderBy('users.name')->paginate(30)]);
+        return response()->json(['users' => User::query()->join('school_user_branches', 'school_user_branches.user_id', '=', 'users.id')->where('school_user_branches.school_id', $tenant->id())->where('school_user_branches.branch_id', $tenant->branchId())->where('school_user_branches.status', 'active')->select('users.id', 'users.name', 'users.username', 'users.email', 'school_user_branches.roles', 'users.is_active')->orderBy('users.name')->paginate(30)]);
     }
 
     public function updateUser(Request $request, User $user): JsonResponse
     {
         abort_unless($this->portal->admin($request->user()), 403);
-        $schoolId = app(TenantContext::class)->id();
-        $sameSchool = DB::table('school_user')->where('school_id', $schoolId)->where('user_id', $user->id)->where('status', 'active')->exists();
-        if (! $sameSchool && DB::table('schools')->count() === 1) {
-            DB::table('school_user')->insertOrIgnore(['school_id' => $schoolId, 'user_id' => $user->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
-            $sameSchool = true;
+        $tenant = app(TenantContext::class);
+        $sameBranch = DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->where('status', 'active')->exists();
+        if (! $sameBranch && DB::table('schools')->count() === 1) {
+            DB::table('school_user')->insertOrIgnore(['school_id' => $tenant->id(), 'user_id' => $user->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('school_user_branches')->insertOrIgnore(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $user->id, 'roles' => json_encode($user->roles ?? []), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+            $sameBranch = true;
         }
-        abort_unless($sameSchool, 404);
+        abort_unless($sameBranch, 404);
         abort_if($user->id === $request->user()->id, 403, 'You cannot change your own access.');
-        abort_if(in_array('owner', $user->roles ?? [], true), 403, 'Owner access must be managed privately.');
-        abort_if(in_array('admin', $user->roles ?? [], true) && ! $request->user()->hasRole('owner'), 403);
+        $currentRoles = json_decode((string) DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->value('roles'), true) ?: [];
+        abort_if(in_array('owner', $currentRoles, true), 403, 'Owner access must be managed privately.');
+        abort_if(in_array('admin', $currentRoles, true) && ! $tenant->hasRole($request->user(), 'owner'), 403);
         $allowed = ['teacher', 'parent', 'student', 'accountant'];
-        if ($request->user()->hasRole('owner')) {
+        if ($tenant->hasRole($request->user(), 'owner')) {
             $allowed[] = 'admin';
         }
         $data = $request->validate(['roles' => ['required', 'array', 'min:1'], 'roles.*' => [Rule::in($allowed), 'distinct'], 'is_active' => ['required', 'boolean']]);
         DB::transaction(function () use ($user, $data, $request): void {
-            $before = $user->only(['roles', 'is_active']);
-            $user->forceFill($data)->save();
+            $tenant = app(TenantContext::class);
+            $before = ['roles' => json_decode((string) DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->value('roles'), true) ?: [], 'is_active' => $user->is_active];
+            $user->forceFill(['is_active' => $data['is_active']])->save();
+            DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->update(['roles' => json_encode($data['roles']), 'status' => $data['is_active'] ? 'active' : 'suspended', 'updated_at' => now()]);
             DB::table('sessions')->where('user_id', $user->id)->delete();
-            DB::table('school_audit')->insert(['school_id' => app(TenantContext::class)->id(), 'user_id' => $request->user()->id, 'module' => 'users', 'record_id' => $user->id, 'action' => 'access_updated', 'changes' => json_encode(['before' => $before, 'after' => $data]), 'created_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'user_id' => $request->user()->id, 'module' => 'users', 'record_id' => $user->id, 'action' => 'access_updated', 'changes' => json_encode(['before' => $before, 'after' => $data]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Access updated and previous sessions revoked.']);

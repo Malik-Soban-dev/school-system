@@ -18,8 +18,8 @@ class ReportCardController extends Controller
         $studentRecord = $tenant->table('school_students')->find($student);
         abort_unless($examRecord && $studentRecord, 404);
         if (! $portal->admin($user)) {
-            $linked = $user->hasRole('student') && (int) $studentRecord->user_id === $user->id;
-            $linked = $linked || ($user->hasRole('parent') && $tenant->table('school_guardian_links')->where('student_id', $student)->where('user_id', $user->id)->where('status', 'active')->exists());
+            $linked = $tenant->hasRole($user, 'student') && (int) $studentRecord->user_id === $user->id;
+            $linked = $linked || ($tenant->hasRole($user, 'parent') && $tenant->table('school_guardian_links')->where('student_id', $student)->where('user_id', $user->id)->where('status', 'active')->exists());
             abort_unless($linked && $examRecord->status === 'published', 404);
         }
         abort_unless($tenant->table('school_enrollments')->where('student_id', $student)->where('class_id', $examRecord->class_id)->exists(), 404);

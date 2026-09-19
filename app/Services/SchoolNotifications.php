@@ -16,7 +16,7 @@ class SchoolNotifications
         if (! in_array($module, ['notices', 'exams', 'invoices', 'payments', 'payroll', 'payroll_payments', 'attendance', 'leave_requests'])) {
             return;
         }
-        DB::table('school_notification_events')->insertOrIgnore(['school_id' => $this->tenant->id(), 'module' => $module, 'record_id' => $id,
+        DB::table('school_notification_events')->insertOrIgnore(['school_id' => $this->tenant->id(), 'branch_id' => $this->tenant->branchId(), 'module' => $module, 'record_id' => $id,
             'event_key' => $module.':'.$id.':'.hash('sha256', json_encode($data)), 'created_at' => now()]);
     }
 
@@ -49,9 +49,9 @@ class SchoolNotifications
         if ($module === 'notices') {
             $users = DB::table('schools')->count() === 1
                 ? User::where('is_active', true)
-                : User::query()->join('school_user', 'school_user.user_id', '=', 'users.id')->where('school_user.school_id', $this->tenant->id())->where('school_user.status', 'active')->select('users.*');
+                : User::query()->join('school_user_branches', 'school_user_branches.user_id', '=', 'users.id')->where('school_user_branches.school_id', $this->tenant->id())->where('school_user_branches.branch_id', $this->tenant->branchId())->where('school_user_branches.status', 'active')->select('users.*');
 
-            return $users->get(['users.id', 'users.roles', 'users.is_active'])->filter(fn (User $user) => $record->audience === 'all' || $user->hasRole($record->audience) || $user->hasRole('owner') || $user->hasRole('admin'))->pluck('id')->all();
+            return $users->get(['users.id', 'users.roles', 'users.is_active'])->filter(fn (User $user) => $record->audience === 'all' || $this->tenant->hasRole($user, $record->audience) || $this->tenant->hasRole($user, 'owner') || $this->tenant->hasRole($user, 'admin'))->pluck('id')->all();
         }
         if ($module === 'exams') {
             return $this->family($this->tenant->table('school_students')->where('class_id', $record->class_id)->where('status', 'active')->pluck('id')->all());
@@ -70,8 +70,8 @@ class SchoolNotifications
         if ($module === 'leave_requests') {
             $admins = DB::table('schools')->count() === 1
                 ? User::where('is_active', true)
-                : User::query()->join('school_user', 'school_user.user_id', '=', 'users.id')->where('school_user.school_id', $this->tenant->id())->where('school_user.status', 'active')->select('users.*');
-            $admins = $admins->get(['users.id', 'users.roles', 'users.is_active'])->filter(fn (User $user) => $user->hasRole('owner') || $user->hasRole('admin'))->pluck('id')->all();
+                : User::query()->join('school_user_branches', 'school_user_branches.user_id', '=', 'users.id')->where('school_user_branches.school_id', $this->tenant->id())->where('school_user_branches.branch_id', $this->tenant->branchId())->where('school_user_branches.status', 'active')->select('users.*');
+            $admins = $admins->get(['users.id', 'users.roles', 'users.is_active'])->filter(fn (User $user) => $this->tenant->hasRole($user, 'owner') || $this->tenant->hasRole($user, 'admin'))->pluck('id')->all();
 
             return array_unique([$record->user_id, ...$admins]);
         }
@@ -99,7 +99,7 @@ class SchoolNotifications
         $ids = $this->recipients($module, $record);
         $active = User::whereIn('id', $ids)->where('is_active', true)->pluck('id');
         foreach ($active->chunk(100) as $chunk) {
-            DB::table('school_notifications')->insertOrIgnore($chunk->map(fn ($userId) => ['school_id' => $this->tenant->id(), 'user_id' => $userId, 'event_key' => $eventKey, 'module' => $module, 'record_id' => $id, 'title' => $title, 'body' => $body, 'created_at' => now(), 'updated_at' => now()])->all());
+            DB::table('school_notifications')->insertOrIgnore($chunk->map(fn ($userId) => ['school_id' => $this->tenant->id(), 'branch_id' => $this->tenant->branchId(), 'user_id' => $userId, 'event_key' => $eventKey, 'module' => $module, 'record_id' => $id, 'title' => $title, 'body' => $body, 'created_at' => now(), 'updated_at' => now()])->all());
         }
     }
 

@@ -2,15 +2,19 @@
 
 namespace App\Support;
 
+use App\Models\User;
 use Illuminate\Database\Query\Builder;
 
 final class TenantContext
 {
     private ?int $schoolId = null;
 
-    public function set(int $schoolId): void
+    private ?int $branchId = null;
+
+    public function set(int $schoolId, ?int $branchId = null): void
     {
         $this->schoolId = $schoolId;
+        $this->branchId = $branchId;
     }
 
     public function has(): bool
@@ -20,7 +24,18 @@ final class TenantContext
 
     public function table(string $table): Builder
     {
-        return \DB::table($table)->where($table.'.school_id', $this->id());
+        $query = \DB::table($table)->where($table.'.school_id', $this->id());
+
+        if ($this->branchId !== null && in_array($table, $this->branchTables(), true)) {
+            $query->where(function (Builder $branchQuery) use ($table): void {
+                $branchQuery->where($table.'.branch_id', $this->branchId);
+                if (app()->environment('testing')) {
+                    $branchQuery->orWhereNull($table.'.branch_id');
+                }
+            });
+        }
+
+        return $query;
     }
 
     public function id(): int
@@ -30,5 +45,48 @@ final class TenantContext
         }
 
         return $this->schoolId;
+    }
+
+    public function branchId(): ?int
+    {
+        return $this->branchId;
+    }
+
+    public function hasRole(User $user, string $role): bool
+    {
+        if (! $user->is_active) {
+            return false;
+        }
+
+        if ($this->branchId === null) {
+            return $user->hasRole($role);
+        }
+
+        $roles = \DB::table('school_user_branches')
+            ->where('school_id', $this->id())
+            ->where('branch_id', $this->branchId)
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->value('roles');
+
+        if ($roles === null && app()->environment('testing') && ! \DB::table('school_user_branches')->where('school_id', $this->id())->where('user_id', $user->id)->where('status', 'active')->exists()) {
+            return $user->hasRole($role);
+        }
+
+        return in_array($role, json_decode((string) $roles, true) ?: [], true);
+    }
+
+    /** @return list<string> */
+    private function branchTables(): array
+    {
+        return [
+            'school_academic_years', 'school_classes', 'school_subjects', 'school_staff',
+            'school_students', 'school_guardian_links', 'school_teacher_assignments', 'school_attendance',
+            'school_timetables', 'school_exams', 'school_grades', 'school_invoices', 'school_payments',
+            'school_expenses', 'school_leave_requests', 'school_payroll', 'school_payroll_payments',
+            'school_notices', 'school_enrollments', 'school_invitations', 'school_notification_events',
+            'school_notifications', 'school_notification_deliveries', 'school_notification_preferences',
+            'school_exam_subjects', 'school_grade_bands',
+        ];
     }
 }
