@@ -49,9 +49,15 @@ class PlatformController extends Controller
     {
         $data = $request->validate(['status' => ['required', Rule::in(['active', 'suspended'])]]);
         DB::transaction(function () use ($request, $school, $data): void {
-            $updated = DB::table('schools')->where('id', $school)->update(['status' => $data['status'], 'updated_at' => now()]);
-            abort_unless($updated === 1, 404);
-            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $school, 'action' => 'school_status_updated', 'changes' => json_encode(['status' => $data['status']]), 'created_at' => now()]);
+            $schoolRecord = DB::table('schools')->where('id', $school)->lockForUpdate()->first(['id', 'status']);
+            abort_unless($schoolRecord, 404);
+
+            if ($schoolRecord->status === $data['status']) {
+                return;
+            }
+
+            DB::table('schools')->where('id', $school)->update(['status' => $data['status'], 'updated_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $school, 'action' => 'school_status_updated', 'changes' => json_encode(['before' => ['status' => $schoolRecord->status], 'after' => ['status' => $data['status']]]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'School status updated.']);

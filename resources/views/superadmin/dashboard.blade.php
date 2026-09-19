@@ -38,9 +38,22 @@
         schools.innerHTML = data.schools.map(school => `<tr><td><strong>${esc(school.name)}</strong><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.members)}</td><td>${esc(school.students)}</td><td>${esc(school.staff)}</td><td>${esc(school.open_invoices)}</td><td><button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="7">No schools registered.</td></tr>';
         audit.innerHTML = data.audit.map(row => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.school_name)}</td><td>${esc(row.actor || 'System')}</td><td>${esc(row.module)}</td><td>${esc(row.action)}</td></tr>`).join('') || '<tr><td colspan="5">No audit events yet.</td></tr>';
         document.querySelectorAll('.platform-action').forEach(button => button.addEventListener('click', async () => {
+            const action = button.dataset.status === 'suspended' ? 'suspend' : 'activate';
+            if (!window.confirm(`Are you sure you want to ${action} this school?`)) {
+                return;
+            }
+
             button.disabled = true;
-            await fetch(`/superadmin/schools/${button.dataset.id}/status`, {method:'PUT', credentials:'same-origin', headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':csrf}, body:JSON.stringify({status:button.dataset.status})});
-            await load();
+            try {
+                const response = await fetch(`/superadmin/schools/${button.dataset.id}/status`, {method:'PUT', credentials:'same-origin', headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':csrf}, body:JSON.stringify({status:button.dataset.status})});
+                if (!response.ok) {
+                    throw new Error('Unable to update the school status.');
+                }
+                await load();
+            } catch (error) {
+                button.disabled = false;
+                window.alert(error.message);
+            }
         }));
     };
     document.querySelector('.platform-refresh').addEventListener('click', load);

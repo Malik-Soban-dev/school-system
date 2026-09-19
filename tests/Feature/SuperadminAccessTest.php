@@ -27,7 +27,7 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($user)->getJson('/superadmin/data')->assertOk()->assertJsonPath('summary.schools', 2)->assertJsonFragment(['slug' => 'managed-school']);
         $this->actingAs($user)->putJson('/superadmin/schools/'.$schoolTwo.'/status', ['status' => 'suspended'])->assertOk();
         $this->assertDatabaseHas('schools', ['id' => $schoolTwo, 'status' => 'suspended']);
-        $this->assertDatabaseHas('school_audit', ['school_id' => $schoolTwo, 'module' => 'platform', 'action' => 'school_status_updated']);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $schoolTwo, 'module' => 'platform', 'action' => 'school_status_updated', 'changes' => json_encode(['before' => ['status' => 'active'], 'after' => ['status' => 'suspended']])]);
     }
 
     public function test_school_users_cannot_open_platform_dashboard(): void
