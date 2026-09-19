@@ -21,6 +21,7 @@ Route::get('/', function () {
 Route::middleware(['auth', EnsureActiveAccount::class, EnsureSuperadmin::class])->group(function () {
     Route::get('/superadmin', [PlatformController::class, 'index'])->name('superadmin.dashboard');
     Route::get('/superadmin/data', [PlatformController::class, 'data']);
+    Route::get('/superadmin/health', [PlatformController::class, 'health']);
     Route::get('/superadmin/users', [PlatformController::class, 'users']);
     Route::get('/superadmin/schools/{school}/records/{module}', [PlatformController::class, 'records'])->whereNumber('school')->whereIn('module', ['students', 'staff', 'classes', 'users', 'invoices', 'payments', 'audit']);
     Route::put('/superadmin/users/{user}/status', [PlatformController::class, 'updateUserStatus'])->whereNumber('user');

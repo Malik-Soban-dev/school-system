@@ -19,6 +19,13 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($user)->get('/superadmin')->assertOk()->assertSee('Superadmin dashboard');
     }
 
+    public function test_superadmin_can_review_platform_health_without_backup_contents(): void
+    {
+        $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($user)->getJson('/superadmin/health')->assertOk()->assertJsonPath('database', 'ok')->assertJsonStructure(['status', 'queue' => ['pending', 'failed'], 'schools' => ['active', 'suspended'], 'backups']);
+    }
+
     public function test_superadmin_can_review_and_suspend_a_school_with_audited_status_change(): void
     {
         $schoolTwo = DB::table('schools')->insertGetId(['name' => 'Managed School', 'slug' => 'managed-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

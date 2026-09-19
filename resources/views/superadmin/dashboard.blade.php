@@ -17,6 +17,10 @@
     <section class="platform-grid" id="platform-summary" aria-live="polite">
         <article><strong>Loading…</strong><span>Schools</span></article><article><strong>Loading…</strong><span>Branches</span></article><article><strong>Loading…</strong><span>Members</span></article><article><strong>Loading…</strong><span>Students</span></article><article><strong>Loading…</strong><span>Open invoices</span></article>
     </section>
+    <section class="platform-panel" id="platform-health">
+        <div class="platform-panel-heading"><div><p class="eyebrow">OPERATIONS</p><h2>Platform health</h2></div><button class="platform-refresh" id="health-refresh" type="button">Refresh health</button></div>
+        <div id="health-content">Loading operational health…</div>
+    </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL REGISTRY</p><h2>Every school</h2></div><div><button class="platform-refresh" type="button">Refresh data</button></div></div>
         <form id="create-school-form"><input name="name" required maxlength="150" placeholder="New school name" aria-label="New school name"><input name="slug" required maxlength="80" pattern="[A-Za-z0-9_-]+" placeholder="Slug" aria-label="New school slug"><button type="submit">Onboard school</button></form>
@@ -42,6 +46,7 @@
 (() => {
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const summary = document.querySelector('#platform-summary');
+    const healthContent = document.querySelector('#health-content');
     const schools = document.querySelector('#school-rows');
     const audit = document.querySelector('#audit-rows');
     const detail = document.querySelector('#school-detail');
@@ -63,6 +68,11 @@
             throw new Error((await response.json().catch(() => ({}))).message || 'The platform request failed.');
         }
         return response.status === 204 ? null : response.json();
+    };
+    const loadHealth = async () => {
+        const data = await request('/superadmin/health');
+        const backupRows = data.backups.map(backup => `<tr><td>${esc(backup.name)}</td><td>${esc(backup.bytes)} bytes</td><td>${esc(backup.modified_at)}</td></tr>`).join('') || '<tr><td colspan="3">No encrypted backups found.</td></tr>';
+        healthContent.innerHTML = `<p><span class="platform-status ${esc(data.status)}">${esc(data.status)}</span> Database: <strong>${esc(data.database)}</strong> · Active schools: <strong>${esc(data.schools.active)}</strong> · Suspended schools: <strong>${esc(data.schools.suspended)}</strong> · Pending jobs: <strong>${esc(data.queue.pending)}</strong> · Failed jobs: <strong>${esc(data.queue.failed)}</strong> · Sessions: <strong>${esc(data.sessions ?? 'not configured')}</strong> · Last audit: <strong>${esc(data.last_audit_at || 'none')}</strong></p><h3>Recent encrypted backups</h3><div class="platform-table-wrap"><table><thead><tr><th>File</th><th>Size</th><th>Modified</th></tr></thead><tbody>${backupRows}</tbody></table></div>`;
     };
     const showSchoolDetail = async schoolId => {
         detail.hidden = false;
@@ -218,7 +228,9 @@
     });
     document.querySelector('#school-detail-close').addEventListener('click', () => { detail.hidden = true; });
     document.querySelector('.platform-refresh').addEventListener('click', load);
+    document.querySelector('#health-refresh').addEventListener('click', () => { loadHealth().catch(error => { healthContent.textContent = error.message; }); });
     load().catch(error => { schools.innerHTML = `<tr><td colspan="9">${esc(error.message)}</td></tr>`; });
+    loadHealth().catch(error => { healthContent.textContent = error.message; });
     loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; });
 })();
 </script>

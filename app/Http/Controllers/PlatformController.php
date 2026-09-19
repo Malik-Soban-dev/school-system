@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class PlatformController extends Controller
 {
@@ -39,6 +42,26 @@ class PlatformController extends Controller
             'summary' => ['schools' => $schools->count(), 'active_schools' => $schools->where('status', 'active')->count(), 'branches' => (int) $schools->sum('branches'), 'members' => (int) $schools->sum('members'), 'students' => (int) $schools->sum('students'), 'staff' => (int) $schools->sum('staff'), 'teachers' => (int) $schools->sum('teachers'), 'open_invoices' => (int) $schools->sum('open_invoices')],
             'schools' => $schools, 'audit' => $recentAudit,
         ]);
+    }
+
+    public function health(): JsonResponse
+    {
+        $database = 'ok';
+        try {
+            DB::select('select 1');
+        } catch (Throwable) {
+            $database = 'failed';
+        }
+        $pendingJobs = Schema::hasTable('jobs') ? DB::table('jobs')->count() : 0;
+        $failedJobs = Schema::hasTable('failed_jobs') ? DB::table('failed_jobs')->count() : 0;
+        $sessions = Schema::hasTable('sessions') ? DB::table('sessions')->count() : null;
+        $backups = collect();
+        $backupDirectory = storage_path('app/private/backups');
+        if (File::isDirectory($backupDirectory)) {
+            $backups = collect(File::files($backupDirectory))->sortByDesc(fn ($file): int => $file->getMTime())->take(10)->values()->map(fn ($file): array => ['name' => $file->getFilename(), 'bytes' => $file->getSize(), 'modified_at' => date(DATE_ATOM, $file->getMTime())]);
+        }
+
+        return response()->json(['status' => $database === 'ok' && $failedJobs === 0 ? 'ok' : 'attention', 'database' => $database, 'queue' => ['pending' => $pendingJobs, 'failed' => $failedJobs], 'sessions' => $sessions, 'schools' => ['active' => DB::table('schools')->where('status', 'active')->count(), 'suspended' => DB::table('schools')->where('status', 'suspended')->count()], 'last_audit_at' => DB::table('school_audit')->max('created_at'), 'backups' => $backups]);
     }
 
     public function users(Request $request): JsonResponse
