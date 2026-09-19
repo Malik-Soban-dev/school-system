@@ -7,6 +7,7 @@ use App\Services\SchoolPortal;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -17,7 +18,8 @@ class PortalController extends Controller
 
     public function meta(Request $request): JsonResponse
     {
-        $settingsQuery = DB::table('school_settings')->where('school_id', app(TenantContext::class)->id())->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family']);
+        $tenant = app(TenantContext::class);
+        $settingsQuery = DB::table('school_settings')->where('school_id', $tenant->id())->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family']);
         if (DB::table('schools')->count() === 1) {
             $settingsQuery->orWhere(function ($query): void {
                 $query->whereNull('school_id')->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family']);
@@ -33,7 +35,29 @@ class PortalController extends Controller
             'overview' => $this->portal->overview($request->user()),
             'canManage' => $this->portal->admin($request->user()),
             'today' => today($settings['timezone'] ?? config('app.timezone'))->toDateString(),
+            'contexts' => $this->availableContexts($request->user()),
+            'current_context' => ['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId()],
         ]);
+    }
+
+    public function contexts(Request $request): JsonResponse
+    {
+        $tenant = app(TenantContext::class);
+
+        return response()->json(['contexts' => $this->availableContexts($request->user()), 'current' => ['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId()]]);
+    }
+
+    public function switchContext(Request $request): JsonResponse
+    {
+        $data = $request->validate(['school_id' => ['required', 'integer'], 'branch_id' => ['required', 'integer']]);
+        $context = DB::table('school_user_branches as access')->join('school_user as membership', function ($join): void {
+            $join->on('membership.school_id', '=', 'access.school_id')->on('membership.user_id', '=', 'access.user_id');
+        })->join('schools', 'schools.id', '=', 'access.school_id')->join('school_branches as branch', 'branch.id', '=', 'access.branch_id')->where('access.user_id', $request->user()->id)->where('access.school_id', $data['school_id'])->where('access.branch_id', $data['branch_id'])->where('access.status', 'active')->where('membership.status', 'active')->where('schools.status', 'active')->where('branch.status', 'active')->first(['access.school_id', 'access.branch_id']);
+        abort_unless($context, 403, 'You do not have access to that school branch.');
+        $request->session()->put(['school_id' => (int) $context->school_id, 'branch_id' => (int) $context->branch_id]);
+        app(TenantContext::class)->set((int) $context->school_id, (int) $context->branch_id);
+
+        return response()->json(['message' => 'Workspace branch switched.', 'current' => ['school_id' => (int) $context->school_id, 'branch_id' => (int) $context->branch_id]]);
     }
 
     public function index(Request $request, string $module): JsonResponse
@@ -208,5 +232,16 @@ class PortalController extends Controller
             'options' => $this->portal->options($request->user()), 'extra' => $extra,
             'school' => $tenant->table('school_settings')->where('key', 'school_name')->value('value') ?: 'School System',
             'currency' => $tenant->table('school_settings')->where('key', 'currency')->value('value') ?: '']);
+    }
+
+    private function availableContexts(User $user): Collection
+    {
+        return DB::table('school_user_branches as access')->join('school_user as membership', function ($join): void {
+            $join->on('membership.school_id', '=', 'access.school_id')->on('membership.user_id', '=', 'access.user_id');
+        })->join('schools', 'schools.id', '=', 'access.school_id')->join('school_branches as branch', 'branch.id', '=', 'access.branch_id')->where('access.user_id', $user->id)->where('access.status', 'active')->where('membership.status', 'active')->where('schools.status', 'active')->where('branch.status', 'active')->orderBy('schools.name')->orderBy('branch.name')->get(['access.school_id', 'schools.name as school_name', 'access.branch_id', 'branch.name as branch_name', 'access.roles'])->map(function (object $context): object {
+            $context->roles = json_decode((string) $context->roles, true) ?: [];
+
+            return $context;
+        });
     }
 }

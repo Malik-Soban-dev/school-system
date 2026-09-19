@@ -208,4 +208,22 @@ class SuperadminAccessTest extends TestCase
         $tenant->set($school, $branchTwo);
         $this->assertFalse($tenant->hasRole($admin, 'admin'));
     }
+
+    public function test_branch_admin_can_list_and_switch_only_assigned_contexts(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Context School', 'slug' => 'context-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branchOne = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'One', 'code' => 'one', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $branchTwo = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Two', 'code' => 'two', 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
+        $admin = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $admin->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert([
+            ['school_id' => $school, 'branch_id' => $branchOne, 'user_id' => $admin->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+            ['school_id' => $school, 'branch_id' => $branchTwo, 'user_id' => $admin->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $this->actingAs($admin)->getJson('/portal/contexts')->assertOk()->assertJsonCount(2, 'contexts');
+        $this->putJson('/portal/context', ['school_id' => $school, 'branch_id' => $branchTwo])->assertOk()->assertJsonPath('current.branch_id', $branchTwo);
+        $this->assertSame($branchTwo, (int) session('branch_id'));
+        $this->putJson('/portal/context', ['school_id' => $school, 'branch_id' => 999999])->assertForbidden();
+    }
 }

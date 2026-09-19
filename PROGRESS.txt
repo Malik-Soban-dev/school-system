@@ -1,3 +1,9 @@
+- 2026-09-19 BRANCH WORKSPACE SWITCHING UPDATE:
+  - Added active school/branch context listing and a throttled server-side context switch endpoint.
+  - Context switching validates school membership, branch access, school status and branch status before updating the session tenant.
+  - Added a workspace selector to the portal header for administrators with multiple assigned contexts; branch data reloads after switching.
+  - Verification passed: full PHPUnit suite (74 tests, 416 assertions), focused SuperadminAccessTest (17 tests, 69 assertions), Vite production build, Blade view cache, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN UNIFIED AUDIT FEED UPDATE:
   - Merged school audit events and platform audit events into the bounded Superadmin activity feed, chronologically ordered and labeled with Platform when the event is global.
   - Added regression coverage proving plan changes appear in the main Superadmin audit stream.
