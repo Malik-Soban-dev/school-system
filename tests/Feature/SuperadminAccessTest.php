@@ -150,6 +150,18 @@ class SuperadminAccessTest extends TestCase
         $school = $this->actingAs($superadmin)->postJson('/superadmin/schools', ['name' => 'Onboarded School', 'slug' => 'onboarded-school'])->assertCreated()->json('school');
 
         $this->assertDatabaseHas('school_branches', ['school_id' => $school['id'], 'code' => 'main', 'is_default' => true]);
+        $this->assertDatabaseHas('school_subscriptions', ['school_id' => $school['id'], 'status' => 'trialing', 'plan_id' => DB::table('platform_plans')->where('code', 'starter')->value('id')]);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $school['id'], 'action' => 'school_created']);
+    }
+
+    public function test_superadmin_can_onboard_a_school_with_a_selected_active_plan(): void
+    {
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+        $plan = DB::table('platform_plans')->where('code', 'growth')->value('id');
+
+        $school = $this->actingAs($superadmin)->postJson('/superadmin/schools', ['name' => 'Growth School', 'slug' => 'growth-school', 'plan_id' => $plan])->assertCreated()->json('school');
+
+        $this->assertDatabaseHas('school_subscriptions', ['school_id' => $school['id'], 'plan_id' => $plan, 'status' => 'trialing']);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school['id'], 'action' => 'school_created']);
     }
 

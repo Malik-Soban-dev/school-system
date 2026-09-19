@@ -1,3 +1,9 @@
+- 2026-09-19 SUPERADMIN ONBOARDING BILLING UPDATE:
+  - New school onboarding now atomically creates a trial subscription instead of leaving the tenant outside plan entitlements.
+  - Added Starter as the safe default and an active-plan selector for Superadmin onboarding; the selected plan is recorded in the school audit trail.
+  - Branch-capacity transactions now lock the school row to prevent concurrent provisioning from exceeding max_branches.
+  - Verification passed: full PHPUnit suite (76 tests, 423 assertions), focused SuperadminAccessTest (19 tests, 75 assertions), Blade view cache and PHP Pint.
+
 - 2026-09-19 SUPERADMIN PLAN BRANCH CAPACITY UPDATE:
   - Enforced each active subscription's max_branches limit during transactional Superadmin branch creation.
   - Added regression coverage proving a starter plan with one allowed branch rejects a second branch with HTTP 422.

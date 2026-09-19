@@ -27,7 +27,7 @@
     </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL REGISTRY</p><h2>Every school</h2></div><div><button class="platform-refresh" type="button">Refresh data</button></div></div>
-        <form id="create-school-form"><input name="name" required maxlength="150" placeholder="New school name" aria-label="New school name"><input name="slug" required maxlength="80" pattern="[A-Za-z0-9_-]+" placeholder="Slug" aria-label="New school slug"><button type="submit">Onboard school</button></form>
+        <form id="create-school-form"><input name="name" required maxlength="150" placeholder="New school name" aria-label="New school name"><input name="slug" required maxlength="80" pattern="[A-Za-z0-9_-]+" placeholder="Slug" aria-label="New school slug"><select id="onboard-plan" name="plan_id" aria-label="Initial school plan"><option value="">Starter trial</option></select><button type="submit">Onboard school</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Status</th><th>Branches</th><th>Members</th><th>Students</th><th>Staff</th><th>Teachers</th><th>Open invoices</th><th>Control</th></tr></thead><tbody id="school-rows"><tr><td colspan="9">Loading school registry…</td></tr></tbody></table></div>
     </section>
     <section class="platform-panel" id="school-detail" hidden>
@@ -190,6 +190,7 @@
         const data = await response.json();
         platformSchools = data.schools;
         platformPlans = data.plans || [];
+        document.querySelector('#onboard-plan').innerHTML = '<option value="">Starter trial</option>' + platformPlans.filter(plan => plan.status === 'active').map(plan => `<option value="${esc(plan.id)}">${esc(plan.name)} trial</option>`).join('');
         renderPlans();
         const selectedSchool = explorerSchool.value;
         explorerSchool.innerHTML = platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
@@ -264,7 +265,7 @@
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         try {
-            await request('/superadmin/schools', {method: 'POST', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({name: formData.get('name'), slug: formData.get('slug')})});
+            await request('/superadmin/schools', {method: 'POST', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({name: formData.get('name'), slug: formData.get('slug'), plan_id: formData.get('plan_id') ? Number(formData.get('plan_id')) : null})});
             event.currentTarget.reset();
             await load();
         } catch (error) {

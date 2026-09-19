@@ -133,11 +133,19 @@ class PlatformController extends Controller
 
     public function createSchool(Request $request): JsonResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:150'], 'slug' => ['required', 'alpha_dash', 'max:80', 'unique:schools,slug']]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:150'],
+            'slug' => ['required', 'alpha_dash', 'max:80', 'unique:schools,slug'],
+            'plan_id' => ['nullable', 'integer', Rule::exists('platform_plans', 'id')->where(fn ($query) => $query->where('status', 'active'))],
+        ]);
         $school = DB::transaction(function () use ($request, $data): object {
-            $schoolId = DB::table('schools')->insertGetId([...$data, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+            $schoolId = DB::table('schools')->insertGetId(['name' => $data['name'], 'slug' => $data['slug'], 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
             DB::table('school_branches')->insert(['school_id' => $schoolId, 'name' => $data['name'].' Main Branch', 'code' => 'main', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
-            DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $schoolId, 'action' => 'school_created', 'changes' => json_encode(['name' => $data['name'], 'slug' => $data['slug']]), 'created_at' => now()]);
+            $plan = DB::table('platform_plans')->where('id', $data['plan_id'] ?? null)->where('status', 'active')->first(['id', 'code']);
+            $plan ??= DB::table('platform_plans')->where('code', 'starter')->where('status', 'active')->first(['id', 'code']);
+            abort_unless($plan, 422, 'No active Starter plan is available for onboarding.');
+            DB::table('school_subscriptions')->insert(['school_id' => $schoolId, 'plan_id' => $plan->id, 'status' => 'trialing', 'starts_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $schoolId, 'action' => 'school_created', 'changes' => json_encode(['name' => $data['name'], 'slug' => $data['slug'], 'plan' => $plan->code]), 'created_at' => now()]);
 
             return DB::table('schools')->where('id', $schoolId)->first();
         });
@@ -212,7 +220,7 @@ class PlatformController extends Controller
     {
         $data = $request->validate(['name' => ['required', 'string', 'max:120'], 'code' => ['required', 'alpha_dash', 'max:40', Rule::unique('school_branches', 'code')->where(fn ($query) => $query->where('school_id', $school))]]);
         $branch = DB::transaction(function () use ($request, $school, $data): object {
-            abort_unless(DB::table('schools')->where('id', $school)->exists(), 404);
+            abort_unless(DB::table('schools')->where('id', $school)->lockForUpdate()->exists(), 404);
             $subscription = DB::table('school_subscriptions')->where('school_id', $school)->whereIn('status', ['trialing', 'active'])->lockForUpdate()->first(['plan_id']);
             $maxBranches = $subscription ? DB::table('platform_plans')->where('id', $subscription->plan_id)->value('max_branches') : null;
             abort_if($maxBranches !== null && DB::table('school_branches')->where('school_id', $school)->where('status', 'active')->count() >= (int) $maxBranches, 422, 'This school has reached its plan branch limit. Upgrade the subscription before adding another branch.');
