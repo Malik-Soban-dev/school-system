@@ -64,12 +64,25 @@ class GeneratePlatformInvoices extends Command
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
+                    $nextRenewal = $periodEnd->addMonthNoOverflow();
+                    DB::table('school_subscriptions')
+                        ->where('id', $subscription->id)
+                        ->update([
+                            'renews_at' => $nextRenewal,
+                            'updated_at' => now(),
+                        ]);
                     DB::table('platform_audit')->insert([
                         'user_id' => null,
                         'entity_type' => 'platform_invoice',
                         'entity_id' => $invoiceId,
                         'action' => 'invoice_generated',
-                        'changes' => json_encode(['school_id' => $subscription->school_id, 'subscription_id' => $subscription->id, 'billing_key' => $billingKey]),
+                        'changes' => json_encode([
+                            'school_id' => $subscription->school_id,
+                            'subscription_id' => $subscription->id,
+                            'billing_key' => $billingKey,
+                            'renewed_from' => $periodEnd->toDateString(),
+                            'next_renewal' => $nextRenewal->toDateString(),
+                        ]),
                         'created_at' => now(),
                     ]);
 

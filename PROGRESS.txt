@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN RENEWAL CYCLE PROGRESSION UPDATE:
+  - Renewal invoice generation now advances each active subscription to the next month inside the same transaction after invoice creation, while retaining repeat-safe billing keys and recording the next renewal in platform audit history.
+  - Added multi-cycle regression coverage for September-to-October-to-November renewal progression.
+  - Verification passed: full PHPUnit suite (93 tests, 543 assertions), focused renewal test (1 test, 10 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN DEFAULT BRANCH CONTROL UPDATE:
   - Added a transactional Superadmin action and school-detail control for changing the active default branch; the previous default is cleared atomically and suspended branches cannot be selected.
   - Default changes are branch-scoped and audited, preserving predictable normal-user context resolution as schools add or retire campuses.

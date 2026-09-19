@@ -183,12 +183,19 @@ class SuperadminAccessTest extends TestCase
         Artisan::call('platform:generate-invoices', ['--until' => '2026-09-19']);
 
         $this->assertDatabaseCount('platform_billing_invoices', 1);
+        $this->assertDatabaseHas('school_subscriptions', ['id' => $subscription, 'renews_at' => '2026-10-01 00:00:00']);
         $invoice = DB::table('platform_billing_invoices')->first();
         $this->assertSame($school, (int) $invoice->school_id);
         $this->assertSame($subscription, (int) $invoice->subscription_id);
         $this->assertSame('renewal:'.$subscription.':2026-09-01', $invoice->billing_key);
         $this->assertSame((int) $plan->monthly_price_cents, (int) $invoice->amount_cents);
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'platform_invoice', 'entity_id' => $invoice->id, 'action' => 'invoice_generated']);
+
+        Artisan::call('platform:generate-invoices', ['--until' => '2026-10-02']);
+
+        $this->assertDatabaseCount('platform_billing_invoices', 2);
+        $this->assertDatabaseHas('platform_billing_invoices', ['subscription_id' => $subscription, 'billing_key' => 'renewal:'.$subscription.':2026-10-01']);
+        $this->assertDatabaseHas('school_subscriptions', ['id' => $subscription, 'renews_at' => '2026-11-01 00:00:00']);
     }
 
     public function test_superadmin_can_update_a_plan_with_platform_auditing(): void
