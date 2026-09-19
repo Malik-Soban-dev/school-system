@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN GLOBAL BRANCH REGISTRY UPDATE:
+  - Added a paginated cross-school branch registry API and dashboard section with school/status/search filters and member, student, staff and teacher counts per branch.
+  - Branch identity and status remain visible globally without weakening school/branch access isolation or existing detail controls.
+  - Verification passed: full PHPUnit suite (88 tests, 505 assertions), focused branch registry tests (3 tests, 8 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN BACKUP VERIFICATION UPDATE:
   - Added a protected dashboard action to verify a selected encrypted backup in isolated memory using the existing integrity command; backup names are allow-listed and path traversal is rejected.
   - Verification results are audited as platform events, while encrypted contents and command output remain private.

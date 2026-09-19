@@ -21,6 +21,18 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($user)->get('/superadmin')->assertOk()->assertSee('Superadmin dashboard');
     }
 
+    public function test_superadmin_can_review_a_paginated_cross_school_branch_registry(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Branch Registry School', 'slug' => 'branch-registry-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_branches')->insert([
+            ['school_id' => $school, 'name' => 'North Branch', 'code' => 'north', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['school_id' => $school, 'name' => 'South Branch', 'code' => 'south', 'status' => 'suspended', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/branches?status=active&search=North&per_page=1')->assertOk()->assertJsonPath('branches.total', 1)->assertJsonPath('branches.data.0.school_name', 'Branch Registry School')->assertJsonPath('branches.data.0.name', 'North Branch')->assertJsonPath('branches.data.0.students', 0);
+    }
+
     public function test_superadmin_can_review_platform_health_without_backup_contents(): void
     {
         $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);

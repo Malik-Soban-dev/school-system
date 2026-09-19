@@ -35,6 +35,11 @@
         <form id="create-school-form"><input name="name" required maxlength="150" placeholder="New school name" aria-label="New school name"><input name="slug" required maxlength="80" pattern="[A-Za-z0-9_-]+" placeholder="Slug" aria-label="New school slug"><select id="onboard-plan" name="plan_id" aria-label="Initial school plan"><option value="">Starter trial</option></select><button type="submit">Onboard school</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Status</th><th>Branches</th><th>Members</th><th>Students</th><th>Staff</th><th>Teachers</th><th>Open invoices</th><th>Control</th></tr></thead><tbody id="school-rows"><tr><td colspan="9">Loading school registry…</td></tr></tbody></table></div>
     </section>
+    <section class="platform-panel">
+        <div class="platform-panel-heading"><div><p class="eyebrow">BRANCH REGISTRY</p><h2>Every branch</h2></div></div>
+        <form id="branch-search-form"><select id="branch-status" aria-label="Branch status"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><input id="branch-search" maxlength="100" placeholder="Search branch or school" aria-label="Search branches"><button type="submit">Search branches</button></form>
+        <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Branch</th><th>Status</th><th>Members</th><th>Students</th><th>Staff</th><th>Teachers</th></tr></thead><tbody id="branch-rows"><tr><td colspan="7">Loading branch registry…</td></tr></tbody></table></div><div id="branch-pagination"></div>
+    </section>
     <section class="platform-panel" id="school-detail" hidden>
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL DETAIL</p><h2 id="school-detail-title">Selected school</h2></div><button class="platform-refresh" id="school-detail-close" type="button">Close</button></div>
         <div id="school-detail-content">Select a school to inspect its members and activity.</div>
@@ -62,6 +67,10 @@
     const platformInvoiceSchool = document.querySelector('#platform-invoice-school');
     const platformInvoiceRows = document.querySelector('#platform-invoice-rows');
     const schools = document.querySelector('#school-rows');
+    const branchRows = document.querySelector('#branch-rows');
+    const branchStatus = document.querySelector('#branch-status');
+    const branchSearch = document.querySelector('#branch-search');
+    const branchPagination = document.querySelector('#branch-pagination');
     const audit = document.querySelector('#audit-rows');
     const auditSchool = document.querySelector('#audit-school');
     const auditBranch = document.querySelector('#audit-branch');
@@ -338,6 +347,15 @@
             }
         }));
     };
+    const loadBranches = async (page = 1) => {
+        const params = new URLSearchParams({page, per_page: 50});
+        if (branchStatus.value) params.set('status', branchStatus.value);
+        if (branchSearch.value.trim()) params.set('search', branchSearch.value.trim());
+        const data = await request(`/superadmin/branches?${params}`);
+        branchRows.innerHTML = data.branches.data.map(branch => `<tr><td>${esc(branch.school_name)}</td><td><strong>${esc(branch.name)}</strong><small>${esc(branch.code)}${branch.is_default ? ' · Default' : ''}</small></td><td><span class="platform-status ${esc(branch.status)}">${esc(branch.status)}</span></td><td>${esc(branch.members)}</td><td>${esc(branch.students)}</td><td>${esc(branch.staff)}</td><td>${esc(branch.teachers)}</td></tr>`).join('') || '<tr><td colspan="7">No matching branches.</td></tr>';
+        branchPagination.innerHTML = data.branches.last_page > 1 ? `<button type="button" data-branch-page="${data.branches.current_page - 1}" ${data.branches.current_page === 1 ? 'disabled' : ''}>Previous</button> <span>Page ${data.branches.current_page} of ${data.branches.last_page}</span> <button type="button" data-branch-page="${data.branches.current_page + 1}" ${data.branches.current_page === data.branches.last_page ? 'disabled' : ''}>Next</button>` : '';
+        branchPagination.querySelectorAll('[data-branch-page]').forEach(button => button.addEventListener('click', () => loadBranches(Number(button.dataset.branchPage)).catch(error => { branchRows.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; })));
+    };
     const updateExplorerBranches = () => {
         const school = platformSchools.find(item => String(item.id) === String(explorerSchool.value));
         explorerBranch.innerHTML = '<option value="">All branches</option>' + (school?.branch_options || []).map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)} (${esc(branch.code)})${branch.status === 'suspended' ? ' · suspended' : ''}</option>`).join('');
@@ -358,6 +376,7 @@
         explorerRows.innerHTML = records.map(record => `<tr>${columns.map(column => `<td>${esc(typeof record[column] === 'object' ? JSON.stringify(record[column]) : record[column])}</td>`).join('')}</tr>`).join('');
     };
     document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
+    document.querySelector('#branch-search-form').addEventListener('submit', event => { event.preventDefault(); loadBranches().catch(error => { branchRows.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; }); });
     document.querySelector('#audit-search-form').addEventListener('submit', event => { event.preventDefault(); loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="6">${esc(error.message)}</td></tr>`; }); });
     auditSchool.addEventListener('change', () => { auditBranch.value = ''; updateAuditBranches(); });
     explorerSchool.addEventListener('change', updateExplorerBranches);
@@ -391,6 +410,7 @@
     loadHealth().catch(error => { healthContent.textContent = error.message; });
     loadFailedJobs().catch(error => { failedJobContent.textContent = error.message; });
     loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; });
+    loadBranches().catch(error => { branchRows.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; });
 })();
 </script>
 </body>

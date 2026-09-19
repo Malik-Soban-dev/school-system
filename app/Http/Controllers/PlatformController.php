@@ -52,6 +52,25 @@ class PlatformController extends Controller
         ]);
     }
 
+    public function branches(Request $request): JsonResponse
+    {
+        $data = $request->validate(['school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'status' => ['nullable', Rule::in(['active', 'suspended'])], 'search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        $search = trim((string) ($data['search'] ?? ''));
+        $branches = DB::table('school_branches as b')
+            ->join('schools as s', 's.id', '=', 'b.school_id')
+            ->leftJoinSub(DB::table('school_students')->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id'), 'students', 'students.branch_id', '=', 'b.id')
+            ->leftJoinSub(DB::table('school_staff')->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id'), 'staff', 'staff.branch_id', '=', 'b.id')
+            ->leftJoinSub(DB::table('school_teacher_assignments')->select('branch_id')->where('status', 'active')->selectRaw('count(distinct user_id) as total')->groupBy('branch_id'), 'teachers', 'teachers.branch_id', '=', 'b.id')
+            ->leftJoinSub(DB::table('school_user_branches')->select('branch_id')->where('status', 'active')->selectRaw('count(distinct user_id) as total')->groupBy('branch_id'), 'members', 'members.branch_id', '=', 'b.id')
+            ->when(isset($data['school_id']), fn ($query) => $query->where('b.school_id', $data['school_id']))
+            ->when(isset($data['status']), fn ($query) => $query->where('b.status', $data['status']))
+            ->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('b.name', 'like', '%'.$search.'%')->orWhere('b.code', 'like', '%'.$search.'%')->orWhere('s.name', 'like', '%'.$search.'%')))
+            ->orderBy('s.name')->orderBy('b.name')
+            ->paginate((int) ($data['per_page'] ?? 50), ['b.id', 'b.school_id', 's.name as school_name', 'b.name', 'b.code', 'b.status', 'b.is_default', 'b.created_at', DB::raw('coalesce(members.total, 0) as members'), DB::raw('coalesce(students.total, 0) as students'), DB::raw('coalesce(staff.total, 0) as staff'), DB::raw('coalesce(teachers.total, 0) as teachers')]);
+
+        return response()->json(['branches' => $branches]);
+    }
+
     public function billingInvoices(Request $request): JsonResponse
     {
         $data = $request->validate(['school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'status' => ['nullable', Rule::in(['issued', 'paid', 'void', 'overdue'])], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
