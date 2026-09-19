@@ -30,6 +30,18 @@ class SchoolOperationsTest extends TestCase
         return $this->record('students', ['name' => fake()->name(), 'admission_number' => fake()->unique()->numerify('ADM-#####'), 'class_id' => $class, 'status' => 'active', 'user_id' => $user?->id]);
     }
 
+    public function test_active_student_creation_respects_the_platform_plan_limit(): void
+    {
+        $owner = $this->person('owner');
+        $starter = DB::table('platform_plans')->where('code', 'starter')->value('id');
+        DB::table('school_subscriptions')->where('school_id', 1)->update(['plan_id' => $starter, 'status' => 'active']);
+        $student = $this->student();
+        $class = DB::table('school_students')->where('id', $student)->value('class_id');
+        DB::table('platform_plans')->where('id', $starter)->update(['max_students' => 1]);
+
+        $this->actingAs($owner)->postJson('/portal/records/students', ['name' => 'Over Limit', 'admission_number' => 'OVER-LIMIT', 'class_id' => $class, 'status' => 'active'])->assertUnprocessable()->assertJsonValidationErrors('status');
+    }
+
     public function test_parent_sees_only_linked_students_and_revocation_is_immediate(): void
     {
         $parent = $this->person('parent');

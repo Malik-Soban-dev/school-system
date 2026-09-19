@@ -1,3 +1,9 @@
+- 2026-09-19 SUPERADMIN PLAN ENFORCEMENT UPDATE:
+  - Enforced each active subscription's max_students limit across all branches during transactional student creation; canceled/past-due subscriptions do not silently grant new capacity.
+  - The check locks the subscription row before counting active students and returns a clear validation error directing the client to platform upgrade management.
+  - Added regression coverage for a Starter school reaching its student limit.
+  - Verification passed: full PHPUnit suite (70 tests, 399 assertions), focused school/admin suites (24 tests, 122 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN SAAS SUBSCRIPTION UPDATE:
   - Added platform_plans with Starter, Growth and Enterprise defaults, branch/student limits and feature entitlements.
   - Added one subscription per school with trialing, active, past-due and canceled states, renewal/cancellation metadata and indexed status access.

@@ -395,6 +395,13 @@ class SchoolPortal
 
     private function validateBusiness(string $module, array $data, User $user, ?int $id, ?object $old): void
     {
+        if ($module === 'students' && $data['status'] === 'active' && (! $old || $old->status !== 'active')) {
+            $subscription = DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->where('subscription.school_id', $this->tenant->id())->whereIn('subscription.status', ['trialing', 'active'])->lockForUpdate()->first(['plan.max_students']);
+            $currentStudents = DB::table('school_students')->where('school_id', $this->tenant->id())->where('status', 'active')->count();
+            if ($subscription?->max_students !== null && $currentStudents >= (int) $subscription->max_students) {
+                $this->fail('status', 'This school has reached its plan student limit. Ask the platform Superadmin to upgrade the subscription.');
+            }
+        }
         if ($module === 'exams' && $old && (int) $old->class_id !== (int) $data['class_id'] && $this->tenant->table('school_grades')->where('exam_id', $id)->exists()) {
             $this->fail('class_id', 'An exam with recorded marks cannot move to another class.');
         }
