@@ -312,6 +312,27 @@ class PlatformController extends Controller
         return response()->json(['message' => 'School subscription updated.']);
     }
 
+    public function createPlan(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'code' => ['required', 'alpha_dash', 'max:60', 'unique:platform_plans,code'],
+            'name' => ['required', 'string', 'max:100'],
+            'monthly_price_cents' => ['required', 'integer', 'min:0', 'max:100000000'],
+            'max_branches' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'max_students' => ['nullable', 'integer', 'min:1', 'max:100000000'],
+            'features' => ['required', 'array'],
+            'features.*' => [Rule::in(['*', 'attendance', 'grades', 'invoices', 'payroll', 'notifications']), 'distinct'],
+        ]);
+        $plan = DB::transaction(function () use ($request, $data): object {
+            $planId = DB::table('platform_plans')->insertGetId([...$data, 'features' => json_encode($data['features']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'plan', 'entity_id' => $planId, 'action' => 'plan_created', 'changes' => json_encode($data), 'created_at' => now()]);
+
+            return DB::table('platform_plans')->where('id', $planId)->first();
+        });
+
+        return response()->json(['plan' => $plan], 201);
+    }
+
     public function updatePlan(Request $request, int $plan): JsonResponse
     {
         $data = $request->validate([

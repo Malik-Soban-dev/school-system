@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN PLAN CREATION UPDATE:
+  - Added audited Superadmin creation of active platform pricing plans with unique codes, monthly pricing, branch/student capacity limits and allow-listed feature entitlements.
+  - Added the dashboard creation form so new SaaS tiers can be launched without direct database access; existing archive-integrity safeguards remain in force.
+  - Verification passed: full PHPUnit suite (91 tests, 528 assertions), focused plan tests (2 tests, 10 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN LARGE ROSTER VISIBILITY UPDATE:
   - Removed the school-detail member hard cap so Superadmin can review and manage every member in a client school, including rosters larger than 100 accounts.
   - Added a 101-member regression test to protect complete roster visibility while retaining branch access controls.

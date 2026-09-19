@@ -23,6 +23,7 @@
     </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">PLAN CATALOG</p><h2>Platform plans</h2></div></div>
+        <form id="create-plan-form"><input name="code" required maxlength="60" pattern="[A-Za-z0-9_-]+" placeholder="Plan code" aria-label="New plan code"><input name="name" required maxlength="100" placeholder="Plan name" aria-label="New plan name"><input name="monthly_price_cents" required type="number" min="0" placeholder="Monthly cents" aria-label="New plan monthly price"><input name="max_branches" type="number" min="1" placeholder="Max branches" aria-label="New plan maximum branches"><input name="max_students" type="number" min="1" placeholder="Max students" aria-label="New plan maximum students"><input name="features" placeholder="Features, e.g. attendance, grades" aria-label="New plan features"><button type="submit">Create plan</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>Plan</th><th>Monthly cents</th><th>Max branches</th><th>Max students</th><th>Features</th><th>Status</th><th>Control</th></tr></thead><tbody id="plan-rows"><tr><td colspan="7">Loading plan catalog…</td></tr></tbody></table></div>
     </section>
     <section class="platform-panel">
@@ -409,6 +410,17 @@
         explorerPagination.innerHTML = data.records.last_page > 1 ? `<button type="button" data-explorer-page="${data.records.current_page - 1}" ${data.records.current_page === 1 ? 'disabled' : ''}>Previous</button> <span>Page ${data.records.current_page} of ${data.records.last_page}</span> <button type="button" data-explorer-page="${data.records.current_page + 1}" ${data.records.current_page === data.records.last_page ? 'disabled' : ''}>Next</button>` : '';
         explorerPagination.querySelectorAll('[data-explorer-page]').forEach(button => button.addEventListener('click', () => loadExplorer(Number(button.dataset.explorerPage)).catch(error => { explorerRows.innerHTML = `<tr><td>${esc(error.message)}</td></tr>`; })));
     };
+    document.querySelector('#create-plan-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        try {
+            await request('/superadmin/plans', {method: 'POST', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({code: formData.get('code'), name: formData.get('name'), monthly_price_cents: Number(formData.get('monthly_price_cents')), max_branches: formData.get('max_branches') || null, max_students: formData.get('max_students') || null, features: String(formData.get('features') || '').split(',').map(value => value.trim()).filter(Boolean)})});
+            event.currentTarget.reset();
+            await load();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
     document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
     document.querySelector('#branch-search-form').addEventListener('submit', event => { event.preventDefault(); loadBranches().catch(error => { branchRows.innerHTML = `<tr><td colspan="8">${esc(error.message)}</td></tr>`; }); });
     document.querySelector('#audit-search-form').addEventListener('submit', event => { event.preventDefault(); loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="6">${esc(error.message)}</td></tr>`; }); });

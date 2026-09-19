@@ -191,6 +191,17 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->assertJsonFragment(['action' => 'plan_updated', 'school_name' => 'Platform']);
     }
 
+    public function test_superadmin_can_create_a_new_platform_plan_with_audit(): void
+    {
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $plan = $this->actingAs($superadmin)->postJson('/superadmin/plans', ['code' => 'pro-plus', 'name' => 'Pro Plus', 'monthly_price_cents' => 24900, 'max_branches' => 10, 'max_students' => 5000, 'features' => ['attendance', 'grades', 'payroll']])->assertCreated()->json('plan');
+
+        $this->assertSame('pro-plus', $plan['code']);
+        $this->assertDatabaseHas('platform_plans', ['id' => $plan['id'], 'code' => 'pro-plus', 'monthly_price_cents' => 24900, 'status' => 'active']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'plan', 'entity_id' => $plan['id'], 'action' => 'plan_created']);
+    }
+
     public function test_superadmin_cannot_archive_an_assigned_plan_or_the_last_active_plan(): void
     {
         $plan = DB::table('platform_plans')->where('code', 'starter')->value('id');
