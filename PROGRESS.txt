@@ -1,3 +1,9 @@
+- 2026-09-19 SUPERADMIN BRANCH INVITATION UPDATE:
+  - Added transactional, audited branch invitations for new client users with a 48-hour single-use link and selected branch roles.
+  - Superadmin invitations reuse the existing password-set acceptance flow; no temporary password is generated or exposed.
+  - Added dashboard controls to invite a branch admin, owner, teacher or accountant and copy the private link.
+  - Verification passed: full PHPUnit suite (67 tests, 383 assertions), focused SuperadminAccessTest (12 tests, 40 assertions), Blade view cache, Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN TEACHER METRICS UPDATE:
   - Added active teacher totals at platform, school and branch level using distinct active teaching assignments, alongside total staff counts.
   - Dashboard summary, school registry and branch detail now expose students, staff, teachers and classes distinctly.

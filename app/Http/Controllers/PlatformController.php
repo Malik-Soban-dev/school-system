@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -171,6 +172,28 @@ class PlatformController extends Controller
         });
 
         return response()->json(['message' => 'Branch status updated.']);
+    }
+
+    public function inviteBranchUser(Request $request, int $school, int $branch): JsonResponse
+    {
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => [Rule::in(['owner', 'admin', 'teacher', 'student', 'parent', 'accountant']), 'distinct'],
+        ]);
+        abort_unless(DB::table('school_branches')->where('school_id', $school)->where('id', $branch)->where('status', 'active')->exists(), 404);
+        $token = Str::random(64);
+        DB::transaction(function () use ($request, $school, $branch, $data, $token): void {
+            DB::table('school_invitations')->updateOrInsert(['school_id' => $school, 'branch_id' => $branch, 'email' => $data['email']], [
+                'name' => $data['name'], 'roles' => json_encode($data['roles']), 'token_hash' => hash('sha256', $token),
+                'expires_at' => now()->addHours(48), 'accepted_at' => null, 'created_by' => $request->user()->id, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_invitation_issued', 'changes' => json_encode(['branch_id' => $branch, 'email' => $data['email'], 'roles' => $data['roles']]), 'created_at' => now()]);
+        });
+
+        return response()->json(['url' => route('invitation.show', ['token' => $token]), 'message' => 'Share this single-use link privately. It expires in 48 hours.'], 201);
     }
 
     public function updateBranchAccess(Request $request, int $school, int $user): JsonResponse

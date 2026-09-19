@@ -106,6 +106,19 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $branch, 'action' => 'branch_status_updated']);
     }
 
+    public function test_superadmin_can_issue_a_branch_admin_invitation_without_a_password(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Invitation School', 'slug' => 'invitation-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Central', 'code' => 'central', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $response = $this->actingAs($superadmin)->postJson('/superadmin/schools/'.$school.'/branches/'.$branch.'/invitations', ['name' => 'New Branch Admin', 'email' => 'new-branch-admin@example.test', 'roles' => ['admin']]);
+
+        $response->assertCreated()->assertJsonStructure(['url', 'message']);
+        $this->assertDatabaseHas('school_invitations', ['school_id' => $school, 'branch_id' => $branch, 'email' => 'new-branch-admin@example.test', 'accepted_at' => null]);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $branch, 'action' => 'branch_invitation_issued']);
+    }
+
     public function test_superadmin_can_search_and_suspend_a_client_account_with_auditing(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Account School', 'slug' => 'account-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
