@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN PLAN OVERRIDE AUTHORITY UPDATE:
+  - Superadmin branch creation now bypasses client plan branch caps, while ordinary plan enforcement remains unchanged for client portal administrators.
+  - Superadmin workspace operations now bypass subscription feature gates and student capacity limits, preserving platform-level authority to support, repair or migrate any client tenant; all normal client restrictions remain tested.
+  - Verification passed: full PHPUnit suite (95 tests, 555 assertions), focused override/limit tests (4 tests, 9 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN FULL WORKSPACE AUTHORITY UPDATE:
   - Superadmin can now switch into any school branch through the existing portal context, including suspended schools/branches, with server-side superadmin-only bypass and persistent branch context hydration.
   - Tenant authorization treats Superadmin as unrestricted within the selected tenant, so existing portal CRUD, settings, attendance, reports, role-aware workflows and audit paths are available without a duplicate control implementation; context switches are platform-audited.

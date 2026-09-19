@@ -50,6 +50,19 @@ class SchoolOperationsTest extends TestCase
         $this->actingAs($this->person('owner'))->getJson('/portal/records/payroll')->assertForbidden();
     }
 
+    public function test_superadmin_can_use_entitled_modules_and_exceed_student_limit(): void
+    {
+        $superadmin = $this->person('superadmin');
+        $starter = DB::table('platform_plans')->where('code', 'starter')->value('id');
+        DB::table('school_subscriptions')->where('school_id', 1)->update(['plan_id' => $starter, 'status' => 'active']);
+        $year = $this->record('academic_years', ['name' => 'Superadmin year', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
+        $class = $this->record('classes', ['name' => 'Superadmin class', 'year_id' => $year, 'capacity' => 30]);
+        DB::table('platform_plans')->where('id', $starter)->update(['max_students' => 1]);
+        $this->actingAs($superadmin)->postJson('/portal/records/students', ['name' => 'Override student', 'admission_number' => 'SUPER-1', 'class_id' => $class, 'status' => 'active'])->assertOk();
+        $staff = DB::table('school_staff')->insertGetId(['school_id' => 1, 'branch_id' => null, 'name' => 'Superadmin Staff', 'employee_number' => 'SUPER-STAFF', 'department' => 'Operations', 'designation' => 'Manager', 'joined_on' => '2026-01-01', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $this->actingAs($superadmin)->postJson('/portal/records/payroll', ['staff_id' => $staff, 'month' => '2026-09', 'basic' => '100.00', 'allowances' => '0.00', 'deductions' => '0.00'])->assertOk();
+    }
+
     public function test_parent_sees_only_linked_students_and_revocation_is_immediate(): void
     {
         $parent = $this->person('parent');

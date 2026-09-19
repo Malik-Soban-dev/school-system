@@ -329,7 +329,7 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $admin->id, 'action' => 'branch_access_updated']);
     }
 
-    public function test_branch_creation_respects_the_assigned_plan_limit(): void
+    public function test_superadmin_can_override_the_assigned_plan_branch_limit(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Branch Limit School', 'slug' => 'branch-limit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         $plan = DB::table('platform_plans')->where('code', 'starter')->value('id');
@@ -338,7 +338,8 @@ class SuperadminAccessTest extends TestCase
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
         $this->actingAs($superadmin)->postJson('/superadmin/schools/'.$school.'/branches', ['name' => 'First Branch', 'code' => 'first'])->assertCreated();
-        $this->actingAs($superadmin)->postJson('/superadmin/schools/'.$school.'/branches', ['name' => 'Over Limit', 'code' => 'over-limit'])->assertStatus(422);
+        $this->actingAs($superadmin)->postJson('/superadmin/schools/'.$school.'/branches', ['name' => 'Over Limit', 'code' => 'over-limit'])->assertCreated();
+        $this->assertSame(2, DB::table('school_branches')->where('school_id', $school)->count());
     }
 
     public function test_superadmin_can_update_branch_metadata_with_school_scoped_uniqueness(): void

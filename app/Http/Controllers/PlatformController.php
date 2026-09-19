@@ -403,7 +403,7 @@ class PlatformController extends Controller
             abort_unless(DB::table('schools')->where('id', $school)->lockForUpdate()->exists(), 404);
             $subscription = DB::table('school_subscriptions')->where('school_id', $school)->whereIn('status', ['trialing', 'active'])->lockForUpdate()->first(['plan_id']);
             $maxBranches = $subscription ? DB::table('platform_plans')->where('id', $subscription->plan_id)->value('max_branches') : null;
-            abort_if($maxBranches !== null && DB::table('school_branches')->where('school_id', $school)->where('status', 'active')->count() >= (int) $maxBranches, 422, 'This school has reached its plan branch limit. Upgrade the subscription before adding another branch.');
+            abort_if(! $request->user()->hasRole('superadmin') && $maxBranches !== null && DB::table('school_branches')->where('school_id', $school)->where('status', 'active')->count() >= (int) $maxBranches, 422, 'This school has reached its plan branch limit. Upgrade the subscription before adding another branch.');
             $branchId = DB::table('school_branches')->insertGetId([...$data, 'school_id' => $school, 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
             DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branchId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branchId, 'action' => 'branch_created', 'changes' => json_encode(['name' => $data['name'], 'code' => $data['code']]), 'created_at' => now()]);
 

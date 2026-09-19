@@ -405,7 +405,7 @@ class SchoolPortal
 
     private function validateBusiness(string $module, array $data, User $user, ?int $id, ?object $old): void
     {
-        if ($module === 'students' && $data['status'] === 'active' && (! $old || $old->status !== 'active')) {
+        if ($module === 'students' && ! $user->hasRole('superadmin') && $data['status'] === 'active' && (! $old || $old->status !== 'active')) {
             $subscription = DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->where('subscription.school_id', $this->tenant->id())->whereIn('subscription.status', ['trialing', 'active'])->lockForUpdate()->first(['plan.max_students']);
             $currentStudents = DB::table('school_students')->where('school_id', $this->tenant->id())->where('status', 'active')->count();
             if ($subscription?->max_students !== null && $currentStudents >= (int) $subscription->max_students) {

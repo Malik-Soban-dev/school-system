@@ -18,6 +18,10 @@ final class SchoolEntitlements
 
     public function allows(string $feature): bool
     {
+        if (auth()->user()?->hasRole('superadmin')) {
+            return true;
+        }
+
         $plan = $this->plan();
         if (! $plan || $plan->subscription_status === 'canceled') {
             return $plan === null;
