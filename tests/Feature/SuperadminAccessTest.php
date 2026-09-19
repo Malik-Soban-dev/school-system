@@ -139,6 +139,22 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/audit?branch_id='.$branchOne)->assertOk()->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.action', 'north_event')->assertJsonPath('records.data.0.branch_id', $branchOne)->assertJsonMissing(['action' => 'south_event']);
     }
 
+    public function test_superadmin_data_explorer_covers_grading_bands_and_exam_subjects(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Assessment Explorer School', 'slug' => 'assessment-explorer-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Assessment Campus', 'code' => 'assessment', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $year = DB::table('school_academic_years')->insertGetId(['school_id' => $school, 'branch_id' => $branch, 'name' => '2026', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31', 'created_at' => now(), 'updated_at' => now()]);
+        $class = DB::table('school_classes')->insertGetId(['school_id' => $school, 'branch_id' => $branch, 'name' => 'Grade 5', 'year_id' => $year, 'capacity' => 30, 'created_at' => now(), 'updated_at' => now()]);
+        $subject = DB::table('school_subjects')->insertGetId(['school_id' => $school, 'branch_id' => $branch, 'name' => 'Mathematics', 'code' => 'MATH-EXPLORER', 'created_at' => now(), 'updated_at' => now()]);
+        $exam = DB::table('school_exams')->insertGetId(['school_id' => $school, 'branch_id' => $branch, 'name' => 'Term One', 'class_id' => $class, 'date' => '2026-05-01', 'status' => 'draft', 'schedule_status' => 'draft', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_grade_bands')->insert(['school_id' => $school, 'branch_id' => $branch, 'name' => 'A', 'minimum' => 80, 'gpa' => 4, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_exam_subjects')->insert(['school_id' => $school, 'branch_id' => $branch, 'exam_id' => $exam, 'subject_id' => $subject, 'maximum' => 100, 'weight' => 100, 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/grade_bands?branch_id='.$branch)->assertOk()->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.name', 'A');
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/exam_subjects?branch_id='.$branch)->assertOk()->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.subject', 'Mathematics');
+    }
+
     public function test_superadmin_can_assign_and_audit_a_school_subscription(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Billing School', 'slug' => 'billing-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

@@ -89,6 +89,11 @@
     const explorerSchool = document.querySelector('#explorer-school');
     const explorerBranch = document.querySelector('#explorer-branch');
     const explorerModule = document.querySelector('#explorer-module');
+    ['grade_bands', 'exam_subjects'].forEach(module => {
+        if (! explorerModule.querySelector(`option[value="${module}"]`)) {
+            explorerModule.insertAdjacentHTML('beforeend', `<option value="${module}">${module === 'grade_bands' ? 'Grading bands' : 'Exam subjects'}</option>`);
+        }
+    });
     const explorerSearch = document.querySelector('#explorer-search');
     const explorerHead = document.querySelector('#explorer-head');
     const explorerRows = document.querySelector('#explorer-rows');
