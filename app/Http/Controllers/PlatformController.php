@@ -37,10 +37,11 @@ class PlatformController extends Controller
             return $school;
         });
         $recentAudit = DB::table('school_audit as a')->join('schools as s', 's.id', '=', 'a.school_id')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->orderByDesc('a.id')->limit(30)->get(['a.id', 'a.school_id', 's.name as school_name', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);
+        $plans = DB::table('platform_plans')->where('status', 'active')->orderBy('monthly_price_cents')->get(['id', 'code', 'name', 'monthly_price_cents', 'max_branches', 'max_students', 'features']);
 
         return response()->json([
             'summary' => ['schools' => $schools->count(), 'active_schools' => $schools->where('status', 'active')->count(), 'branches' => (int) $schools->sum('branches'), 'members' => (int) $schools->sum('members'), 'students' => (int) $schools->sum('students'), 'staff' => (int) $schools->sum('staff'), 'teachers' => (int) $schools->sum('teachers'), 'open_invoices' => (int) $schools->sum('open_invoices')],
-            'schools' => $schools, 'audit' => $recentAudit,
+            'schools' => $schools, 'plans' => $plans, 'audit' => $recentAudit,
         ]);
     }
 
@@ -142,6 +143,24 @@ class PlatformController extends Controller
         return response()->json(['school' => $school], 201);
     }
 
+    public function updateSubscription(Request $request, int $school): JsonResponse
+    {
+        $data = $request->validate([
+            'plan_id' => ['required', 'integer', Rule::exists('platform_plans', 'id')->where(fn ($query) => $query->where('status', 'active'))],
+            'status' => ['required', Rule::in(['trialing', 'active', 'past_due', 'canceled'])],
+            'renews_at' => ['nullable', 'date'],
+        ]);
+        DB::transaction(function () use ($request, $school, $data): void {
+            abort_unless(DB::table('schools')->where('id', $school)->lockForUpdate()->exists(), 404);
+            $before = DB::table('school_subscriptions')->where('school_id', $school)->first(['plan_id', 'status', 'starts_at', 'renews_at', 'canceled_at', 'created_at']);
+            $now = now();
+            DB::table('school_subscriptions')->updateOrInsert(['school_id' => $school], ['plan_id' => $data['plan_id'], 'status' => $data['status'], 'starts_at' => $before?->starts_at ?? $now, 'renews_at' => $data['renews_at'] ?? null, 'canceled_at' => $data['status'] === 'canceled' ? $now : null, 'updated_at' => $now, 'created_at' => $before?->created_at ?? $now]);
+            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'billing', 'record_id' => $school, 'action' => 'subscription_updated', 'changes' => json_encode(['before' => $before, 'after' => ['plan_id' => $data['plan_id'], 'status' => $data['status'], 'renews_at' => $data['renews_at'] ?? null]]), 'created_at' => $now]);
+        });
+
+        return response()->json(['message' => 'School subscription updated.']);
+    }
+
     public function school(int $school): JsonResponse
     {
         abort_unless(DB::table('schools')->where('id', $school)->exists(), 404);
@@ -161,8 +180,9 @@ class PlatformController extends Controller
         $members = DB::table('school_user as su')->join('users as u', 'u.id', '=', 'su.user_id')->where('su.school_id', $school)->where('su.status', 'active')->orderBy('u.name')->limit(100)->get(['u.id', 'u.name', 'u.email', 'u.roles', 'u.is_active']);
         $access = DB::table('school_user_branches as access')->join('school_branches as b', 'b.id', '=', 'access.branch_id')->where('access.school_id', $school)->orderBy('access.user_id')->orderBy('b.name')->get(['access.user_id', 'access.branch_id', 'b.name as branch_name', 'access.roles', 'access.status']);
         $audit = DB::table('school_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->where('a.school_id', $school)->orderByDesc('a.id')->limit(50)->get(['a.id', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);
+        $subscription = DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->where('subscription.school_id', $school)->first(['subscription.id', 'subscription.plan_id', 'subscription.status', 'subscription.starts_at', 'subscription.renews_at', 'subscription.canceled_at', 'plan.code as plan_code', 'plan.name as plan_name', 'plan.monthly_price_cents', 'plan.max_branches', 'plan.max_students', 'plan.features']);
 
-        return response()->json(['school' => DB::table('schools')->where('id', $school)->first(), 'branches' => $branches, 'counts' => $counts, 'members' => $members, 'access' => $access, 'audit' => $audit]);
+        return response()->json(['school' => DB::table('schools')->where('id', $school)->first(), 'branches' => $branches, 'counts' => $counts, 'subscription' => $subscription, 'members' => $members, 'access' => $access, 'audit' => $audit]);
     }
 
     public function createBranch(Request $request, int $school): JsonResponse
