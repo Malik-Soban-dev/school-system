@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN PLAN BRANCH CAPACITY UPDATE:
+  - Enforced each active subscription's max_branches limit during transactional Superadmin branch creation.
+  - Added regression coverage proving a starter plan with one allowed branch rejects a second branch with HTTP 422.
+  - Verification passed: full PHPUnit suite (75 tests, 419 assertions), focused SuperadminAccessTest (18 tests, 71 assertions), Blade view cache, PHP Pint and git diff check.
+
 - 2026-09-19 BRANCH ACCESS ISOLATION HARDENING:
   - Separated branch access suspension from the global users.is_active account flag; normal People & Access changes now suspend only the selected branch grant.
   - Suspended branch grants remain visible for restoration, while global account status remains platform-wide and Superadmin-controlled.

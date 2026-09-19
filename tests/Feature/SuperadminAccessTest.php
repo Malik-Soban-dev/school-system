@@ -115,6 +115,18 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $admin->id, 'action' => 'branch_access_updated']);
     }
 
+    public function test_branch_creation_respects_the_assigned_plan_limit(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Branch Limit School', 'slug' => 'branch-limit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $plan = DB::table('platform_plans')->where('code', 'starter')->value('id');
+        DB::table('school_subscriptions')->updateOrInsert(['school_id' => $school], ['plan_id' => $plan, 'status' => 'active', 'starts_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('platform_plans')->where('id', $plan)->update(['max_branches' => 1]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->postJson('/superadmin/schools/'.$school.'/branches', ['name' => 'First Branch', 'code' => 'first'])->assertCreated();
+        $this->actingAs($superadmin)->postJson('/superadmin/schools/'.$school.'/branches', ['name' => 'Over Limit', 'code' => 'over-limit'])->assertStatus(422);
+    }
+
     public function test_superadmin_can_suspend_a_school_membership_and_all_branch_access(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Membership School', 'slug' => 'membership-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
