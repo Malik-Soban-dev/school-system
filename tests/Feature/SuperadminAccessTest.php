@@ -26,6 +26,19 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($user)->getJson('/superadmin/health')->assertOk()->assertJsonPath('database', 'ok')->assertJsonStructure(['status', 'queue' => ['pending', 'failed'], 'schools' => ['active', 'suspended'], 'backups']);
     }
 
+    public function test_superadmin_can_search_paginated_cross_school_audit_without_leaking_other_school_events_when_filtered(): void
+    {
+        $schoolTwo = DB::table('schools')->insertGetId(['name' => 'Audit School', 'slug' => 'audit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_audit')->insert([
+            ['school_id' => 1, 'user_id' => null, 'module' => 'students', 'record_id' => 1, 'action' => 'first_school_event', 'changes' => '{}', 'created_at' => now()->subMinute()],
+            ['school_id' => $schoolTwo, 'user_id' => null, 'module' => 'billing', 'record_id' => 1, 'action' => 'second_school_event', 'changes' => '{}', 'created_at' => now()],
+        ]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/audit?school_id='.$schoolTwo.'&per_page=1')->assertOk()->assertJsonPath('audit.total', 1)->assertJsonPath('audit.data.0.action', 'second_school_event');
+        $this->actingAs($superadmin)->getJson('/superadmin/audit?search=first_school_event')->assertOk()->assertJsonPath('audit.data.0.school_id', 1);
+    }
+
     public function test_superadmin_can_assign_and_audit_a_school_subscription(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Billing School', 'slug' => 'billing-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

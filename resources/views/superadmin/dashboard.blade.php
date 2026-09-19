@@ -44,7 +44,7 @@
         <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><button type="submit">Search</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>User</th><th>Status</th><th>School / branch access</th><th>Control</th></tr></thead><tbody id="user-rows"><tr><td colspan="4">Loading platform users…</td></tr></tbody></table></div>
     </section>
-    <section class="platform-panel"><div class="platform-panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Recent platform activity</h2></div></div><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>School</th><th>Actor</th><th>Module</th><th>Action</th></tr></thead><tbody id="audit-rows"><tr><td colspan="5">Loading audit trail…</td></tr></tbody></table></div></section>
+    <section class="platform-panel"><div class="platform-panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Platform activity</h2></div></div><form id="audit-search-form"><select id="audit-school" aria-label="Audit school"><option value="">All schools and platform events</option></select><input id="audit-search" maxlength="100" placeholder="Search school, actor, module or action" aria-label="Search audit activity"><button type="submit">Search audit</button></form><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>School</th><th>Actor</th><th>Module</th><th>Action</th></tr></thead><tbody id="audit-rows"><tr><td colspan="5">Loading audit trail…</td></tr></tbody></table></div><div id="audit-pagination"></div></section>
 </main>
 <script>
 (() => {
@@ -54,6 +54,9 @@
     const planRows = document.querySelector('#plan-rows');
     const schools = document.querySelector('#school-rows');
     const audit = document.querySelector('#audit-rows');
+    const auditSchool = document.querySelector('#audit-school');
+    const auditSearch = document.querySelector('#audit-search');
+    const auditPagination = document.querySelector('#audit-pagination');
     const detail = document.querySelector('#school-detail');
     const detailTitle = document.querySelector('#school-detail-title');
     const detailContent = document.querySelector('#school-detail-content');
@@ -184,6 +187,15 @@
             }
         }));
     };
+    const loadAudit = async (page = 1) => {
+        const params = new URLSearchParams({page, per_page: 50});
+        if (auditSchool.value) params.set('school_id', auditSchool.value);
+        if (auditSearch.value.trim()) params.set('search', auditSearch.value.trim());
+        const data = await request(`/superadmin/audit?${params}`);
+        audit.innerHTML = data.audit.data.map(row => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.school_name)}</td><td>${esc(row.actor || 'System')}</td><td>${esc(row.module)}</td><td>${esc(row.action)}</td></tr>`).join('') || '<tr><td colspan="5">No audit events found.</td></tr>';
+        auditPagination.innerHTML = data.audit.last_page > 1 ? `<button type="button" data-audit-page="${data.audit.current_page - 1}" ${data.audit.current_page === 1 ? 'disabled' : ''}>Previous</button> <span>Page ${data.audit.current_page} of ${data.audit.last_page}</span> <button type="button" data-audit-page="${data.audit.current_page + 1}" ${data.audit.current_page === data.audit.last_page ? 'disabled' : ''}>Next</button>` : '';
+        auditPagination.querySelectorAll('[data-audit-page]').forEach(button => button.addEventListener('click', () => loadAudit(Number(button.dataset.auditPage)).catch(error => { audit.innerHTML = `<tr><td colspan="5">${esc(error.message)}</td></tr>`; })));
+    };
     const load = async () => {
         const response = await fetch('/superadmin/data', {headers: {Accept: 'application/json'}, credentials: 'same-origin'});
         if (!response.ok) throw new Error('Unable to load platform data.');
@@ -191,6 +203,7 @@
         platformSchools = data.schools;
         platformPlans = data.plans || [];
         document.querySelector('#onboard-plan').innerHTML = '<option value="">Starter trial</option>' + platformPlans.filter(plan => plan.status === 'active').map(plan => `<option value="${esc(plan.id)}">${esc(plan.name)} trial</option>`).join('');
+        auditSchool.innerHTML = '<option value="">All schools and platform events</option>' + platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
         renderPlans();
         const selectedSchool = explorerSchool.value;
         explorerSchool.innerHTML = platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
@@ -200,7 +213,7 @@
         const mrr = Number(data.billing?.mrr_cents || 0) / 100;
         summary.innerHTML = [['schools','Schools'],['branches','Branches'],['members','Members'],['students','Students'],['teachers','Teachers'],['open_invoices','Open invoices'],['mrr','Projected MRR'],['past_due','Past due']].map(([key,label]) => { const value = key === 'mrr' ? `$${mrr.toFixed(2)}` : key === 'past_due' ? (data.billing?.subscriptions?.past_due || 0) : data.summary[key]; return `<article><strong>${esc(value)}</strong><span>${label}</span></article>`; }).join('');
         schools.innerHTML = data.schools.map(school => `<tr><td><button class="platform-school-detail" data-id="${school.id}" type="button"><strong>${esc(school.name)}</strong></button><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.branches)}</td><td>${esc(school.members)}</td><td>${esc(school.students)}</td><td>${esc(school.staff)}</td><td>${esc(school.teachers)}</td><td>${esc(school.open_invoices)}</td><td><button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="9">No schools registered.</td></tr>';
-        audit.innerHTML = data.audit.map(row => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.school_name)}</td><td>${esc(row.actor || 'System')}</td><td>${esc(row.module)}</td><td>${esc(row.action)}</td></tr>`).join('') || '<tr><td colspan="5">No audit events yet.</td></tr>';
+        loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="5">${esc(error.message)}</td></tr>`; });
         document.querySelectorAll('.platform-school-detail').forEach(button => button.addEventListener('click', () => showSchoolDetail(button.dataset.id).catch(error => { detailContent.innerHTML = esc(error.message); })));
         document.querySelectorAll('.platform-action').forEach(button => button.addEventListener('click', async () => {
             const action = button.dataset.status === 'suspended' ? 'suspend' : 'activate';
@@ -260,6 +273,7 @@
         explorerRows.innerHTML = records.map(record => `<tr>${columns.map(column => `<td>${esc(typeof record[column] === 'object' ? JSON.stringify(record[column]) : record[column])}</td>`).join('')}</tr>`).join('');
     };
     document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
+    document.querySelector('#audit-search-form').addEventListener('submit', event => { event.preventDefault(); loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="5">${esc(error.message)}</td></tr>`; }); });
     explorerSchool.addEventListener('change', updateExplorerBranches);
     explorerForm.addEventListener('submit', event => { event.preventDefault(); loadExplorer().catch(error => { explorerRows.innerHTML = `<tr><td>${esc(error.message)}</td></tr>`; }); });
     document.querySelector('#create-school-form').addEventListener('submit', async event => {

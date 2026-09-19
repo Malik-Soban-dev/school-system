@@ -1,3 +1,9 @@
+- 2026-09-19 SUPERADMIN AUDIT EXPLORER UPDATE:
+  - Added a protected, paginated merged audit endpoint covering school and platform events with school and text filters.
+  - Added dashboard audit search, school filtering and pagination; filtered school queries exclude platform and other-school events.
+  - Audit responses expose operational event metadata and changes only, never passwords, tokens or provider secrets.
+  - Verification passed: full PHPUnit suite (78 tests, 434 assertions), focused SuperadminAccessTest (21 tests, 86 assertions), Blade view cache and PHP Pint.
+
 - 2026-09-19 SUPERADMIN BILLING VISIBILITY UPDATE:
   - Added platform summary billing metrics: projected active-subscription MRR, subscription status counts and plan distribution.
   - Added dashboard cards for projected MRR and past-due subscriptions so Superadmin can see commercial risk alongside school usage.

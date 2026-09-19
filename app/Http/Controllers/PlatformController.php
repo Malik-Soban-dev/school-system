@@ -71,6 +71,17 @@ class PlatformController extends Controller
         return response()->json(['status' => $database === 'ok' && $failedJobs === 0 ? 'ok' : 'attention', 'database' => $database, 'queue' => ['pending' => $pendingJobs, 'failed' => $failedJobs], 'sessions' => $sessions, 'schools' => ['active' => DB::table('schools')->where('status', 'active')->count(), 'suspended' => DB::table('schools')->where('status', 'suspended')->count()], 'last_audit_at' => DB::table('school_audit')->max('created_at'), 'backups' => $backups]);
     }
 
+    public function audit(Request $request): JsonResponse
+    {
+        $data = $request->validate(['school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        $search = trim((string) ($data['search'] ?? ''));
+        $schoolAudit = DB::table('school_audit as a')->join('schools as s', 's.id', '=', 'a.school_id')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->when(isset($data['school_id']), fn ($query) => $query->where('a.school_id', $data['school_id']))->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('a.module', 'like', '%'.$search.'%')->orWhere('a.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')->orWhere('s.name', 'like', '%'.$search.'%')))->select(['a.id', 'a.school_id', 's.name as school_name', 'a.module', 'a.action', 'a.changes', 'a.created_at', 'u.name as actor'])->selectRaw("'school' as source");
+        $platformAudit = DB::table('platform_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->when(isset($data['school_id']), fn ($query) => $query->whereRaw('1 = 0'))->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('a.entity_type', 'like', '%'.$search.'%')->orWhere('a.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')))->select(['a.id', DB::raw('null as school_id'), DB::raw("'Platform' as school_name"), DB::raw("'platform' as module"), 'a.action', 'a.changes', 'a.created_at', 'u.name as actor'])->selectRaw("'platform' as source");
+        $events = DB::query()->fromSub($schoolAudit->unionAll($platformAudit), 'events')->orderByDesc('created_at')->orderByDesc('id')->paginate((int) ($data['per_page'] ?? 50));
+
+        return response()->json(['audit' => $events]);
+    }
+
     public function users(Request $request): JsonResponse
     {
         $data = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
