@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN RENEWAL INVOICE AUTOMATION UPDATE:
+  - Added a scheduled, repeat-safe platform renewal invoice command for due active paid subscriptions, with unique billing keys and system audit events.
+  - Added migration support for invoice idempotency and daily scheduler registration; free plans are skipped and payment reconciliation remains under Superadmin control.
+  - Verification passed: full PHPUnit suite (85 tests, 479 assertions), focused billing tests (2 tests, 15 assertions), migration, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN PLAN CATALOG INTEGRITY UPDATE:
   - Prevented archiving a plan assigned to any active or trialing school subscription.
   - Prevented archiving the last active platform plan, preserving a valid upgrade/onboarding path.

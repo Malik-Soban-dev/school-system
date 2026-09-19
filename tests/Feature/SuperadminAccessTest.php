@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -85,6 +86,24 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('platform_billing_invoices', ['id' => $invoice['id'], 'status' => 'paid', 'payment_reference' => 'manual-rcpt-1']);
         $this->actingAs($superadmin)->getJson('/superadmin/billing/invoices?school_id='.$school)->assertOk()->assertJsonPath('invoices.total', 1)->assertJsonPath('invoices.data.0.invoice_number', $invoice['invoice_number']);
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'platform_invoice', 'entity_id' => $invoice['id'], 'action' => 'invoice_status_updated']);
+    }
+
+    public function test_platform_invoice_generation_is_repeat_safe_for_due_subscriptions(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Renewal School', 'slug' => 'renewal-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $plan = DB::table('platform_plans')->where('code', 'starter')->first(['id', 'monthly_price_cents']);
+        $subscription = DB::table('school_subscriptions')->insertGetId(['school_id' => $school, 'plan_id' => $plan->id, 'status' => 'active', 'starts_at' => '2026-08-01 00:00:00', 'renews_at' => '2026-09-01 00:00:00', 'created_at' => now(), 'updated_at' => now()]);
+
+        Artisan::call('platform:generate-invoices', ['--until' => '2026-09-19']);
+        Artisan::call('platform:generate-invoices', ['--until' => '2026-09-19']);
+
+        $this->assertDatabaseCount('platform_billing_invoices', 1);
+        $invoice = DB::table('platform_billing_invoices')->first();
+        $this->assertSame($school, (int) $invoice->school_id);
+        $this->assertSame($subscription, (int) $invoice->subscription_id);
+        $this->assertSame('renewal:'.$subscription.':2026-09-01', $invoice->billing_key);
+        $this->assertSame((int) $plan->monthly_price_cents, (int) $invoice->amount_cents);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'platform_invoice', 'entity_id' => $invoice->id, 'action' => 'invoice_generated']);
     }
 
     public function test_superadmin_can_update_a_plan_with_platform_auditing(): void

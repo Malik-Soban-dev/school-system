@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('school:notifications')->everyMinute()->withoutOverlapping(10);
+Schedule::command('platform:generate-invoices')->dailyAt('00:10')->withoutOverlapping(10);
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
