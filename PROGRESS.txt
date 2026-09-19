@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN GLOBAL ACCOUNT AUDIT UPDATE:
+  - Global client account activation/suspension now records a platform_audit event in addition to school-level audit events, preserving a durable platform-wide history of the action and affected schools.
+  - Verification passed: focused account-control test (1 test, 6 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN BRANCH AUDIT EXPLORER FIX:
   - Corrected the protected data explorer's audit module to honor branch_id filters and include branch identity in returned rows.
   - Added regression coverage proving a filtered branch audit view excludes another branch's event while preserving Superadmin cross-school visibility.

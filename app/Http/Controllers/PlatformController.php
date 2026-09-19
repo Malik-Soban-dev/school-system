@@ -220,6 +220,7 @@ class PlatformController extends Controller
             foreach ($memberships as $schoolId) {
                 DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'user_status_updated', 'changes' => json_encode(['before' => ['is_active' => (bool) $userRecord->is_active], 'after' => ['is_active' => $data['is_active']]]), 'created_at' => now()]);
             }
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'user_status_updated', 'changes' => json_encode(['school_ids' => $memberships->values()->all(), 'before' => ['is_active' => (bool) $userRecord->is_active], 'after' => ['is_active' => $data['is_active']]]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Account status updated and active sessions revoked.']);

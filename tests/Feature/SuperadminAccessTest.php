@@ -326,6 +326,7 @@ class SuperadminAccessTest extends TestCase
 
         $this->assertDatabaseHas('users', ['id' => $client->id, 'is_active' => false]);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $client->id, 'action' => 'user_status_updated']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'user_status_updated']);
     }
 
     public function test_superadmin_can_inspect_branch_scoped_school_records_without_secrets(): void
