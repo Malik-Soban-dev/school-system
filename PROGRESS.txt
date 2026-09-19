@@ -1,3 +1,9 @@
+- 2026-09-19 SUPERADMIN DATA EXPLORER EXPANSION:
+  - Expanded the protected allow-list beyond the original seven modules to cover academic years, subjects, teaching assignments, guardians, attendance, timetables, exams, grades, expenses, leave, payroll, notices, enrollments, invitations and notifications.
+  - Each query remains school- and branch-filtered; response projections exclude passwords, invitation token hashes and other authentication secrets.
+  - Added branch-filtered regression coverage for additional operational modules.
+  - Verification passed: full PHPUnit suite (82 tests, 461 assertions), focused SuperadminAccessTest (24 tests, 109 assertions), Blade view cache and PHP Pint.
+
 - 2026-09-19 INVITATION ACCEPTANCE AUDIT UPDATE:
   - Branch invitation acceptance now records a branch-scoped invitations/accepted audit event after creating the account and grant.
   - Regression coverage proves accepted invitation audit changes contain operational identity and roles but never password material.
