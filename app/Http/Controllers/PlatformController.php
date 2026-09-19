@@ -21,10 +21,11 @@ class PlatformController extends Controller
             ->leftJoinSub(DB::table('school_user')->select('school_id')->selectRaw('count(*) as total')->where('status', 'active')->groupBy('school_id'), 'members', 'members.school_id', '=', 's.id')
             ->leftJoinSub(DB::table('school_students')->select('school_id')->selectRaw('count(*) as total')->groupBy('school_id'), 'students', 'students.school_id', '=', 's.id')
             ->leftJoinSub(DB::table('school_staff')->select('school_id')->selectRaw('count(*) as total')->groupBy('school_id'), 'staff', 'staff.school_id', '=', 's.id')
+            ->leftJoinSub(DB::table('school_teacher_assignments')->select('school_id')->where('status', 'active')->selectRaw('count(distinct user_id) as total')->groupBy('school_id'), 'teachers', 'teachers.school_id', '=', 's.id')
             ->leftJoinSub(DB::table('school_branches')->select('school_id')->selectRaw('count(*) as total')->groupBy('school_id'), 'branches', 'branches.school_id', '=', 's.id')
             ->leftJoinSub(DB::table('school_invoices')->select('school_id')->selectRaw('count(*) as total')->whereIn('status', ['issued', 'partial', 'overdue'])->groupBy('school_id'), 'invoices', 'invoices.school_id', '=', 's.id')
             ->orderBy('s.name')
-            ->get(['s.id', 's.name', 's.slug', 's.status', 's.created_at', DB::raw('coalesce(members.total, 0) as members'), DB::raw('coalesce(students.total, 0) as students'), DB::raw('coalesce(staff.total, 0) as staff'), DB::raw('coalesce(branches.total, 0) as branches'), DB::raw('coalesce(invoices.total, 0) as open_invoices')]);
+            ->get(['s.id', 's.name', 's.slug', 's.status', 's.created_at', DB::raw('coalesce(members.total, 0) as members'), DB::raw('coalesce(students.total, 0) as students'), DB::raw('coalesce(staff.total, 0) as staff'), DB::raw('coalesce(teachers.total, 0) as teachers'), DB::raw('coalesce(branches.total, 0) as branches'), DB::raw('coalesce(invoices.total, 0) as open_invoices')]);
         $branchOptions = DB::table('school_branches')->whereIn('school_id', $schools->pluck('id'))->orderBy('name')->get(['id', 'school_id', 'name', 'code', 'status'])->groupBy('school_id');
         $schools = $schools->map(function (object $school) use ($branchOptions): object {
             $school->branch_options = $branchOptions->get($school->id, collect())->values();
@@ -34,7 +35,7 @@ class PlatformController extends Controller
         $recentAudit = DB::table('school_audit as a')->join('schools as s', 's.id', '=', 'a.school_id')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->orderByDesc('a.id')->limit(30)->get(['a.id', 'a.school_id', 's.name as school_name', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);
 
         return response()->json([
-            'summary' => ['schools' => $schools->count(), 'active_schools' => $schools->where('status', 'active')->count(), 'branches' => (int) $schools->sum('branches'), 'members' => (int) $schools->sum('members'), 'students' => (int) $schools->sum('students'), 'staff' => (int) $schools->sum('staff'), 'open_invoices' => (int) $schools->sum('open_invoices')],
+            'summary' => ['schools' => $schools->count(), 'active_schools' => $schools->where('status', 'active')->count(), 'branches' => (int) $schools->sum('branches'), 'members' => (int) $schools->sum('members'), 'students' => (int) $schools->sum('students'), 'staff' => (int) $schools->sum('staff'), 'teachers' => (int) $schools->sum('teachers'), 'open_invoices' => (int) $schools->sum('open_invoices')],
             'schools' => $schools, 'audit' => $recentAudit,
         ]);
     }
@@ -125,8 +126,8 @@ class PlatformController extends Controller
             $counts[$key] = DB::table($table)->where('school_id', $school)->count();
         }
         $branches = DB::table('school_branches')->where('school_id', $school)->orderBy('name')->get(['id', 'name', 'code', 'status', 'is_default']);
-        foreach (['school_students' => 'students', 'school_staff' => 'staff', 'school_classes' => 'classes'] as $table => $key) {
-            $countsByBranch = DB::table($table)->where('school_id', $school)->whereNotNull('branch_id')->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id')->pluck('total', 'branch_id');
+        foreach (['school_students' => 'students', 'school_staff' => 'staff', 'school_classes' => 'classes', 'school_teacher_assignments' => 'teachers'] as $table => $key) {
+            $countsByBranch = DB::table($table)->where('school_id', $school)->whereNotNull('branch_id')->select('branch_id')->selectRaw($key === 'teachers' ? 'count(distinct user_id) as total' : 'count(*) as total')->groupBy('branch_id')->pluck('total', 'branch_id');
             $branches = $branches->map(function (object $branch) use ($countsByBranch, $key): object {
                 $branch->{$key} = (int) ($countsByBranch[$branch->id] ?? 0);
 

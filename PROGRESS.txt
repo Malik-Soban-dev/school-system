@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN TEACHER METRICS UPDATE:
+  - Added active teacher totals at platform, school and branch level using distinct active teaching assignments, alongside total staff counts.
+  - Dashboard summary, school registry and branch detail now expose students, staff, teachers and classes distinctly.
+  - Verification passed: full PHPUnit suite (66 tests, 378 assertions), Blade view cache, Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN DATA EXPLORER UPDATE:
   - Added an allow-listed, paginated Superadmin records API for students, staff, classes, users, invoices, payments and audit history.
   - Records can be searched and filtered by a validated school branch; user results exclude passwords and other credential fields.
