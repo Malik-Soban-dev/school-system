@@ -25,6 +25,8 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureSuperadmin::class])
     Route::post('/superadmin/schools/{school}/billing/invoices', [PlatformController::class, 'createBillingInvoice'])->whereNumber('school');
     Route::put('/superadmin/billing/invoices/{invoice}/status', [PlatformController::class, 'updateBillingInvoiceStatus'])->whereNumber('invoice');
     Route::get('/superadmin/health', [PlatformController::class, 'health']);
+    Route::get('/superadmin/operations/failed-jobs', [PlatformController::class, 'failedJobs']);
+    Route::delete('/superadmin/operations/failed-jobs/{job}', [PlatformController::class, 'forgetFailedJob'])->whereNumber('job');
     Route::get('/superadmin/audit', [PlatformController::class, 'audit']);
     Route::get('/superadmin/users', [PlatformController::class, 'users']);
     Route::get('/superadmin/schools/{school}/records/{module}', [PlatformController::class, 'records'])->whereNumber('school')->whereIn('module', ['academic_years', 'students', 'staff', 'classes', 'subjects', 'teacher_assignments', 'guardian_links', 'attendance', 'timetables', 'exams', 'grades', 'invoices', 'payments', 'expenses', 'leave_requests', 'payroll', 'payroll_payments', 'notices', 'enrollments', 'invitations', 'notifications', 'users', 'audit']);

@@ -19,7 +19,7 @@
     </section>
     <section class="platform-panel" id="platform-health">
         <div class="platform-panel-heading"><div><p class="eyebrow">OPERATIONS</p><h2>Platform health</h2></div><button class="platform-refresh" id="health-refresh" type="button">Refresh health</button></div>
-        <div id="health-content">Loading operational health…</div>
+        <div id="health-content">Loading operational health…</div><div id="failed-job-content">Loading failed jobs…</div>
     </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">PLAN CATALOG</p><h2>Platform plans</h2></div></div>
@@ -56,6 +56,7 @@
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const summary = document.querySelector('#platform-summary');
     const healthContent = document.querySelector('#health-content');
+    const failedJobContent = document.querySelector('#failed-job-content');
     const planRows = document.querySelector('#plan-rows');
     const platformInvoiceSchool = document.querySelector('#platform-invoice-school');
     const platformInvoiceRows = document.querySelector('#platform-invoice-rows');
@@ -90,6 +91,11 @@
         const data = await request('/superadmin/health');
         const backupRows = data.backups.map(backup => `<tr><td>${esc(backup.name)}</td><td>${esc(backup.bytes)} bytes</td><td>${esc(backup.modified_at)}</td></tr>`).join('') || '<tr><td colspan="3">No encrypted backups found.</td></tr>';
         healthContent.innerHTML = `<p><span class="platform-status ${esc(data.status)}">${esc(data.status)}</span> Database: <strong>${esc(data.database)}</strong> · Active schools: <strong>${esc(data.schools.active)}</strong> · Suspended schools: <strong>${esc(data.schools.suspended)}</strong> · Pending jobs: <strong>${esc(data.queue.pending)}</strong> · Failed jobs: <strong>${esc(data.queue.failed)}</strong> · Sessions: <strong>${esc(data.sessions ?? 'not configured')}</strong> · Last audit: <strong>${esc(data.last_audit_at || 'none')}</strong></p><h3>Recent encrypted backups</h3><div class="platform-table-wrap"><table><thead><tr><th>File</th><th>Size</th><th>Modified</th></tr></thead><tbody>${backupRows}</tbody></table></div>`;
+    };
+    const loadFailedJobs = async () => {
+        const data = await request('/superadmin/operations/failed-jobs?per_page=50');
+        failedJobContent.innerHTML = `<h3>Failed job records</h3><div class="platform-table-wrap"><table><thead><tr><th>UUID</th><th>Queue</th><th>Connection</th><th>Failed at</th><th>Control</th></tr></thead><tbody>${data.failed_jobs.data.map(job => `<tr><td>${esc(job.uuid)}</td><td>${esc(job.queue)}</td><td>${esc(job.connection)}</td><td>${esc(job.failed_at)}</td><td><button class="failed-job-forget" data-id="${esc(job.id)}" type="button">Forget record</button></td></tr>`).join('') || '<tr><td colspan="5">No failed job records.</td></tr>'}</tbody></table></div>`;
+        document.querySelectorAll('.failed-job-forget').forEach(button => button.addEventListener('click', async () => { if (!window.confirm('Remove this failed-job record? The serialized payload is not retried.')) return; try { await request(`/superadmin/operations/failed-jobs/${button.dataset.id}`, {method: 'DELETE', headers: {'X-CSRF-TOKEN': csrf}}); await loadHealth(); await loadFailedJobs(); } catch (error) { window.alert(error.message); } }));
     };
     const renderPlans = () => {
         planRows.innerHTML = platformPlans.map(plan => `<tr><td><input class="plan-name" value="${esc(plan.name)}" aria-label="Plan name"><small>${esc(plan.code)}</small></td><td><input class="plan-price" type="number" min="0" value="${esc(plan.monthly_price_cents)}" aria-label="Monthly price for ${esc(plan.name)}"></td><td><input class="plan-branches" type="number" min="1" value="${esc(plan.max_branches ?? '')}" aria-label="Maximum branches for ${esc(plan.name)}"></td><td><input class="plan-students" type="number" min="1" value="${esc(plan.max_students ?? '')}" aria-label="Maximum students for ${esc(plan.name)}"></td><td><input class="plan-features" value="${esc((JSON.parse(plan.features || '[]')).join(', '))}" aria-label="Features for ${esc(plan.name)}"><small>attendance, grades, invoices, payroll, notifications, *</small></td><td><select class="plan-status" aria-label="Status for ${esc(plan.name)}"><option value="active" ${plan.status === 'active' ? 'selected' : ''}>Active</option><option value="archived" ${plan.status === 'archived' ? 'selected' : ''}>Archived</option></select></td><td><button class="plan-save" data-id="${esc(plan.id)}" type="button">Save</button></td></tr>`).join('') || '<tr><td colspan="7">No plans registered.</td></tr>';
@@ -355,9 +361,10 @@
     });
     document.querySelector('#school-detail-close').addEventListener('click', () => { detail.hidden = true; });
     document.querySelector('.platform-refresh').addEventListener('click', load);
-    document.querySelector('#health-refresh').addEventListener('click', () => { loadHealth().catch(error => { healthContent.textContent = error.message; }); });
+    document.querySelector('#health-refresh').addEventListener('click', () => { loadHealth().catch(error => { healthContent.textContent = error.message; }); loadFailedJobs().catch(error => { failedJobContent.textContent = error.message; }); });
     load().catch(error => { schools.innerHTML = `<tr><td colspan="9">${esc(error.message)}</td></tr>`; });
     loadHealth().catch(error => { healthContent.textContent = error.message; });
+    loadFailedJobs().catch(error => { failedJobContent.textContent = error.message; });
     loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; });
 })();
 </script>

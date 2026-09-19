@@ -26,6 +26,17 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($user)->getJson('/superadmin/health')->assertOk()->assertJsonPath('database', 'ok')->assertJsonStructure(['status', 'queue' => ['pending', 'failed'], 'schools' => ['active', 'suspended'], 'backups']);
     }
 
+    public function test_superadmin_can_review_and_forget_failed_job_metadata_without_payload_exposure(): void
+    {
+        $job = DB::table('failed_jobs')->insertGetId(['uuid' => 'failed-job-test-uuid', 'connection' => 'database', 'queue' => 'default', 'payload' => 'secret-payload', 'exception' => 'secret-exception', 'failed_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/operations/failed-jobs')->assertOk()->assertJsonPath('failed_jobs.data.0.id', $job)->assertJsonPath('failed_jobs.data.0.queue', 'default')->assertJsonMissing(['payload' => 'secret-payload'])->assertJsonMissing(['exception' => 'secret-exception']);
+        $this->actingAs($superadmin)->deleteJson('/superadmin/operations/failed-jobs/'.$job)->assertOk();
+        $this->assertDatabaseMissing('failed_jobs', ['id' => $job]);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'failed_job', 'entity_id' => $job, 'action' => 'failed_job_forgotten']);
+    }
+
     public function test_superadmin_can_search_paginated_cross_school_audit_without_leaking_other_school_events_when_filtered(): void
     {
         $schoolTwo = DB::table('schools')->insertGetId(['name' => 'Audit School', 'slug' => 'audit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

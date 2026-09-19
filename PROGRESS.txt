@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN FAILED-JOB OPERATIONS UPDATE:
+  - Added metadata-only failed-job listing and an audited forget-record action under the protected operations panel.
+  - Dashboard exposes UUID, queue, connection and failure time only; serialized payloads and exception bodies are never returned, and the control never retries a job implicitly.
+  - Verification passed: full PHPUnit suite (83 tests, 469 assertions), focused SuperadminAccessTest (25 tests, 117 assertions), Blade view cache and PHP Pint.
+
 - 2026-09-19 SUPERADMIN DATA EXPLORER EXPANSION:
   - Expanded the protected allow-list beyond the original seven modules to cover academic years, subjects, teaching assignments, guardians, attendance, timetables, exams, grades, expenses, leave, payroll, notices, enrollments, invitations and notifications.
   - Each query remains school- and branch-filtered; response projections exclude passwords, invitation token hashes and other authentication secrets.

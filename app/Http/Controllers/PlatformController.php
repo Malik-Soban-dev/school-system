@@ -109,6 +109,27 @@ class PlatformController extends Controller
         return response()->json(['status' => $database === 'ok' && $failedJobs === 0 ? 'ok' : 'attention', 'database' => $database, 'queue' => ['pending' => $pendingJobs, 'failed' => $failedJobs], 'sessions' => $sessions, 'schools' => ['active' => DB::table('schools')->where('status', 'active')->count(), 'suspended' => DB::table('schools')->where('status', 'suspended')->count()], 'last_audit_at' => DB::table('school_audit')->max('created_at'), 'backups' => $backups]);
     }
 
+    public function failedJobs(Request $request): JsonResponse
+    {
+        $data = $request->validate(['per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        $jobs = Schema::hasTable('failed_jobs') ? DB::table('failed_jobs')->orderByDesc('id')->paginate((int) ($data['per_page'] ?? 50), ['id', 'uuid', 'connection', 'queue', 'failed_at']) : collect();
+
+        return response()->json(['failed_jobs' => $jobs]);
+    }
+
+    public function forgetFailedJob(Request $request, int $job): JsonResponse
+    {
+        abort_unless(Schema::hasTable('failed_jobs'), 404);
+        DB::transaction(function () use ($request, $job): void {
+            $failedJob = DB::table('failed_jobs')->where('id', $job)->lockForUpdate()->first(['id', 'uuid', 'connection', 'queue', 'failed_at']);
+            abort_unless($failedJob, 404);
+            DB::table('failed_jobs')->where('id', $job)->delete();
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'failed_job', 'entity_id' => $job, 'action' => 'failed_job_forgotten', 'changes' => json_encode(['uuid' => $failedJob->uuid, 'connection' => $failedJob->connection, 'queue' => $failedJob->queue, 'failed_at' => $failedJob->failed_at]), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'Failed job record removed.']);
+    }
+
     public function audit(Request $request): JsonResponse
     {
         $data = $request->validate(['school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'branch_id' => ['nullable', 'integer'], 'search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
