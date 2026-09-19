@@ -18,7 +18,8 @@
         <article><strong>Loading…</strong><span>Schools</span></article><article><strong>Loading…</strong><span>Branches</span></article><article><strong>Loading…</strong><span>Members</span></article><article><strong>Loading…</strong><span>Students</span></article><article><strong>Loading…</strong><span>Open invoices</span></article>
     </section>
     <section class="platform-panel">
-        <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL REGISTRY</p><h2>Every school</h2></div><button class="platform-refresh" type="button">Refresh data</button></div>
+        <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL REGISTRY</p><h2>Every school</h2></div><div><button class="platform-refresh" type="button">Refresh data</button></div></div>
+        <form id="create-school-form"><input name="name" required maxlength="150" placeholder="New school name" aria-label="New school name"><input name="slug" required maxlength="80" pattern="[A-Za-z0-9_-]+" placeholder="Slug" aria-label="New school slug"><button type="submit">Onboard school</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Status</th><th>Branches</th><th>Members</th><th>Students</th><th>Staff</th><th>Open invoices</th><th>Control</th></tr></thead><tbody id="school-rows"><tr><td colspan="8">Loading school registry…</td></tr></tbody></table></div>
     </section>
     <section class="platform-panel" id="school-detail" hidden>
@@ -105,6 +106,17 @@
             }
         }));
     };
+    document.querySelector('#create-school-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        try {
+            await request('/superadmin/schools', {method: 'POST', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({name: formData.get('name'), slug: formData.get('slug')})});
+            event.currentTarget.reset();
+            await load();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
     document.querySelector('#school-detail-close').addEventListener('click', () => { detail.hidden = true; });
     document.querySelector('.platform-refresh').addEventListener('click', load);
     load().catch(error => { schools.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; });

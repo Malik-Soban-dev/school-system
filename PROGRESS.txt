@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN SCHOOL ONBOARDING UPDATE:
+  - Added audited, transactional school onboarding that creates an active school and default branch together.
+  - Added the dashboard onboarding form with validation and refresh behavior.
+  - Verification passed: full PHPUnit suite (63 tests, 367 assertions), SuperadminAccessTest (8 tests, 24 assertions), Blade view cache, Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN BRANCH UI UPDATE:
   - Added branch totals and branch registry controls to the Superadmin dashboard.
   - Superadmins can create a branch and grant a selected branch role to an active school member from the school detail panel; actions use confirmation, CSRF protection, escaped values and audited APIs.

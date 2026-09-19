@@ -33,6 +33,20 @@ class PlatformController extends Controller
         ]);
     }
 
+    public function createSchool(Request $request): JsonResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:150'], 'slug' => ['required', 'alpha_dash', 'max:80', 'unique:schools,slug']]);
+        $school = DB::transaction(function () use ($request, $data): object {
+            $schoolId = DB::table('schools')->insertGetId([...$data, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('school_branches')->insert(['school_id' => $schoolId, 'name' => $data['name'].' Main Branch', 'code' => 'main', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $schoolId, 'action' => 'school_created', 'changes' => json_encode(['name' => $data['name'], 'slug' => $data['slug']]), 'created_at' => now()]);
+
+            return DB::table('schools')->where('id', $schoolId)->first();
+        });
+
+        return response()->json(['school' => $school], 201);
+    }
+
     public function school(int $school): JsonResponse
     {
         abort_unless(DB::table('schools')->where('id', $school)->exists(), 404);
