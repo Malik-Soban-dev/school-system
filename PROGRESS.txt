@@ -1,3 +1,8 @@
+- 2026-09-19 SUSPENDED BRANCH ACCESS SAFETY REGRESSION:
+  - Added coverage proving a normal branch administrator receives 403 when the selected branch is suspended, while Superadmin can still perform and audit the suspension.
+  - This locks the server-side branch status invariant used by ResolveSchool and prevents future control-plane changes from reopening suspended client access.
+  - Verification passed: full PHPUnit suite (89 tests, 522 assertions), focused branch-status test (1 test, 4 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN INVITATION REVOCATION UPDATE:
   - Added pending branch-invitation listing without token hashes and a school/branch-validated Superadmin revoke action that rotates the old token hash and expires the invitation.
   - Revocation is recorded in both branch-scoped school_audit and platform_audit; the dashboard exposes the control beside pending invitations.
