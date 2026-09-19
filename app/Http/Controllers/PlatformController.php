@@ -392,12 +392,13 @@ class PlatformController extends Controller
             });
         }
         $members = DB::table('school_user as su')->join('users as u', 'u.id', '=', 'su.user_id')->where('su.school_id', $school)->orderBy('u.name')->get(['u.id', 'u.name', 'u.email', 'u.roles', 'u.is_active', 'su.status as membership_status']);
+        $availableUsers = DB::table('users as u')->where('u.is_active', true)->whereJsonDoesntContain('u.roles', 'superadmin')->whereNotExists(fn ($query) => $query->selectRaw('1')->from('school_user as existing')->whereColumn('existing.user_id', 'u.id')->where('existing.school_id', $school))->orderBy('u.name')->limit(100)->get(['u.id', 'u.name', 'u.email']);
         $access = DB::table('school_user_branches as access')->join('school_branches as b', 'b.id', '=', 'access.branch_id')->where('access.school_id', $school)->orderBy('access.user_id')->orderBy('b.name')->get(['access.user_id', 'access.branch_id', 'b.name as branch_name', 'access.roles', 'access.status']);
         $invitations = DB::table('school_invitations as invitation')->leftJoin('school_branches as branch', 'branch.id', '=', 'invitation.branch_id')->where('invitation.school_id', $school)->whereNull('invitation.accepted_at')->orderByDesc('invitation.id')->get(['invitation.id', 'invitation.name', 'invitation.email', 'invitation.roles', 'invitation.expires_at', 'branch.id as branch_id', 'branch.name as branch_name']);
         $audit = DB::table('school_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->where('a.school_id', $school)->orderByDesc('a.id')->limit(50)->get(['a.id', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);
         $subscription = DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->where('subscription.school_id', $school)->first(['subscription.id', 'subscription.plan_id', 'subscription.status', 'subscription.starts_at', 'subscription.renews_at', 'subscription.canceled_at', 'plan.code as plan_code', 'plan.name as plan_name', 'plan.monthly_price_cents', 'plan.max_branches', 'plan.max_students', 'plan.features']);
 
-        return response()->json(['school' => DB::table('schools')->where('id', $school)->first(), 'branches' => $branches, 'counts' => $counts, 'subscription' => $subscription, 'members' => $members, 'access' => $access, 'invitations' => $invitations, 'audit' => $audit]);
+        return response()->json(['school' => DB::table('schools')->where('id', $school)->first(), 'branches' => $branches, 'counts' => $counts, 'subscription' => $subscription, 'members' => $members, 'available_users' => $availableUsers, 'access' => $access, 'invitations' => $invitations, 'audit' => $audit]);
     }
 
     public function createBranch(Request $request, int $school): JsonResponse
@@ -512,12 +513,24 @@ class PlatformController extends Controller
             'status' => ['required', Rule::in(['active', 'suspended'])],
         ]);
         DB::transaction(function () use ($request, $school, $user, $data): void {
-            abort_unless(DB::table('school_user')->where('school_id', $school)->where('user_id', $user)->where('status', 'active')->exists(), 404);
-            abort_if(DB::table('users')->where('id', $user)->whereJsonContains('roles', 'superadmin')->exists(), 422, 'Platform Superadmin access is managed separately.');
+            $userRecord = DB::table('users')->where('id', $user)->lockForUpdate()->first(['id', 'roles']);
+            abort_unless($userRecord, 404);
+            abort_if(in_array('superadmin', json_decode((string) $userRecord->roles, true) ?: [], true), 422, 'Platform Superadmin access is managed separately.');
+            $membership = DB::table('school_user')->where('school_id', $school)->where('user_id', $user)->lockForUpdate()->first(['status']);
+            $membershipCreated = false;
+            if (! $membership) {
+                DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $user, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+                $membershipCreated = true;
+            } else {
+                abort_unless($membership->status === 'active', 422, 'Activate the school membership before granting branch access.');
+            }
             DB::table('school_user_branches')->updateOrInsert(
                 ['school_id' => $school, 'branch_id' => $data['branch_id'], 'user_id' => $user],
                 ['roles' => json_encode($data['roles']), 'status' => $data['status'], 'updated_at' => now(), 'created_at' => now()]
             );
+            if ($membershipCreated) {
+                DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'school_membership_created', 'changes' => json_encode(['user_id' => $user]), 'created_at' => now()]);
+            }
             DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $data['branch_id'], 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'branch_access_updated', 'changes' => json_encode(['branch_id' => $data['branch_id'], 'roles' => $data['roles'], 'status' => $data['status']]), 'created_at' => now()]);
         });
 

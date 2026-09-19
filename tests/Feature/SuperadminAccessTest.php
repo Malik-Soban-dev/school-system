@@ -350,6 +350,21 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $admin->id, 'action' => 'branch_access_updated']);
     }
 
+    public function test_superadmin_can_attach_an_existing_account_to_a_school_branch(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Existing Account School', 'slug' => 'existing-account-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'New Campus', 'code' => 'new-campus', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $existing = User::factory()->create(['name' => 'Existing Client Admin', 'roles' => ['admin'], 'is_active' => true]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->assertJsonPath('available_users.0.id', $existing->id);
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/members/'.$existing->id.'/branch-access', ['branch_id' => $branch, 'roles' => ['admin'], 'status' => 'active'])->assertOk();
+
+        $this->assertDatabaseHas('school_user', ['school_id' => $school, 'user_id' => $existing->id, 'status' => 'active']);
+        $this->assertDatabaseHas('school_user_branches', ['school_id' => $school, 'branch_id' => $branch, 'user_id' => $existing->id, 'roles' => json_encode(['admin'])]);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $existing->id, 'action' => 'school_membership_created']);
+    }
+
     public function test_superadmin_can_override_the_assigned_plan_branch_limit(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Branch Limit School', 'slug' => 'branch-limit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
