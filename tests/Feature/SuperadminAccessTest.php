@@ -99,6 +99,19 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $schoolTwo, 'module' => 'platform', 'action' => 'school_status_updated', 'changes' => json_encode(['before' => ['status' => 'active'], 'after' => ['status' => 'suspended']])]);
     }
 
+    public function test_superadmin_can_update_school_profile_with_unique_slug_validation(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Profile School', 'slug' => 'profile-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $other = DB::table('schools')->insertGetId(['name' => 'Other Profile School', 'slug' => 'other-profile-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school, ['name' => 'Renamed School', 'slug' => 'renamed-school'])->assertOk();
+        $this->assertDatabaseHas('schools', ['id' => $school, 'name' => 'Renamed School', 'slug' => 'renamed-school']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'school', 'entity_id' => $school, 'action' => 'school_updated']);
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school, ['name' => 'Duplicate', 'slug' => 'other-profile-school'])->assertUnprocessable();
+        $this->assertDatabaseHas('schools', ['id' => $other, 'slug' => 'other-profile-school']);
+    }
+
     public function test_school_users_cannot_open_platform_dashboard(): void
     {
         $user = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);

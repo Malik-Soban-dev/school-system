@@ -248,6 +248,19 @@ class PlatformController extends Controller
         return response()->json(['message' => 'Platform plan updated.']);
     }
 
+    public function updateSchool(Request $request, int $school): JsonResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:150'], 'slug' => ['required', 'alpha_dash', 'max:80', Rule::unique('schools', 'slug')->ignore($school)]]);
+        DB::transaction(function () use ($request, $school, $data): void {
+            $before = DB::table('schools')->where('id', $school)->lockForUpdate()->first(['id', 'name', 'slug', 'status']);
+            abort_unless($before, 404);
+            DB::table('schools')->where('id', $school)->update(['name' => $data['name'], 'slug' => $data['slug'], 'updated_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'school', 'entity_id' => $school, 'action' => 'school_updated', 'changes' => json_encode(['before' => $before, 'after' => $data]), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'School profile updated.']);
+    }
+
     public function school(int $school): JsonResponse
     {
         abort_unless(DB::table('schools')->where('id', $school)->exists(), 404);

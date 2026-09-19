@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN SCHOOL PROFILE UPDATE:
+  - Added transactional Superadmin editing of school name and slug with locked rows, unique-slug validation and platform audit records.
+  - Added dashboard school profile editing control and regression coverage for duplicate slug rejection.
+  - Verification passed: full PHPUnit suite (81 tests, 453 assertions), focused SuperadminAccessTest (24 tests, 105 assertions), Blade view cache and PHP Pint.
+
 - 2026-09-19 SUPERADMIN PLATFORM BILLING LEDGER UPDATE:
   - Added an indexed platform_billing_invoices ledger separate from school student invoices, with school/subscription linkage, billing periods, due dates, currency, payment references and audited statuses.
   - Superadmin can issue invoices, list/filter them, require a payment reference before marking paid, reconcile paid/void/overdue states and review the ledger in the dashboard.
