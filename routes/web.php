@@ -99,6 +99,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, Resolve
     Route::put('/account/password', [AuthController::class, 'updatePassword'])->middleware('throttle:5,1')->name('password.update');
     Route::post('/account/mfa/setup', [AuthController::class, 'beginMfaEnrollment'])->middleware('throttle:5,1')->name('mfa.setup');
     Route::post('/account/mfa/confirm', [AuthController::class, 'confirmMfaEnrollment'])->middleware('throttle:5,1')->name('mfa.confirm');
+    Route::post('/account/mfa/recovery-codes', [AuthController::class, 'regenerateRecoveryCodes'])->middleware('throttle:5,1')->name('mfa.recovery-codes');
     Route::delete('/account/mfa', [AuthController::class, 'disableMfa'])->middleware('throttle:5,1')->name('mfa.disable');
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 });

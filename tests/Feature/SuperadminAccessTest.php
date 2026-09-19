@@ -30,11 +30,13 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $superadmin->id]);
         $this->assertNotNull(User::find($superadmin->id)->mfa_enabled_at);
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $superadmin->id, 'action' => 'mfa_enabled']);
+        $recoveryCode = $this->app['session']->get('mfa_recovery_codes')[0];
 
         $this->post('/logout')->assertRedirect(route('login'));
         $this->post('/login', ['username' => 'mfa.superadmin', 'password' => 'password'])->assertRedirect(route('mfa.challenge'));
-        $this->post('/mfa/challenge', ['code' => $code])->assertRedirect(route('dashboard'));
+        $this->post('/mfa/challenge', ['code' => $recoveryCode])->assertRedirect(route('dashboard'));
         $this->get('/superadmin')->assertOk();
+        $this->assertCount(7, json_decode((string) User::find($superadmin->id)->mfa_recovery_codes, true));
     }
 
     public function test_superadmin_can_open_platform_dashboard(): void

@@ -78,11 +78,12 @@ class AuthController extends Controller
     public function account(Request $request): View
     {
         $secret = null;
+        $recoveryCodes = $request->session()->pull('mfa_recovery_codes', []);
         if ($pending = $request->session()->get('mfa_pending_secret')) {
             $secret = Crypt::decryptString($pending);
         }
 
-        return view('auth.account', ['mfaPendingSecret' => $secret, 'mfaUri' => $secret ? Totp::uri($secret, $request->user()->username ?: $request->user()->email) : null]);
+        return view('auth.account', ['mfaPendingSecret' => $secret, 'mfaUri' => $secret ? Totp::uri($secret, $request->user()->username ?: $request->user()->email) : null, 'mfaRecoveryCodes' => $recoveryCodes]);
     }
 
     public function beginMfaEnrollment(Request $request): RedirectResponse
@@ -103,12 +104,14 @@ class AuthController extends Controller
         abort_unless($pending, 422, 'Start MFA setup before confirming a code.');
         $secret = Crypt::decryptString($pending);
         abort_unless(Totp::verify($secret, $data['code']), 422, 'That authenticator code is not valid. Check the device time and try again.');
-        DB::transaction(function () use ($request, $secret): void {
-            DB::table('users')->where('id', $request->user()->id)->update(['mfa_secret' => Crypt::encryptString($secret), 'mfa_enabled_at' => now(), 'updated_at' => now()]);
+        $recoveryCodes = $this->newRecoveryCodes();
+        DB::transaction(function () use ($request, $secret, $recoveryCodes): void {
+            DB::table('users')->where('id', $request->user()->id)->update(['mfa_secret' => Crypt::encryptString($secret), 'mfa_recovery_codes' => json_encode(array_map(Hash::make(...), $recoveryCodes)), 'mfa_enabled_at' => now(), 'updated_at' => now()]);
             DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $request->user()->id, 'action' => 'mfa_enabled', 'changes' => json_encode(['method' => 'totp']), 'created_at' => now()]);
         });
         $request->session()->forget('mfa_pending_secret');
         $request->session()->put('mfa_verified_user_id', $request->user()->id);
+        $request->session()->put('mfa_recovery_codes', $recoveryCodes);
 
         return redirect()->route('account')->with('status', 'MFA is enabled for this Superadmin account.');
     }
@@ -116,16 +119,32 @@ class AuthController extends Controller
     public function disableMfa(Request $request): RedirectResponse
     {
         abort_unless($request->user()->hasRole('superadmin'), 403);
-        $data = $request->validate(['current_password' => ['required', 'current_password'], 'code' => ['required', 'regex:/^\s*\d{6}\s*$/']]);
+        $data = $request->validate(['current_password' => ['required', 'current_password'], 'code' => ['required', 'string', 'max:100']]);
         $secret = Crypt::decryptString((string) $request->user()->mfa_secret);
-        abort_unless(Totp::verify($secret, $data['code']), 422, 'That authenticator code is not valid.');
+        $valid = Totp::verify($secret, $data['code']) || $this->consumeRecoveryCode($request->user()->id, $data['code']);
+        abort_unless($valid, 422, 'That authenticator or recovery code is not valid.');
         DB::transaction(function () use ($request): void {
-            DB::table('users')->where('id', $request->user()->id)->update(['mfa_secret' => null, 'mfa_enabled_at' => null, 'updated_at' => now()]);
+            DB::table('users')->where('id', $request->user()->id)->update(['mfa_secret' => null, 'mfa_recovery_codes' => null, 'mfa_enabled_at' => null, 'updated_at' => now()]);
             DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $request->user()->id, 'action' => 'mfa_disabled', 'changes' => json_encode(['method' => 'totp']), 'created_at' => now()]);
         });
         $request->session()->forget(['mfa_pending_secret', 'mfa_verified_user_id']);
 
         return redirect()->route('account')->with('status', 'MFA has been disabled for this account.');
+    }
+
+    public function regenerateRecoveryCodes(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->hasRole('superadmin') && $request->user()->mfa_enabled_at !== null, 403);
+        $data = $request->validate(['current_password' => ['required', 'current_password'], 'code' => ['required', 'regex:/^\s*\d{6}\s*$/']]);
+        abort_unless(Totp::verify(Crypt::decryptString((string) $request->user()->mfa_secret), $data['code']), 422, 'That authenticator code is not valid.');
+        $recoveryCodes = $this->newRecoveryCodes();
+        DB::transaction(function () use ($request, $recoveryCodes): void {
+            DB::table('users')->where('id', $request->user()->id)->update(['mfa_recovery_codes' => json_encode(array_map(Hash::make(...), $recoveryCodes)), 'updated_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $request->user()->id, 'action' => 'mfa_recovery_codes_regenerated', 'changes' => json_encode(['count' => count($recoveryCodes)]), 'created_at' => now()]);
+        });
+        $request->session()->put('mfa_recovery_codes', $recoveryCodes);
+
+        return redirect()->route('account')->with('status', 'New recovery codes created. The previous codes no longer work.');
     }
 
     public function showMfaChallenge(Request $request): View
@@ -137,17 +156,43 @@ class AuthController extends Controller
 
     public function verifyMfaChallenge(Request $request): RedirectResponse
     {
-        $data = $request->validate(['code' => ['required', 'regex:/^\s*\d{6}\s*$/']]);
+        $data = $request->validate(['code' => ['required', 'string', 'max:100']]);
         $userId = (int) $request->session()->get('mfa_pending_user_id');
         $user = User::query()->whereKey($userId)->where('is_active', true)->first();
         abort_unless($user?->hasRole('superadmin') && $user->mfa_enabled_at !== null, 404);
-        abort_unless(Totp::verify(Crypt::decryptString((string) $user->mfa_secret), $data['code']), 422, 'That authenticator code is not valid.');
+        $valid = Totp::verify(Crypt::decryptString((string) $user->mfa_secret), $data['code']) || $this->consumeRecoveryCode($user->id, $data['code']);
+        abort_unless($valid, 422, 'That authenticator or recovery code is not valid.');
         Auth::login($user);
         $request->session()->forget('mfa_pending_user_id');
         $request->session()->regenerate();
         $request->session()->put('mfa_verified_user_id', $user->id);
 
         return redirect()->intended(route('dashboard'));
+    }
+
+    /** @return list<string> */
+    private function newRecoveryCodes(): array
+    {
+        return array_map(fn (): string => strtoupper(bin2hex(random_bytes(5))), range(1, 8));
+    }
+
+    private function consumeRecoveryCode(int $userId, string $code): bool
+    {
+        return DB::transaction(function () use ($userId, $code): bool {
+            $user = DB::table('users')->where('id', $userId)->lockForUpdate()->first(['mfa_recovery_codes']);
+            $hashes = json_decode((string) ($user?->mfa_recovery_codes ?? '[]'), true) ?: [];
+            $normalized = strtoupper(trim($code));
+            foreach ($hashes as $index => $hash) {
+                if (Hash::check($normalized, $hash)) {
+                    unset($hashes[$index]);
+                    DB::table('users')->where('id', $userId)->update(['mfa_recovery_codes' => json_encode(array_values($hashes)), 'updated_at' => now()]);
+
+                    return true;
+                }
+            }
+
+            return false;
+        });
     }
 
     public function showResetForm(string $token): View

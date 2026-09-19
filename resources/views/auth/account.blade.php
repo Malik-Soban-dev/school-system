@@ -17,11 +17,20 @@
 <section class="card account-form" style="margin-top:20px">
     <h2>Multi-factor authentication</h2>
     @if(auth()->user()->mfa_enabled_at)
-        <p>MFA is enabled for this Superadmin account. An authenticator code is required at every new sign-in.</p>
+        <p>MFA is enabled for this Superadmin account. An authenticator or unused recovery code is required at every new sign-in.</p>
+        @if($mfaRecoveryCodes)
+            <div class="notice"><strong>Save these recovery codes now.</strong><br>Each code works once. They are shown only after setup or regeneration.<br><code>{{ implode(' · ', $mfaRecoveryCodes) }}</code></div>
+        @endif
+        <form method="POST" action="{{ route('mfa.recovery-codes') }}" style="margin-bottom:24px">
+            @csrf
+            <div class="field"><label for="regenerate_current_password">Current password</label><input id="regenerate_current_password" name="current_password" type="password" autocomplete="current-password" required></div>
+            <div class="field"><label for="regenerate_code">Current authenticator code</label><input id="regenerate_code" name="code" inputmode="numeric" pattern="[0-9 ]{6,7}" autocomplete="one-time-code" required></div>
+            <button class="button secondary" type="submit">Regenerate recovery codes</button>
+        </form>
         <form method="POST" action="{{ route('mfa.disable') }}">
             @csrf @method('DELETE')
             <div class="field"><label for="disable_current_password">Current password</label><input id="disable_current_password" name="current_password" type="password" autocomplete="current-password" required></div>
-            <div class="field"><label for="disable_code">Authenticator code</label><input id="disable_code" name="code" inputmode="numeric" pattern="[0-9 ]{6,7}" autocomplete="one-time-code" required></div>
+            <div class="field"><label for="disable_code">Authenticator or recovery code</label><input id="disable_code" name="code" autocomplete="one-time-code" required></div>
             <button class="button secondary" type="submit">Disable MFA</button>
         </form>
     @elseif($mfaPendingSecret)
