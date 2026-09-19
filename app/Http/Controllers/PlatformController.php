@@ -279,6 +279,10 @@ class PlatformController extends Controller
         DB::transaction(function () use ($request, $plan, $data): void {
             $before = DB::table('platform_plans')->where('id', $plan)->lockForUpdate()->first();
             abort_unless($before, 404);
+            if ($data['status'] === 'archived' && $before->status !== 'archived') {
+                abort_if(DB::table('platform_plans')->where('status', 'active')->count() <= 1, 422, 'At least one active platform plan must remain available.');
+                abort_if(DB::table('school_subscriptions')->where('plan_id', $plan)->whereIn('status', ['trialing', 'active'])->exists(), 422, 'This plan is assigned to an active or trialing school. Move those subscriptions before archiving it.');
+            }
             DB::table('platform_plans')->where('id', $plan)->update([...$data, 'features' => json_encode($data['features']), 'updated_at' => now()]);
             DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'plan', 'entity_id' => $plan, 'action' => 'plan_updated', 'changes' => json_encode(['before' => $before, 'after' => $data]), 'created_at' => now()]);
         });

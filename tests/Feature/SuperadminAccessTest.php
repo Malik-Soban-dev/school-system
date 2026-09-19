@@ -99,6 +99,22 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->assertJsonFragment(['action' => 'plan_updated', 'school_name' => 'Platform']);
     }
 
+    public function test_superadmin_cannot_archive_an_assigned_plan_or_the_last_active_plan(): void
+    {
+        $plan = DB::table('platform_plans')->where('code', 'starter')->value('id');
+        $school = DB::table('schools')->insertGetId(['name' => 'Plan Guard School', 'slug' => 'plan-guard-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_subscriptions')->insert(['school_id' => $school, 'plan_id' => $plan, 'status' => 'active', 'starts_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+        $payload = ['name' => 'Starter', 'monthly_price_cents' => 4900, 'max_branches' => 1, 'max_students' => 250, 'features' => ['attendance'], 'status' => 'archived'];
+
+        $this->actingAs($superadmin)->putJson('/superadmin/plans/'.$plan, $payload)->assertUnprocessable();
+        $this->assertDatabaseHas('platform_plans', ['id' => $plan, 'status' => 'active']);
+        DB::table('school_subscriptions')->where('school_id', $school)->update(['status' => 'canceled']);
+        DB::table('platform_plans')->where('status', 'active')->where('id', '!=', $plan)->update(['status' => 'archived']);
+        $this->actingAs($superadmin)->putJson('/superadmin/plans/'.$plan, $payload)->assertUnprocessable();
+        $this->assertDatabaseHas('platform_plans', ['id' => $plan, 'status' => 'active']);
+    }
+
     public function test_superadmin_can_review_and_suspend_a_school_with_audited_status_change(): void
     {
         $schoolTwo = DB::table('schools')->insertGetId(['name' => 'Managed School', 'slug' => 'managed-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
