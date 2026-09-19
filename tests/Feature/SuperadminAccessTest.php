@@ -103,6 +103,22 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $admin->id, 'action' => 'branch_access_updated']);
     }
 
+    public function test_superadmin_can_suspend_a_school_membership_and_all_branch_access(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Membership School', 'slug' => 'membership-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Main', 'code' => 'main', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $admin = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $admin->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $admin->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/members/'.$admin->id.'/status', ['status' => 'suspended'])->assertOk();
+
+        $this->assertDatabaseHas('school_user', ['school_id' => $school, 'user_id' => $admin->id, 'status' => 'suspended']);
+        $this->assertDatabaseHas('school_user_branches', ['school_id' => $school, 'branch_id' => $branch, 'user_id' => $admin->id, 'status' => 'suspended']);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $admin->id, 'action' => 'school_membership_status_updated']);
+    }
+
     public function test_superadmin_can_onboard_a_school_with_a_default_branch(): void
     {
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);

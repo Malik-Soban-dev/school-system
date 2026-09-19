@@ -32,6 +32,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureSuperadmin::class])
     Route::put('/superadmin/schools/{school}/branches/{branch}/status', [PlatformController::class, 'updateBranchStatus'])->whereNumber(['school', 'branch']);
     Route::post('/superadmin/schools/{school}/branches/{branch}/invitations', [PlatformController::class, 'inviteBranchUser'])->whereNumber(['school', 'branch']);
     Route::put('/superadmin/schools/{school}/members/{user}/branch-access', [PlatformController::class, 'updateBranchAccess'])->whereNumber(['school', 'user']);
+    Route::put('/superadmin/schools/{school}/members/{user}/status', [PlatformController::class, 'updateMembershipStatus'])->whereNumber(['school', 'user']);
     Route::put('/superadmin/schools/{school}/status', [PlatformController::class, 'updateStatus'])->whereNumber('school');
 });
 

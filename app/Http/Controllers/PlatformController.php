@@ -177,7 +177,7 @@ class PlatformController extends Controller
                 return $branch;
             });
         }
-        $members = DB::table('school_user as su')->join('users as u', 'u.id', '=', 'su.user_id')->where('su.school_id', $school)->where('su.status', 'active')->orderBy('u.name')->limit(100)->get(['u.id', 'u.name', 'u.email', 'u.roles', 'u.is_active']);
+        $members = DB::table('school_user as su')->join('users as u', 'u.id', '=', 'su.user_id')->where('su.school_id', $school)->orderBy('u.name')->limit(100)->get(['u.id', 'u.name', 'u.email', 'u.roles', 'u.is_active', 'su.status as membership_status']);
         $access = DB::table('school_user_branches as access')->join('school_branches as b', 'b.id', '=', 'access.branch_id')->where('access.school_id', $school)->orderBy('access.user_id')->orderBy('b.name')->get(['access.user_id', 'access.branch_id', 'b.name as branch_name', 'access.roles', 'access.status']);
         $audit = DB::table('school_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->where('a.school_id', $school)->orderByDesc('a.id')->limit(50)->get(['a.id', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);
         $subscription = DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->where('subscription.school_id', $school)->first(['subscription.id', 'subscription.plan_id', 'subscription.status', 'subscription.starts_at', 'subscription.renews_at', 'subscription.canceled_at', 'plan.code as plan_code', 'plan.name as plan_name', 'plan.monthly_price_cents', 'plan.max_branches', 'plan.max_students', 'plan.features']);
@@ -258,6 +258,28 @@ class PlatformController extends Controller
         });
 
         return response()->json(['message' => 'Branch access updated.']);
+    }
+
+    public function updateMembershipStatus(Request $request, int $school, int $user): JsonResponse
+    {
+        $data = $request->validate(['status' => ['required', Rule::in(['active', 'suspended'])]]);
+        DB::transaction(function () use ($request, $school, $user, $data): void {
+            $membership = DB::table('school_user')->where('school_id', $school)->where('user_id', $user)->lockForUpdate()->first(['status']);
+            abort_unless($membership, 404);
+            abort_if(DB::table('users')->where('id', $user)->whereJsonContains('roles', 'superadmin')->exists(), 422, 'Platform Superadmin access is managed separately.');
+            if ($membership->status === $data['status']) {
+                return;
+            }
+
+            DB::table('school_user')->where('school_id', $school)->where('user_id', $user)->update(['status' => $data['status'], 'updated_at' => now()]);
+            if ($data['status'] === 'suspended') {
+                DB::table('school_user_branches')->where('school_id', $school)->where('user_id', $user)->update(['status' => 'suspended', 'updated_at' => now()]);
+                DB::table('sessions')->where('user_id', $user)->delete();
+            }
+            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'school_membership_status_updated', 'changes' => json_encode(['before' => ['status' => $membership->status], 'after' => ['status' => $data['status']]]), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'School membership status updated.']);
     }
 
     public function updateStatus(Request $request, int $school): JsonResponse
