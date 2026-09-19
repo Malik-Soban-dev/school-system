@@ -429,6 +429,21 @@ class PlatformController extends Controller
         return response()->json(['message' => 'Branch details updated.']);
     }
 
+    public function setDefaultBranch(Request $request, int $school, int $branch): JsonResponse
+    {
+        DB::transaction(function () use ($request, $school, $branch): void {
+            $target = DB::table('school_branches')->where('school_id', $school)->where('id', $branch)->lockForUpdate()->first(['id', 'status', 'is_default']);
+            abort_unless($target, 404);
+            abort_if($target->status !== 'active', 422, 'Only an active branch can be the school default.');
+            $previous = DB::table('school_branches')->where('school_id', $school)->where('is_default', true)->where('id', '!=', $branch)->value('id');
+            DB::table('school_branches')->where('school_id', $school)->update(['is_default' => false, 'updated_at' => now()]);
+            DB::table('school_branches')->where('id', $branch)->update(['is_default' => true, 'updated_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_default_updated', 'changes' => json_encode(['before' => ['branch_id' => $previous], 'after' => ['branch_id' => $branch]]), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'School default branch updated.']);
+    }
+
     public function updateBranchStatus(Request $request, int $school, int $branch): JsonResponse
     {
         $data = $request->validate(['status' => ['required', Rule::in(['active', 'suspended'])]]);

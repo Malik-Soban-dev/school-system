@@ -333,6 +333,20 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/branches/'.$branch, ['name' => 'Duplicate', 'code' => 'other'])->assertUnprocessable();
     }
 
+    public function test_superadmin_can_change_the_active_default_branch_transactionally(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Default Branch School', 'slug' => 'default-branch-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $first = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'First', 'code' => 'first', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $second = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Second', 'code' => 'second', 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/branches/'.$second.'/default')->assertOk();
+
+        $this->assertDatabaseHas('school_branches', ['id' => $first, 'is_default' => false]);
+        $this->assertDatabaseHas('school_branches', ['id' => $second, 'is_default' => true]);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'branch_id' => $second, 'action' => 'branch_default_updated']);
+    }
+
     public function test_superadmin_can_suspend_a_school_membership_and_all_branch_access(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Membership School', 'slug' => 'membership-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

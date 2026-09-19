@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN DEFAULT BRANCH CONTROL UPDATE:
+  - Added a transactional Superadmin action and school-detail control for changing the active default branch; the previous default is cleared atomically and suspended branches cannot be selected.
+  - Default changes are branch-scoped and audited, preserving predictable normal-user context resolution as schools add or retire campuses.
+  - Verification passed: full PHPUnit suite (93 tests, 539 assertions), focused default-branch tests (2 tests, 8 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN BILLING LEDGER PAGINATION UPDATE:
   - Added invoice status filters and page navigation to the Superadmin platform billing ledger, preserving audited payment and void controls on every page.
   - Added regression coverage for multi-page invoice discovery and issued-status filtering across the platform.
