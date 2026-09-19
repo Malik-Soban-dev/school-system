@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN OPERATIONAL VISIBILITY UPDATE:
+  - Added protected, branch-filtered explorer coverage for notification delivery attempts and school settings; provider delivery metadata is visible for operations, while logo asset contents are redacted.
+  - Added dashboard selector options and regression coverage for failed delivery status, recipient visibility and settings redaction.
+  - Verification passed: full PHPUnit suite (96 tests, 568 assertions), focused operational explorer test (1 test, 13 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN EXPLORER COVERAGE UPDATE:
   - Added protected, branch-filtered visibility for grading bands and exam-subject plans, including route allow-list, server queries, and dashboard explorer options; sensitive grading configuration remains read-only in the explorer.
   - Added regression coverage proving both assessment modules are visible for the selected school branch.

@@ -94,6 +94,11 @@
             explorerModule.insertAdjacentHTML('beforeend', `<option value="${module}">${module === 'grade_bands' ? 'Grading bands' : 'Exam subjects'}</option>`);
         }
     });
+    [['notification_deliveries', 'Notification deliveries'], ['settings', 'School settings']].forEach(([module, label]) => {
+        if (! explorerModule.querySelector(`option[value="${module}"]`)) {
+            explorerModule.insertAdjacentHTML('beforeend', `<option value="${module}">${label}</option>`);
+        }
+    });
     const explorerSearch = document.querySelector('#explorer-search');
     const explorerHead = document.querySelector('#explorer-head');
     const explorerRows = document.querySelector('#explorer-rows');

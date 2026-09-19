@@ -153,6 +153,11 @@ class SuperadminAccessTest extends TestCase
 
         $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/grade_bands?branch_id='.$branch)->assertOk()->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.name', 'A');
         $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/exam_subjects?branch_id='.$branch)->assertOk()->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.subject', 'Mathematics');
+        DB::table('school_settings')->insert(['school_id' => $school, 'key' => 'logo_data', 'value' => 'private-image-data']);
+        $notification = DB::table('school_notifications')->insertGetId(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $superadmin->id, 'event_key' => 'explorer-test', 'module' => 'exams', 'record_id' => $exam, 'title' => 'Exam reminder', 'body' => 'Reminder body', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_notification_deliveries')->insert(['school_id' => $school, 'branch_id' => $branch, 'notification_id' => $notification, 'channel' => 'email', 'status' => 'failed', 'attempts' => 2, 'available_at' => now(), 'error_code' => 'provider_error', 'created_at' => now(), 'updated_at' => now()]);
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/settings')->assertOk()->assertJsonPath('records.data.0.value', '[redacted asset]')->assertJsonMissing(['value' => 'private-image-data']);
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/notification_deliveries?branch_id='.$branch)->assertOk()->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.status', 'failed')->assertJsonPath('records.data.0.recipient', $superadmin->name);
     }
 
     public function test_superadmin_can_assign_and_audit_a_school_subscription(): void
