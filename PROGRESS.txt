@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN SCHOOL DETAIL UPDATE:
+  - Connected the school registry to the protected school detail endpoint so Superadmins can inspect counts, active members and recent school activity.
+  - Detail rendering escapes server values and reports failed requests in the dashboard.
+  - Verification passed: Vite production build and git diff check.
+
 - 2026-09-19 SUPERADMIN STATUS SAFETY UPDATE:
   - School activation/suspension now locks the school row inside the transaction and records before/after status values in the platform audit entry.
   - The dashboard asks for explicit confirmation before status changes and reports failed requests instead of silently refreshing.

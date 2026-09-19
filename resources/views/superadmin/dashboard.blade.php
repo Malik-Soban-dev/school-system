@@ -21,6 +21,10 @@
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL REGISTRY</p><h2>Every school</h2></div><button class="platform-refresh" type="button">Refresh data</button></div>
         <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Status</th><th>Members</th><th>Students</th><th>Staff</th><th>Open invoices</th><th>Control</th></tr></thead><tbody id="school-rows"><tr><td colspan="7">Loading school registry…</td></tr></tbody></table></div>
     </section>
+    <section class="platform-panel" id="school-detail" hidden>
+        <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL DETAIL</p><h2 id="school-detail-title">Selected school</h2></div><button class="platform-refresh" id="school-detail-close" type="button">Close</button></div>
+        <div id="school-detail-content">Select a school to inspect its members and activity.</div>
+    </section>
     <section class="platform-panel"><div class="platform-panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Recent platform activity</h2></div></div><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>School</th><th>Actor</th><th>Module</th><th>Action</th></tr></thead><tbody id="audit-rows"><tr><td colspan="5">Loading audit trail…</td></tr></tbody></table></div></section>
 </main>
 <script>
@@ -29,14 +33,30 @@
     const summary = document.querySelector('#platform-summary');
     const schools = document.querySelector('#school-rows');
     const audit = document.querySelector('#audit-rows');
+    const detail = document.querySelector('#school-detail');
+    const detailTitle = document.querySelector('#school-detail-title');
+    const detailContent = document.querySelector('#school-detail-content');
     const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+    const showSchoolDetail = async schoolId => {
+        detail.hidden = false;
+        detailContent.innerHTML = 'Loading school detail…';
+        const response = await fetch(`/superadmin/schools/${schoolId}`, {headers: {Accept: 'application/json'}, credentials: 'same-origin'});
+        if (!response.ok) throw new Error('Unable to load school detail.');
+        const data = await response.json();
+        detailTitle.textContent = data.school.name;
+        const counts = Object.entries(data.counts).map(([key, value]) => `<span><strong>${esc(value)}</strong> ${esc(key)}</span>`).join(' · ');
+        const members = data.members.map(member => `<tr><td>${esc(member.name)}</td><td>${esc(member.email)}</td><td>${esc(member.is_active ? 'Active' : 'Inactive')}</td></tr>`).join('') || '<tr><td colspan="3">No active members.</td></tr>';
+        const activity = data.audit.map(row => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.actor || 'System')}</td><td>${esc(row.module)}</td><td>${esc(row.action)}</td></tr>`).join('') || '<tr><td colspan="4">No school activity yet.</td></tr>';
+        detailContent.innerHTML = `<p>${counts}</p><h3>Active members</h3><div class="platform-table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Status</th></tr></thead><tbody>${members}</tbody></table></div><h3>Recent activity</h3><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Module</th><th>Action</th></tr></thead><tbody>${activity}</tbody></table></div>`;
+    };
     const load = async () => {
         const response = await fetch('/superadmin/data', {headers: {Accept: 'application/json'}, credentials: 'same-origin'});
         if (!response.ok) throw new Error('Unable to load platform data.');
         const data = await response.json();
         summary.innerHTML = [['schools','Schools'],['members','Members'],['students','Students'],['open_invoices','Open invoices']].map(([key,label]) => `<article><strong>${esc(data.summary[key])}</strong><span>${label}</span></article>`).join('');
-        schools.innerHTML = data.schools.map(school => `<tr><td><strong>${esc(school.name)}</strong><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.members)}</td><td>${esc(school.students)}</td><td>${esc(school.staff)}</td><td>${esc(school.open_invoices)}</td><td><button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="7">No schools registered.</td></tr>';
+        schools.innerHTML = data.schools.map(school => `<tr><td><button class="platform-school-detail" data-id="${school.id}" type="button"><strong>${esc(school.name)}</strong></button><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.members)}</td><td>${esc(school.students)}</td><td>${esc(school.staff)}</td><td>${esc(school.open_invoices)}</td><td><button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="7">No schools registered.</td></tr>';
         audit.innerHTML = data.audit.map(row => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.school_name)}</td><td>${esc(row.actor || 'System')}</td><td>${esc(row.module)}</td><td>${esc(row.action)}</td></tr>`).join('') || '<tr><td colspan="5">No audit events yet.</td></tr>';
+        document.querySelectorAll('.platform-school-detail').forEach(button => button.addEventListener('click', () => showSchoolDetail(button.dataset.id).catch(error => { detailContent.innerHTML = esc(error.message); })));
         document.querySelectorAll('.platform-action').forEach(button => button.addEventListener('click', async () => {
             const action = button.dataset.status === 'suspended' ? 'suspend' : 'activate';
             if (!window.confirm(`Are you sure you want to ${action} this school?`)) {
@@ -56,6 +76,7 @@
             }
         }));
     };
+    document.querySelector('#school-detail-close').addEventListener('click', () => { detail.hidden = true; });
     document.querySelector('.platform-refresh').addEventListener('click', load);
     load().catch(error => { schools.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; });
 })();
