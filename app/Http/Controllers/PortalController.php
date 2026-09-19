@@ -50,12 +50,18 @@ class PortalController extends Controller
     public function switchContext(Request $request): JsonResponse
     {
         $data = $request->validate(['school_id' => ['required', 'integer'], 'branch_id' => ['required', 'integer']]);
-        $context = DB::table('school_user_branches as access')->join('school_user as membership', function ($join): void {
-            $join->on('membership.school_id', '=', 'access.school_id')->on('membership.user_id', '=', 'access.user_id');
-        })->join('schools', 'schools.id', '=', 'access.school_id')->join('school_branches as branch', 'branch.id', '=', 'access.branch_id')->where('access.user_id', $request->user()->id)->where('access.school_id', $data['school_id'])->where('access.branch_id', $data['branch_id'])->where('access.status', 'active')->where('membership.status', 'active')->where('schools.status', 'active')->where('branch.status', 'active')->first(['access.school_id', 'access.branch_id']);
+        $context = $request->user()->hasRole('superadmin')
+            ? DB::table('school_branches as branch')->join('schools', 'schools.id', '=', 'branch.school_id')->where('branch.school_id', $data['school_id'])->where('branch.id', $data['branch_id'])->first(['branch.school_id', 'branch.id as branch_id'])
+            : DB::table('school_user_branches as access')->join('school_user as membership', function ($join): void {
+                $join->on('membership.school_id', '=', 'access.school_id')->on('membership.user_id', '=', 'access.user_id');
+            })->join('schools', 'schools.id', '=', 'access.school_id')->join('school_branches as branch', 'branch.id', '=', 'access.branch_id')->where('access.user_id', $request->user()->id)->where('access.school_id', $data['school_id'])->where('access.branch_id', $data['branch_id'])->where('access.status', 'active')->where('membership.status', 'active')->where('schools.status', 'active')->where('branch.status', 'active')->first(['access.school_id', 'access.branch_id']);
         abort_unless($context, 403, 'You do not have access to that school branch.');
         $request->session()->put(['school_id' => (int) $context->school_id, 'branch_id' => (int) $context->branch_id]);
         app(TenantContext::class)->set((int) $context->school_id, (int) $context->branch_id);
+
+        if ($request->user()->hasRole('superadmin')) {
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'workspace', 'entity_id' => (int) $context->branch_id, 'action' => 'superadmin_context_switched', 'changes' => json_encode(['school_id' => (int) $context->school_id, 'branch_id' => (int) $context->branch_id]), 'created_at' => now()]);
+        }
 
         return response()->json(['message' => 'Workspace branch switched.', 'current' => ['school_id' => (int) $context->school_id, 'branch_id' => (int) $context->branch_id]]);
     }

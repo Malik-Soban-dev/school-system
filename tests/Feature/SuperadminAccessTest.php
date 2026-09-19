@@ -21,6 +21,20 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($user)->get('/superadmin')->assertOk()->assertSee('Superadmin dashboard');
     }
 
+    public function test_superadmin_can_switch_into_any_branch_workspace_and_use_full_portal_authority(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Workspace School', 'slug' => 'workspace-school', 'status' => 'suspended', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Workspace Campus', 'code' => 'workspace', 'status' => 'suspended', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/portal/context', ['school_id' => $school, 'branch_id' => $branch])->assertOk()->assertJsonPath('current.branch_id', $branch);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'workspace', 'entity_id' => $branch, 'action' => 'superadmin_context_switched']);
+
+        $this->actingAs($superadmin)->getJson('/portal/meta')->assertOk()->assertJsonPath('current_context.school_id', $school)->assertJsonPath('current_context.branch_id', $branch)->assertJsonPath('canManage', true);
+        $this->actingAs($superadmin)->postJson('/portal/records/notices', ['title' => 'Platform notice', 'body' => 'Managed centrally', 'audience' => 'all', 'status' => 'published'])->assertOk();
+        $this->assertDatabaseHas('school_notices', ['school_id' => $school, 'branch_id' => $branch, 'title' => 'Platform notice']);
+    }
+
     public function test_superadmin_can_review_a_paginated_cross_school_branch_registry(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Branch Registry School', 'slug' => 'branch-registry-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

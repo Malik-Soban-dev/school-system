@@ -1,3 +1,9 @@
+- 2026-09-19 SUPERADMIN FULL WORKSPACE AUTHORITY UPDATE:
+  - Superadmin can now switch into any school branch through the existing portal context, including suspended schools/branches, with server-side superadmin-only bypass and persistent branch context hydration.
+  - Tenant authorization treats Superadmin as unrestricted within the selected tenant, so existing portal CRUD, settings, attendance, reports, role-aware workflows and audit paths are available without a duplicate control implementation; context switches are platform-audited.
+  - Added dashboard Open workspace controls for default and individual branches plus regression coverage proving suspended-branch portal access and a write operation.
+  - Verification passed: full PHPUnit suite (94 tests, 552 assertions), focused workspace tests (2 tests, 11 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN RENEWAL CYCLE PROGRESSION UPDATE:
   - Renewal invoice generation now advances each active subscription to the next month inside the same transaction after invoice creation, while retaining repeat-safe billing keys and recording the next renewal in platform audit history.
   - Added multi-cycle regression coverage for September-to-October-to-November renewal progression.

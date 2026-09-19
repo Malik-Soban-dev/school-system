@@ -169,7 +169,7 @@
         const subscription = data.subscription;
         const planOptions = platformPlans.map(plan => `<option value="${esc(plan.id)}" ${String(plan.id) === String(subscription?.plan_id) ? 'selected' : ''}>${esc(plan.name)} · $${(Number(plan.monthly_price_cents) / 100).toFixed(2)}/mo</option>`).join('');
         const branchOptions = data.branches.map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)} (${esc(branch.code)})</option>`).join('');
-        const branchRows = data.branches.map(branch => `<tr><td>${esc(branch.name)}${branch.is_default ? ' <small>Default</small>' : ''}</td><td>${esc(branch.code)}</td><td><span class="platform-status ${esc(branch.status)}">${esc(branch.status)}</span></td><td>${esc(branch.students)} students · ${esc(branch.staff)} staff · ${esc(branch.teachers)} teachers · ${esc(branch.classes)} classes</td><td><button class="branch-edit" data-branch="${esc(branch.id)}" data-name="${esc(branch.name)}" data-code="${esc(branch.code)}">Edit</button> ${branch.is_default ? '<small>Default</small>' : `<button class="branch-default" data-branch="${esc(branch.id)}">Set default</button>`} <button class="branch-status" data-branch="${esc(branch.id)}" data-status="${branch.status === 'active' ? 'suspended' : 'active'}">${branch.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="5">No branches registered.</td></tr>';
+        const branchRows = data.branches.map(branch => `<tr><td>${esc(branch.name)}${branch.is_default ? ' <small>Default</small>' : ''}</td><td>${esc(branch.code)}</td><td><span class="platform-status ${esc(branch.status)}">${esc(branch.status)}</span></td><td>${esc(branch.students)} students · ${esc(branch.staff)} staff · ${esc(branch.teachers)} teachers · ${esc(branch.classes)} classes</td><td><button class="branch-workspace" data-branch="${esc(branch.id)}">Open workspace</button> <button class="branch-edit" data-branch="${esc(branch.id)}" data-name="${esc(branch.name)}" data-code="${esc(branch.code)}">Edit</button> ${branch.is_default ? '<small>Default</small>' : `<button class="branch-default" data-branch="${esc(branch.id)}">Set default</button>`} <button class="branch-status" data-branch="${esc(branch.id)}" data-status="${branch.status === 'active' ? 'suspended' : 'active'}">${branch.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="5">No branches registered.</td></tr>';
         const members = data.members.map(member => `<tr><td>${esc(member.name)}</td><td>${esc(member.email)}</td><td>${esc(member.is_active ? 'Account active' : 'Account inactive')} · ${esc(member.membership_status)}</td><td><button class="membership-status" data-user="${esc(member.id)}" data-status="${member.membership_status === 'active' ? 'suspended' : 'active'}">${member.membership_status === 'active' ? 'Suspend school access' : 'Activate school access'}</button><form class="branch-access-form" data-school="${esc(data.school.id)}" data-user="${esc(member.id)}"><select name="branch_id" aria-label="Branch for ${esc(member.name)}">${branchOptions}</select><select name="role" aria-label="Role for ${esc(member.name)}"><option value="admin">Admin</option><option value="owner">Owner</option><option value="teacher">Teacher</option><option value="accountant">Accountant</option></select><button type="submit">Grant access</button></form></td></tr>`).join('') || '<tr><td colspan="4">No school members.</td></tr>';
         const invitations = data.invitations.map(invitation => { const expired = new Date(invitation.expires_at) <= new Date(); return `<tr><td>${esc(invitation.name)}</td><td>${esc(invitation.email)}</td><td>${esc(invitation.branch_name || 'Unknown branch')}</td><td>${esc(invitation.roles)}</td><td><span class="platform-status ${expired ? 'suspended' : 'active'}">${expired ? 'Expired' : 'Pending'}</span></td><td>${expired ? '<small>Expired</small>' : `<button class="invitation-revoke" data-id="${esc(invitation.id)}">Revoke</button>`}</td></tr>`; }).join('') || '<tr><td colspan="6">No outstanding invitations.</td></tr>';
         const activity = data.audit.map(row => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.actor || 'System')}</td><td>${esc(row.module)}</td><td>${esc(row.action)}</td></tr>`).join('') || '<tr><td colspan="4">No school activity yet.</td></tr>';
@@ -282,6 +282,16 @@
                 window.alert(error.message);
             }
         }));
+        document.querySelectorAll('.branch-workspace').forEach(button => button.addEventListener('click', async event => {
+            button.disabled = true;
+            try {
+                await request('/portal/context', {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({school_id: Number(schoolId), branch_id: Number(event.currentTarget.dataset.branch)})});
+                window.location.href = '/dashboard';
+            } catch (error) {
+                button.disabled = false;
+                window.alert(error.message);
+            }
+        }));
         document.querySelectorAll('.access-status').forEach(button => button.addEventListener('click', async event => {
             const target = event.currentTarget;
             const access = data.access.find(item => String(item.user_id) === String(target.dataset.user) && String(item.branch_id) === String(target.dataset.branch));
@@ -337,10 +347,20 @@
         loadExplorer().catch(error => { explorerRows.innerHTML = `<tr><td>${esc(error.message)}</td></tr>`; });
         const mrr = Number(data.billing?.mrr_cents || 0) / 100;
         summary.innerHTML = [['schools','Schools'],['branches','Branches'],['members','Members'],['students','Students'],['teachers','Teachers'],['open_invoices','Open invoices'],['mrr','Projected MRR'],['past_due','Past due']].map(([key,label]) => { const value = key === 'mrr' ? `$${mrr.toFixed(2)}` : key === 'past_due' ? (data.billing?.subscriptions?.past_due || 0) : data.summary[key]; return `<article><strong>${esc(value)}</strong><span>${label}</span></article>`; }).join('');
-        schools.innerHTML = data.schools.map(school => `<tr><td><button class="platform-school-detail" data-id="${school.id}" type="button"><strong>${esc(school.name)}</strong></button><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.branches)}</td><td>${esc(school.members)}</td><td>${esc(school.students)}</td><td>${esc(school.staff)}</td><td>${esc(school.teachers)}</td><td>${esc(school.open_invoices)}</td><td><button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="9">No schools registered.</td></tr>';
+        schools.innerHTML = data.schools.map(school => { const defaultBranch = school.branch_options.find(branch => branch.is_default) || school.branch_options[0]; return `<tr><td><button class="platform-school-detail" data-id="${school.id}" type="button"><strong>${esc(school.name)}</strong></button><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.branches)}</td><td>${esc(school.members)}</td><td>${esc(school.students)}</td><td>${esc(school.staff)}</td><td>${esc(school.teachers)}</td><td>${esc(school.open_invoices)}</td><td>${defaultBranch ? `<button class="platform-workspace" data-school="${esc(school.id)}" data-branch="${esc(defaultBranch.id)}">Open workspace</button>` : ''} <button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`; }).join('') || '<tr><td colspan="9">No schools registered.</td></tr>';
         loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="5">${esc(error.message)}</td></tr>`; });
         loadPlatformInvoices().catch(error => { platformInvoiceRows.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; });
         document.querySelectorAll('.platform-school-detail').forEach(button => button.addEventListener('click', () => showSchoolDetail(button.dataset.id).catch(error => { detailContent.innerHTML = esc(error.message); })));
+        document.querySelectorAll('.platform-workspace').forEach(button => button.addEventListener('click', async () => {
+            button.disabled = true;
+            try {
+                await request('/portal/context', {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({school_id: Number(button.dataset.school), branch_id: Number(button.dataset.branch)})});
+                window.location.href = '/dashboard';
+            } catch (error) {
+                button.disabled = false;
+                window.alert(error.message);
+            }
+        }));
         document.querySelectorAll('.platform-action').forEach(button => button.addEventListener('click', async () => {
             const action = button.dataset.status === 'suspended' ? 'suspend' : 'activate';
             if (!window.confirm(`Are you sure you want to ${action} this school?`)) {

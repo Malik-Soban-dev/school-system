@@ -15,6 +15,12 @@ class ResolveSchool
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->user()->hasRole('superadmin')) {
+            $selectedSchool = (int) $request->session()->get('school_id', 0);
+            $selectedBranch = (int) $request->session()->get('branch_id', 0);
+            if ($selectedSchool > 0 && $selectedBranch > 0 && DB::table('school_branches')->where('id', $selectedBranch)->where('school_id', $selectedSchool)->exists()) {
+                $this->tenant->set($selectedSchool, $selectedBranch);
+            }
+
             return $next($request);
         }
         if (app()->environment('testing')) {

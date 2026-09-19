@@ -58,6 +58,10 @@ final class TenantContext
             return false;
         }
 
+        if ($user->hasRole('superadmin')) {
+            return true;
+        }
+
         if ($this->branchId === null) {
             return $user->hasRole($role);
         }
