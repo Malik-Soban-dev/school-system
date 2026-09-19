@@ -33,6 +33,45 @@ class PlatformController extends Controller
         ]);
     }
 
+    public function users(Request $request): JsonResponse
+    {
+        $data = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $search = trim((string) ($data['search'] ?? ''));
+        $users = DB::table('users as u')
+            ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search): void {
+                $searchQuery->where('u.name', 'like', '%'.$search.'%')->orWhere('u.email', 'like', '%'.$search.'%')->orWhere('u.username', 'like', '%'.$search.'%');
+            }))
+            ->orderBy('u.name')
+            ->paginate(50, ['u.id', 'u.name', 'u.username', 'u.email', 'u.roles', 'u.is_active']);
+        $userIds = collect($users->items())->pluck('id');
+        $access = DB::table('school_user_branches as a')->join('schools as s', 's.id', '=', 'a.school_id')->join('school_branches as b', 'b.id', '=', 'a.branch_id')->whereIn('a.user_id', $userIds)->get(['a.user_id', 's.id as school_id', 's.name as school_name', 'b.id as branch_id', 'b.name as branch_name', 'a.roles', 'a.status'])->groupBy('user_id');
+
+        return response()->json(['users' => $users->through(function (object $user) use ($access): array {
+            $roles = json_decode((string) $user->roles, true) ?: [];
+
+            return ['id' => $user->id, 'name' => $user->name, 'username' => $user->username, 'email' => $user->email, 'roles' => $roles, 'is_active' => (bool) $user->is_active, 'is_superadmin' => in_array('superadmin', $roles, true), 'access' => $access->get($user->id, collect())->map(fn (object $row): array => ['school_id' => $row->school_id, 'school_name' => $row->school_name, 'branch_id' => $row->branch_id, 'branch_name' => $row->branch_name, 'roles' => json_decode((string) $row->roles, true) ?: [], 'status' => $row->status])->values()->all()];
+        })]);
+    }
+
+    public function updateUserStatus(Request $request, int $user): JsonResponse
+    {
+        $data = $request->validate(['is_active' => ['required', 'boolean']]);
+        DB::transaction(function () use ($request, $user, $data): void {
+            $userRecord = DB::table('users')->where('id', $user)->lockForUpdate()->first(['id', 'is_active', 'roles']);
+            abort_unless($userRecord, 404);
+            abort_if(in_array('superadmin', json_decode((string) $userRecord->roles, true) ?: [], true), 422, 'Platform Superadmin accounts are managed separately.');
+            $memberships = DB::table('school_user')->where('user_id', $user)->where('status', 'active')->pluck('school_id');
+            abort_if($memberships->isEmpty(), 422, 'This account is not assigned to a school.');
+            DB::table('users')->where('id', $user)->update(['is_active' => $data['is_active'], 'updated_at' => now()]);
+            DB::table('sessions')->where('user_id', $user)->delete();
+            foreach ($memberships as $schoolId) {
+                DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'user_status_updated', 'changes' => json_encode(['before' => ['is_active' => (bool) $userRecord->is_active], 'after' => ['is_active' => $data['is_active']]]), 'created_at' => now()]);
+            }
+        });
+
+        return response()->json(['message' => 'Account status updated and active sessions revoked.']);
+    }
+
     public function createSchool(Request $request): JsonResponse
     {
         $data = $request->validate(['name' => ['required', 'string', 'max:150'], 'slug' => ['required', 'alpha_dash', 'max:80', 'unique:schools,slug']]);

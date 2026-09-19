@@ -26,6 +26,11 @@
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL DETAIL</p><h2 id="school-detail-title">Selected school</h2></div><button class="platform-refresh" id="school-detail-close" type="button">Close</button></div>
         <div id="school-detail-content">Select a school to inspect its members and activity.</div>
     </section>
+    <section class="platform-panel">
+        <div class="platform-panel-heading"><div><p class="eyebrow">PLATFORM ACCOUNTS</p><h2>Every user</h2></div></div>
+        <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><button type="submit">Search</button></form>
+        <div class="platform-table-wrap"><table><thead><tr><th>User</th><th>Status</th><th>School / branch access</th><th>Control</th></tr></thead><tbody id="user-rows"><tr><td colspan="4">Loading platform users…</td></tr></tbody></table></div>
+    </section>
     <section class="platform-panel"><div class="platform-panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Recent platform activity</h2></div></div><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>School</th><th>Actor</th><th>Module</th><th>Action</th></tr></thead><tbody id="audit-rows"><tr><td colspan="5">Loading audit trail…</td></tr></tbody></table></div></section>
 </main>
 <script>
@@ -37,6 +42,7 @@
     const detail = document.querySelector('#school-detail');
     const detailTitle = document.querySelector('#school-detail-title');
     const detailContent = document.querySelector('#school-detail-content');
+    const userRows = document.querySelector('#user-rows');
     const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
     const request = async (url, options = {}) => {
         const response = await fetch(url, {credentials: 'same-origin', headers: {Accept: 'application/json', ...options.headers}, ...options});
@@ -106,6 +112,26 @@
             }
         }));
     };
+    const loadUsers = async () => {
+        const search = document.querySelector('#user-search').value.trim();
+        const data = await request(`/superadmin/users?search=${encodeURIComponent(search)}`);
+        userRows.innerHTML = data.users.data.map(user => {
+            const access = user.is_superadmin ? 'Platform Superadmin' : (user.access.map(item => `${esc(item.school_name)} / ${esc(item.branch_name)} (${esc(item.roles.join(', '))})`).join('<br>') || 'No active branch access');
+            const control = user.is_superadmin ? '<span>Protected</span>' : `<button class="platform-user-status" data-id="${esc(user.id)}" data-active="${user.is_active ? '1' : '0'}">${user.is_active ? 'Suspend' : 'Activate'}</button>`;
+            return `<tr><td><strong>${esc(user.name)}</strong><small>${esc(user.email)} · ${esc(user.username)}</small></td><td><span class="platform-status ${user.is_active ? 'active' : 'suspended'}">${user.is_active ? 'Active' : 'Suspended'}</span></td><td>${access}</td><td>${control}</td></tr>`;
+        }).join('') || '<tr><td colspan="4">No matching users.</td></tr>';
+        document.querySelectorAll('.platform-user-status').forEach(button => button.addEventListener('click', async () => {
+            const nextActive = button.dataset.active !== '1';
+            if (!window.confirm(`Are you sure you want to ${nextActive ? 'activate' : 'suspend'} this account?`)) return;
+            try {
+                await request(`/superadmin/users/${button.dataset.id}/status`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({is_active: nextActive})});
+                await loadUsers();
+            } catch (error) {
+                window.alert(error.message);
+            }
+        }));
+    };
+    document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
     document.querySelector('#create-school-form').addEventListener('submit', async event => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
@@ -119,7 +145,8 @@
     });
     document.querySelector('#school-detail-close').addEventListener('click', () => { detail.hidden = true; });
     document.querySelector('.platform-refresh').addEventListener('click', load);
-    load().catch(error => { schools.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; });
+    load().catch(error => { schools.innerHTML = `<tr><td colspan="8">${esc(error.message)}</td></tr>`; });
+    loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; });
 })();
 </script>
 </body>
