@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\SchoolEntitlements;
 use App\Support\TenantContext;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 
 class SchoolPortal
 {
-    public function __construct(private TenantContext $tenant) {}
+    public function __construct(private TenantContext $tenant, private SchoolEntitlements $entitlements) {}
 
     public function today(): string
     {
@@ -50,6 +51,9 @@ class SchoolPortal
     {
         $result = [];
         foreach (config('school-modules') as $key => $definition) {
+            if (($feature = $this->entitlements->featureForModule($key)) !== null && ! $this->entitlements->allows($feature)) {
+                continue;
+            }
             if ($this->can($user, $definition['read'])) {
                 $definition['key'] = $key;
                 $definition['canWrite'] = $this->can($user, $definition['write']);
@@ -81,6 +85,9 @@ class SchoolPortal
 
     public function query(string $module, User $user): Builder
     {
+        if (($feature = $this->entitlements->featureForModule($module)) !== null) {
+            $this->entitlements->assertFeature($feature);
+        }
         $definition = $this->definition($module);
         abort_unless($this->can($user, $definition['read']), 403);
         $query = $this->tenant->table('school_'.$module);
@@ -275,6 +282,9 @@ class SchoolPortal
 
     public function save(string $module, User $user, array $input, ?int $id = null): int
     {
+        if (($feature = $this->entitlements->featureForModule($module)) !== null) {
+            $this->entitlements->assertFeature($feature);
+        }
         $definition = $this->definition($module);
         abort_unless($this->can($user, $definition['write']), 403);
         abort_if($id !== null && ($definition['immutable'] ?? false), 403, 'Posted records cannot be changed.');

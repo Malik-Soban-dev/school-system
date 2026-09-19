@@ -1,3 +1,9 @@
+- 2026-09-19 SUPERADMIN FEATURE ENTITLEMENTS UPDATE:
+  - Added a reusable school-entitlement service that reads the assigned plan and safely handles legacy schools without a subscription.
+  - Payroll and payroll payments now require the payroll plan feature; Starter tenants cannot access them, while Growth and Enterprise remain enabled.
+  - Entitlement checks apply to module discovery, reads and writes, with a clear upgrade response and regression coverage.
+  - Verification passed: full PHPUnit suite (71 tests, 400 assertions), focused SchoolOperationsTest (11 tests, 70 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN PLAN ENFORCEMENT UPDATE:
   - Enforced each active subscription's max_students limit across all branches during transactional student creation; canceled/past-due subscriptions do not silently grant new capacity.
   - The check locks the subscription row before counting active students and returns a clear validation error directing the client to platform upgrade management.

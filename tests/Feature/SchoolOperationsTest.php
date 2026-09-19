@@ -42,6 +42,14 @@ class SchoolOperationsTest extends TestCase
         $this->actingAs($owner)->postJson('/portal/records/students', ['name' => 'Over Limit', 'admission_number' => 'OVER-LIMIT', 'class_id' => $class, 'status' => 'active'])->assertUnprocessable()->assertJsonValidationErrors('status');
     }
 
+    public function test_starter_plan_hides_payroll_from_the_school_portal(): void
+    {
+        $starter = DB::table('platform_plans')->where('code', 'starter')->value('id');
+        DB::table('school_subscriptions')->where('school_id', 1)->update(['plan_id' => $starter, 'status' => 'active']);
+
+        $this->actingAs($this->person('owner'))->getJson('/portal/records/payroll')->assertForbidden();
+    }
+
     public function test_parent_sees_only_linked_students_and_revocation_is_immediate(): void
     {
         $parent = $this->person('parent');
