@@ -40,9 +40,13 @@ class PlatformController extends Controller
         $platformAudit = DB::table('platform_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->orderByDesc('a.id')->limit(30)->get(['a.id', 'u.name as actor', 'a.action', 'a.created_at'])->map(fn (object $row): object => (object) ['id' => 'platform-'.$row->id, 'school_id' => null, 'school_name' => 'Platform', 'module' => 'platform', 'action' => $row->action, 'created_at' => $row->created_at, 'actor' => $row->actor]);
         $recentAudit = $recentAudit->concat($platformAudit)->sortByDesc('created_at')->take(30)->values();
         $plans = DB::table('platform_plans')->orderBy('monthly_price_cents')->get(['id', 'code', 'name', 'monthly_price_cents', 'max_branches', 'max_students', 'features', 'status']);
+        $subscriptionCounts = DB::table('school_subscriptions')->select('status')->selectRaw('count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $mrrCents = (int) DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->where('subscription.status', 'active')->sum('plan.monthly_price_cents');
+        $planDistribution = DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->select('plan.code', 'plan.name')->selectRaw('count(*) as total')->groupBy('plan.id', 'plan.code', 'plan.name')->orderBy('plan.name')->get();
 
         return response()->json([
             'summary' => ['schools' => $schools->count(), 'active_schools' => $schools->where('status', 'active')->count(), 'branches' => (int) $schools->sum('branches'), 'members' => (int) $schools->sum('members'), 'students' => (int) $schools->sum('students'), 'staff' => (int) $schools->sum('staff'), 'teachers' => (int) $schools->sum('teachers'), 'open_invoices' => (int) $schools->sum('open_invoices')],
+            'billing' => ['mrr_cents' => $mrrCents, 'subscriptions' => ['active' => (int) ($subscriptionCounts['active'] ?? 0), 'trialing' => (int) ($subscriptionCounts['trialing'] ?? 0), 'past_due' => (int) ($subscriptionCounts['past_due'] ?? 0), 'canceled' => (int) ($subscriptionCounts['canceled'] ?? 0)], 'plan_distribution' => $planDistribution],
             'schools' => $schools, 'plans' => $plans, 'audit' => $recentAudit,
         ]);
     }

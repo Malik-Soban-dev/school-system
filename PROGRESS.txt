@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN BILLING VISIBILITY UPDATE:
+  - Added platform summary billing metrics: projected active-subscription MRR, subscription status counts and plan distribution.
+  - Added dashboard cards for projected MRR and past-due subscriptions so Superadmin can see commercial risk alongside school usage.
+  - Verification passed: full PHPUnit suite (77 tests, 429 assertions), focused SuperadminAccessTest (20 tests, 81 assertions), Blade view cache and PHP Pint.
+
 - 2026-09-19 SUPERADMIN ONBOARDING BILLING UPDATE:
   - New school onboarding now atomically creates a trial subscription instead of leaving the tenant outside plan entitlements.
   - Added Starter as the safe default and an active-plan selector for Superadmin onboarding; the selected plan is recorded in the school audit trail.

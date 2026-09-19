@@ -38,6 +38,16 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'module' => 'billing', 'action' => 'subscription_updated']);
     }
 
+    public function test_platform_summary_reports_billing_metrics(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Metrics School', 'slug' => 'metrics-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $plan = DB::table('platform_plans')->where('code', 'starter')->first(['id', 'monthly_price_cents']);
+        DB::table('school_subscriptions')->insert(['school_id' => $school, 'plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->assertJsonPath('billing.mrr_cents', (int) $plan->monthly_price_cents)->assertJsonPath('billing.subscriptions.active', 1)->assertJsonFragment(['code' => 'starter', 'name' => 'Starter', 'total' => 1]);
+    }
+
     public function test_superadmin_can_update_a_plan_with_platform_auditing(): void
     {
         $plan = DB::table('platform_plans')->where('code', 'starter')->value('id');
