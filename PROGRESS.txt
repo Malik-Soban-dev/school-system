@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN UNIFIED AUDIT FEED UPDATE:
+  - Merged school audit events and platform audit events into the bounded Superadmin activity feed, chronologically ordered and labeled with Platform when the event is global.
+  - Added regression coverage proving plan changes appear in the main Superadmin audit stream.
+  - Verification passed: full PHPUnit suite (73 tests, 410 assertions), focused SuperadminAccessTest (16 tests, 63 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN PLAN CATALOG UPDATE:
   - Added a dedicated indexed platform_audit table for platform-wide changes that are not tied to one school.
   - Superadmin can edit plan names, monthly pricing, branch/student limits, feature entitlements and active/archived status from the dashboard.

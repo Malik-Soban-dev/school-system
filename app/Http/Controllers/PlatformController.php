@@ -37,6 +37,8 @@ class PlatformController extends Controller
             return $school;
         });
         $recentAudit = DB::table('school_audit as a')->join('schools as s', 's.id', '=', 'a.school_id')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->orderByDesc('a.id')->limit(30)->get(['a.id', 'a.school_id', 's.name as school_name', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);
+        $platformAudit = DB::table('platform_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->orderByDesc('a.id')->limit(30)->get(['a.id', 'u.name as actor', 'a.action', 'a.created_at'])->map(fn (object $row): object => (object) ['id' => 'platform-'.$row->id, 'school_id' => null, 'school_name' => 'Platform', 'module' => 'platform', 'action' => $row->action, 'created_at' => $row->created_at, 'actor' => $row->actor]);
+        $recentAudit = $recentAudit->concat($platformAudit)->sortByDesc('created_at')->take(30)->values();
         $plans = DB::table('platform_plans')->orderBy('monthly_price_cents')->get(['id', 'code', 'name', 'monthly_price_cents', 'max_branches', 'max_students', 'features', 'status']);
 
         return response()->json([

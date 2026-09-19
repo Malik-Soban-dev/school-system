@@ -47,6 +47,7 @@ class SuperadminAccessTest extends TestCase
 
         $this->assertDatabaseHas('platform_plans', ['id' => $plan, 'name' => 'Starter Plus', 'monthly_price_cents' => 5900, 'max_students' => 500]);
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'plan', 'entity_id' => $plan, 'action' => 'plan_updated']);
+        $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->assertJsonFragment(['action' => 'plan_updated', 'school_name' => 'Platform']);
     }
 
     public function test_superadmin_can_review_and_suspend_a_school_with_audited_status_change(): void
