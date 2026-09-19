@@ -497,6 +497,20 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'user_status_updated']);
     }
 
+    public function test_superadmin_can_update_a_client_profile_with_auditing_and_session_revocation(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Profile Account School', 'slug' => 'profile-account-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['name' => 'Before Name', 'email' => 'before-profile@example.test', 'username' => 'before-profile', 'roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $client->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/superadmin/users/'.$client->id, ['name' => 'After Name', 'email' => 'after-profile@example.test', 'username' => 'after-profile'])->assertOk();
+
+        $this->assertDatabaseHas('users', ['id' => $client->id, 'name' => 'After Name', 'email' => 'after-profile@example.test', 'username' => 'after-profile']);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $client->id, 'action' => 'user_profile_updated']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'user_profile_updated']);
+    }
+
     public function test_superadmin_can_inspect_branch_scoped_school_records_without_secrets(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Explorer School', 'slug' => 'explorer-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

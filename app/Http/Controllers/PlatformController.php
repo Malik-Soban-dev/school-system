@@ -264,6 +264,31 @@ class PlatformController extends Controller
         return response()->json(['module' => $module, 'records' => $query->paginate((int) ($data['per_page'] ?? 50))]);
     }
 
+    public function updateUserProfile(Request $request, int $user): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
+            'username' => ['nullable', 'regex:/^[a-z0-9._-]{3,80}$/', Rule::unique('users', 'username')->ignore($user)],
+        ]);
+        DB::transaction(function () use ($request, $user, $data): void {
+            $before = DB::table('users')->where('id', $user)->lockForUpdate()->first(['id', 'name', 'email', 'username', 'roles']);
+            abort_unless($before, 404);
+            abort_if(in_array('superadmin', json_decode((string) $before->roles, true) ?: [], true), 422, 'Platform Superadmin accounts are managed separately.');
+            $email = $data['email'] ?? null;
+            $username = $data['username'] ?? null;
+            DB::table('users')->where('id', $user)->update(['name' => $data['name'], 'email' => $email, 'username' => $username, 'email_verified_at' => $email !== $before->email ? null : DB::raw('email_verified_at'), 'updated_at' => now()]);
+            DB::table('sessions')->where('user_id', $user)->delete();
+            $memberships = DB::table('school_user')->where('user_id', $user)->pluck('school_id');
+            foreach ($memberships as $schoolId) {
+                DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'user_profile_updated', 'changes' => json_encode(['before' => ['name' => $before->name, 'email' => $before->email, 'username' => $before->username], 'after' => ['name' => $data['name'], 'email' => $email, 'username' => $username]]), 'created_at' => now()]);
+            }
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'user_profile_updated', 'changes' => json_encode(['school_ids' => $memberships->values()->all(), 'before' => ['name' => $before->name, 'email' => $before->email, 'username' => $before->username], 'after' => ['name' => $data['name'], 'email' => $email, 'username' => $username]]), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'User profile updated and previous sessions revoked.']);
+    }
+
     public function updateUserStatus(Request $request, int $user): JsonResponse
     {
         $data = $request->validate(['is_active' => ['required', 'boolean']]);
