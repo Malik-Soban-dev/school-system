@@ -73,6 +73,8 @@ class InvitationSecurityTest extends TestCase
         DB::table('sessions')->insert(['id' => 'old-session', 'user_id' => $teacher->id, 'payload' => '', 'last_activity' => time()]);
         $this->actingAs($owner)->putJson('/portal/users/'.$teacher->id, ['roles' => ['teacher'], 'is_active' => false])->assertOk();
         $this->assertDatabaseMissing('sessions', ['id' => 'old-session']);
-        $this->actingAs($teacher->fresh())->getJson('/portal/meta')->assertRedirect('/login');
+        $this->assertDatabaseHas('users', ['id' => $teacher->id, 'is_active' => true]);
+        $this->assertDatabaseHas('school_user_branches', ['user_id' => $teacher->id, 'status' => 'suspended']);
+        $this->actingAs($teacher->fresh())->getJson('/portal/meta')->assertForbidden();
     }
 }

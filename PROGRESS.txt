@@ -1,3 +1,9 @@
+- 2026-09-19 BRANCH ACCESS ISOLATION HARDENING:
+  - Separated branch access suspension from the global users.is_active account flag; normal People & Access changes now suspend only the selected branch grant.
+  - Suspended branch grants remain visible for restoration, while global account status remains platform-wide and Superadmin-controlled.
+  - Closed legacy single-school resolver fallbacks that could recreate active access for a suspended branch grant.
+  - Verification passed: full PHPUnit suite (74 tests, 417 assertions), focused invitation/access suite, Vite production build, Blade view cache, PHP Pint and git diff check.
+
 - 2026-09-19 BRANCH WORKSPACE SWITCHING UPDATE:
   - Added active school/branch context listing and a throttled server-side context switch endpoint.
   - Context switching validates school membership, branch access, school status and branch status before updating the session tenant.

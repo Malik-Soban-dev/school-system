@@ -50,6 +50,7 @@ class ResolveSchool
                 ->where('school_user.status', 'active')
                 ->where('schools.status', 'active')
                 ->where('school_branches.status', 'active')
+                ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('school_user_branches as existing_access')->whereColumn('existing_access.school_id', 'school_user.school_id')->whereColumn('existing_access.user_id', 'school_user.user_id'))
                 ->when($selectedSchool > 0, fn ($query) => $query->where('school_user.school_id', $selectedSchool))
                 ->orderBy('school_user.school_id')
                 ->first(['school_user.school_id', 'school_branches.id as branch_id']);
@@ -67,7 +68,7 @@ class ResolveSchool
                 $membership = $legacyMembership;
             }
         }
-        if (! $membership && DB::table('schools')->where('status', 'active')->count() === 1) {
+        if (! $membership && ! DB::table('school_user')->where('user_id', $request->user()->id)->exists() && DB::table('schools')->where('status', 'active')->count() === 1) {
             $schoolId = (int) DB::table('schools')->where('status', 'active')->value('id');
             $branchId = (int) DB::table('school_branches')->where('school_id', $schoolId)->where('is_default', true)->value('id');
             DB::table('school_user')->insertOrIgnore(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
