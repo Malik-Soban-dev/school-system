@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN DATA EXPLORER PAGINATION UPDATE:
+  - Added page navigation to the Superadmin data explorer and configurable per_page handling for every allow-listed school module.
+  - Branch-scoped records remain filtered server-side; regression coverage proves page two remains scoped and excludes sensitive fields.
+  - Verification passed: full PHPUnit suite (89 tests, 517 assertions), focused explorer test (1 test, 11 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN USER REGISTRY PAGINATION UPDATE:
   - Added dashboard pagination for the global user registry and made the API per_page-aware, preserving branch access metadata on every page.
   - Added two-page regression coverage for client account discovery and branch-role visibility across the platform.

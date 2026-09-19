@@ -212,7 +212,7 @@ class PlatformController extends Controller
 
     public function records(Request $request, int $school, string $module): JsonResponse
     {
-        $data = $request->validate(['branch_id' => ['nullable', 'integer'], 'search' => ['nullable', 'string', 'max:100']]);
+        $data = $request->validate(['branch_id' => ['nullable', 'integer'], 'search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
         abort_unless(DB::table('schools')->where('id', $school)->exists(), 404);
         $branchId = isset($data['branch_id']) ? (int) $data['branch_id'] : null;
         if ($branchId !== null) {
@@ -249,7 +249,7 @@ class PlatformController extends Controller
             default => abort(404, 'Unsupported platform data module.'),
         };
 
-        return response()->json(['module' => $module, 'records' => $query->paginate(50)]);
+        return response()->json(['module' => $module, 'records' => $query->paginate((int) ($data['per_page'] ?? 50))]);
     }
 
     public function updateUserStatus(Request $request, int $user): JsonResponse

@@ -47,7 +47,7 @@
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">DATA EXPLORER</p><h2>Inspect school records</h2></div></div>
         <form id="data-explorer-form"><select id="explorer-school" name="school_id" aria-label="School"></select><select id="explorer-branch" name="branch_id" aria-label="Branch"><option value="">All branches</option></select><select id="explorer-module" name="module" aria-label="Data module"><option value="academic_years">Academic years</option><option value="students">Students</option><option value="staff">Staff</option><option value="classes">Classes</option><option value="subjects">Subjects</option><option value="teacher_assignments">Teaching assignments</option><option value="guardian_links">Guardian links</option><option value="attendance">Attendance</option><option value="timetables">Timetables</option><option value="exams">Exams</option><option value="grades">Grades</option><option value="users">Users</option><option value="invoices">Invoices</option><option value="payments">Payments</option><option value="expenses">Expenses</option><option value="leave_requests">Leave requests</option><option value="payroll">Payroll</option><option value="payroll_payments">Payroll payments</option><option value="notices">Notices</option><option value="enrollments">Enrollments</option><option value="invitations">Invitations</option><option value="notifications">Notifications</option><option value="audit">Audit</option></select><input id="explorer-search" name="search" maxlength="100" placeholder="Search records" aria-label="Search records"><button type="submit">Load records</button></form>
-        <div class="platform-table-wrap"><table><thead id="explorer-head"><tr><th>Records</th></tr></thead><tbody id="explorer-rows"><tr><td>Select a school and module.</td></tr></tbody></table></div>
+        <div class="platform-table-wrap"><table><thead id="explorer-head"><tr><th>Records</th></tr></thead><tbody id="explorer-rows"><tr><td>Select a school and module.</td></tr></tbody></table></div><div id="explorer-pagination"></div>
     </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">PLATFORM ACCOUNTS</p><h2>Every user</h2></div></div>
@@ -88,6 +88,7 @@
     const explorerSearch = document.querySelector('#explorer-search');
     const explorerHead = document.querySelector('#explorer-head');
     const explorerRows = document.querySelector('#explorer-rows');
+    const explorerPagination = document.querySelector('#explorer-pagination');
     let platformSchools = [];
     let platformPlans = [];
     const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
@@ -377,20 +378,23 @@
         const school = platformSchools.find(item => String(item.id) === String(explorerSchool.value));
         explorerBranch.innerHTML = '<option value="">All branches</option>' + (school?.branch_options || []).map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)} (${esc(branch.code)})${branch.status === 'suspended' ? ' · suspended' : ''}</option>`).join('');
     };
-    const loadExplorer = async () => {
+    const loadExplorer = async (page = 1) => {
         if (!explorerSchool.value) return;
-        const params = new URLSearchParams({search: explorerSearch.value.trim()});
+        const params = new URLSearchParams({search: explorerSearch.value.trim(), page, per_page: 50});
         if (explorerBranch.value) params.set('branch_id', explorerBranch.value);
         const data = await request(`/superadmin/schools/${explorerSchool.value}/records/${explorerModule.value}?${params}`);
         const records = data.records.data || [];
         if (!records.length) {
             explorerHead.innerHTML = '<tr><th>Records</th></tr>';
             explorerRows.innerHTML = '<tr><td>No matching records.</td></tr>';
+            explorerPagination.innerHTML = '';
             return;
         }
         const columns = Object.keys(records[0]);
         explorerHead.innerHTML = `<tr>${columns.map(column => `<th>${esc(column.replaceAll('_', ' '))}</th>`).join('')}</tr>`;
         explorerRows.innerHTML = records.map(record => `<tr>${columns.map(column => `<td>${esc(typeof record[column] === 'object' ? JSON.stringify(record[column]) : record[column])}</td>`).join('')}</tr>`).join('');
+        explorerPagination.innerHTML = data.records.last_page > 1 ? `<button type="button" data-explorer-page="${data.records.current_page - 1}" ${data.records.current_page === 1 ? 'disabled' : ''}>Previous</button> <span>Page ${data.records.current_page} of ${data.records.last_page}</span> <button type="button" data-explorer-page="${data.records.current_page + 1}" ${data.records.current_page === data.records.last_page ? 'disabled' : ''}>Next</button>` : '';
+        explorerPagination.querySelectorAll('[data-explorer-page]').forEach(button => button.addEventListener('click', () => loadExplorer(Number(button.dataset.explorerPage)).catch(error => { explorerRows.innerHTML = `<tr><td>${esc(error.message)}</td></tr>`; })));
     };
     document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
     document.querySelector('#branch-search-form').addEventListener('submit', event => { event.preventDefault(); loadBranches().catch(error => { branchRows.innerHTML = `<tr><td colspan="8">${esc(error.message)}</td></tr>`; }); });
