@@ -1,3 +1,9 @@
+- 2026-09-19 SUPERADMIN DATA EXPLORER UPDATE:
+  - Added an allow-listed, paginated Superadmin records API for students, staff, classes, users, invoices, payments and audit history.
+  - Records can be searched and filtered by a validated school branch; user results exclude passwords and other credential fields.
+  - Added a dashboard data explorer with school, branch, module and search controls, while keeping normal tenant users out of the platform routes.
+  - Verification passed: full PHPUnit suite (66 tests, 378 assertions), focused SuperadminAccessTest (11 tests, 35 assertions), Blade view cache, Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN BRANCH OPERATIONS UPDATE:
   - Added branch-level student, staff and class counts to school detail responses so Superadmin can inspect each campus independently.
   - Added audited branch activation/suspension with row locking and tenant-safe route validation.

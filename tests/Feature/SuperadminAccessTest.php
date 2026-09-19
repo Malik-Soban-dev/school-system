@@ -120,6 +120,20 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $client->id, 'action' => 'user_status_updated']);
     }
 
+    public function test_superadmin_can_inspect_branch_scoped_school_records_without_secrets(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Explorer School', 'slug' => 'explorer-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'East', 'code' => 'east', 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
+        $year = DB::table('school_academic_years')->insertGetId(['school_id' => $school, 'branch_id' => $branch, 'name' => '2026', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31', 'created_at' => now(), 'updated_at' => now()]);
+        $class = DB::table('school_classes')->insertGetId(['school_id' => $school, 'branch_id' => $branch, 'name' => 'Grade 5', 'year_id' => $year, 'capacity' => 30, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_students')->insert(['school_id' => $school, 'branch_id' => $branch, 'name' => 'East Student', 'admission_number' => 'EAST-1', 'class_id' => $class, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $response = $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/students?branch_id='.$branch);
+
+        $response->assertOk()->assertJsonPath('records.data.0.name', 'East Student')->assertJsonMissingPath('records.data.0.password');
+    }
+
     public function test_branch_roles_do_not_leak_to_another_branch(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Scoped School', 'slug' => 'scoped-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

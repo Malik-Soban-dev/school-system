@@ -25,6 +25,12 @@ class PlatformController extends Controller
             ->leftJoinSub(DB::table('school_invoices')->select('school_id')->selectRaw('count(*) as total')->whereIn('status', ['issued', 'partial', 'overdue'])->groupBy('school_id'), 'invoices', 'invoices.school_id', '=', 's.id')
             ->orderBy('s.name')
             ->get(['s.id', 's.name', 's.slug', 's.status', 's.created_at', DB::raw('coalesce(members.total, 0) as members'), DB::raw('coalesce(students.total, 0) as students'), DB::raw('coalesce(staff.total, 0) as staff'), DB::raw('coalesce(branches.total, 0) as branches'), DB::raw('coalesce(invoices.total, 0) as open_invoices')]);
+        $branchOptions = DB::table('school_branches')->whereIn('school_id', $schools->pluck('id'))->orderBy('name')->get(['id', 'school_id', 'name', 'code', 'status'])->groupBy('school_id');
+        $schools = $schools->map(function (object $school) use ($branchOptions): object {
+            $school->branch_options = $branchOptions->get($school->id, collect())->values();
+
+            return $school;
+        });
         $recentAudit = DB::table('school_audit as a')->join('schools as s', 's.id', '=', 'a.school_id')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->orderByDesc('a.id')->limit(30)->get(['a.id', 'a.school_id', 's.name as school_name', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);
 
         return response()->json([
@@ -51,6 +57,31 @@ class PlatformController extends Controller
 
             return ['id' => $user->id, 'name' => $user->name, 'username' => $user->username, 'email' => $user->email, 'roles' => $roles, 'is_active' => (bool) $user->is_active, 'is_superadmin' => in_array('superadmin', $roles, true), 'access' => $access->get($user->id, collect())->map(fn (object $row): array => ['school_id' => $row->school_id, 'school_name' => $row->school_name, 'branch_id' => $row->branch_id, 'branch_name' => $row->branch_name, 'roles' => json_decode((string) $row->roles, true) ?: [], 'status' => $row->status])->values()->all()];
         })]);
+    }
+
+    public function records(Request $request, int $school, string $module): JsonResponse
+    {
+        $data = $request->validate(['branch_id' => ['nullable', 'integer'], 'search' => ['nullable', 'string', 'max:100']]);
+        abort_unless(DB::table('schools')->where('id', $school)->exists(), 404);
+        $branchId = isset($data['branch_id']) ? (int) $data['branch_id'] : null;
+        if ($branchId !== null) {
+            abort_unless(DB::table('school_branches')->where('school_id', $school)->where('id', $branchId)->exists(), 404);
+        }
+        $search = trim((string) ($data['search'] ?? ''));
+        $query = match ($module) {
+            'students' => DB::table('school_students as r')->leftJoin('school_classes as c', 'c.id', '=', 'r.class_id')->where('r.school_id', $school)->when($branchId !== null, fn ($q) => $q->where('r.branch_id', $branchId))->when($search !== '', fn ($q) => $q->where(fn ($s) => $s->where('r.name', 'like', '%'.$search.'%')->orWhere('r.admission_number', 'like', '%'.$search.'%')))->orderBy('r.name')->select(['r.id', 'r.name', 'r.admission_number', 'c.name as class_name', 'r.status', 'r.created_at']),
+            'staff' => DB::table('school_staff as r')->where('r.school_id', $school)->when($branchId !== null, fn ($q) => $q->where('r.branch_id', $branchId))->when($search !== '', fn ($q) => $q->where(fn ($s) => $s->where('r.name', 'like', '%'.$search.'%')->orWhere('r.employee_number', 'like', '%'.$search.'%')->orWhere('r.designation', 'like', '%'.$search.'%')))->orderBy('r.name')->select(['r.id', 'r.name', 'r.employee_number', 'r.department', 'r.designation', 'r.status', 'r.created_at']),
+            'classes' => DB::table('school_classes as r')->leftJoin('school_academic_years as y', 'y.id', '=', 'r.year_id')->where('r.school_id', $school)->when($branchId !== null, fn ($q) => $q->where('r.branch_id', $branchId))->when($search !== '', fn ($q) => $q->where('r.name', 'like', '%'.$search.'%'))->orderBy('r.name')->select(['r.id', 'r.name', 'y.name as academic_year', 'r.capacity', 'r.created_at']),
+            'users' => DB::table('school_user as membership')->join('users as u', 'u.id', '=', 'membership.user_id')->leftJoin('school_user_branches as access', function ($join) use ($school, $branchId): void {
+                $join->on('access.user_id', '=', 'u.id')->where('access.school_id', $school)->when($branchId !== null, fn ($q) => $q->where('access.branch_id', $branchId));
+            })->leftJoin('school_branches as b', 'b.id', '=', 'access.branch_id')->where('membership.school_id', $school)->when($search !== '', fn ($q) => $q->where(fn ($s) => $s->where('u.name', 'like', '%'.$search.'%')->orWhere('u.email', 'like', '%'.$search.'%')->orWhere('u.username', 'like', '%'.$search.'%')))->orderBy('u.name')->select(['u.id', 'u.name', 'u.username', 'u.email', 'u.is_active', 'membership.status as membership_status', 'b.name as branch_name', 'access.roles as branch_roles', 'access.status as branch_status']),
+            'invoices' => DB::table('school_invoices as r')->leftJoin('school_students as s', 's.id', '=', 'r.student_id')->where('r.school_id', $school)->when($branchId !== null, fn ($q) => $q->where('r.branch_id', $branchId))->when($search !== '', fn ($q) => $q->where(fn ($s) => $s->where('r.reference', 'like', '%'.$search.'%')->orWhere('s.name', 'like', '%'.$search.'%')))->orderByDesc('r.id')->select(['r.id', 'r.reference', 's.name as student_name', 'r.description', 'r.amount', 'r.due_on', 'r.status', 'r.created_at']),
+            'payments' => DB::table('school_payments as r')->leftJoin('school_invoices as i', 'i.id', '=', 'r.invoice_id')->where('r.school_id', $school)->when($branchId !== null, fn ($q) => $q->where('r.branch_id', $branchId))->when($search !== '', fn ($q) => $q->where('r.reference', 'like', '%'.$search.'%'))->orderByDesc('r.id')->select(['r.id', 'r.reference', 'i.reference as invoice_reference', 'r.amount', 'r.paid_on', 'r.method', 'r.created_at']),
+            'audit' => DB::table('school_audit as r')->leftJoin('users as u', 'u.id', '=', 'r.user_id')->where('r.school_id', $school)->when($search !== '', fn ($q) => $q->where(fn ($s) => $s->where('r.module', 'like', '%'.$search.'%')->orWhere('r.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')))->orderByDesc('r.id')->select(['r.id', 'u.name as actor', 'r.module', 'r.record_id', 'r.action', 'r.changes', 'r.created_at']),
+            default => abort(404, 'Unsupported platform data module.'),
+        };
+
+        return response()->json(['module' => $module, 'records' => $query->paginate(50)]);
     }
 
     public function updateUserStatus(Request $request, int $user): JsonResponse

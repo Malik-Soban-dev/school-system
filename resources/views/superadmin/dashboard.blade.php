@@ -27,6 +27,11 @@
         <div id="school-detail-content">Select a school to inspect its members and activity.</div>
     </section>
     <section class="platform-panel">
+        <div class="platform-panel-heading"><div><p class="eyebrow">DATA EXPLORER</p><h2>Inspect school records</h2></div></div>
+        <form id="data-explorer-form"><select id="explorer-school" name="school_id" aria-label="School"></select><select id="explorer-branch" name="branch_id" aria-label="Branch"><option value="">All branches</option></select><select id="explorer-module" name="module" aria-label="Data module"><option value="students">Students</option><option value="staff">Staff</option><option value="classes">Classes</option><option value="users">Users</option><option value="invoices">Invoices</option><option value="payments">Payments</option><option value="audit">Audit</option></select><input id="explorer-search" name="search" maxlength="100" placeholder="Search records" aria-label="Search records"><button type="submit">Load records</button></form>
+        <div class="platform-table-wrap"><table><thead id="explorer-head"><tr><th>Records</th></tr></thead><tbody id="explorer-rows"><tr><td>Select a school and module.</td></tr></tbody></table></div>
+    </section>
+    <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">PLATFORM ACCOUNTS</p><h2>Every user</h2></div></div>
         <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><button type="submit">Search</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>User</th><th>Status</th><th>School / branch access</th><th>Control</th></tr></thead><tbody id="user-rows"><tr><td colspan="4">Loading platform users…</td></tr></tbody></table></div>
@@ -43,6 +48,14 @@
     const detailTitle = document.querySelector('#school-detail-title');
     const detailContent = document.querySelector('#school-detail-content');
     const userRows = document.querySelector('#user-rows');
+    const explorerForm = document.querySelector('#data-explorer-form');
+    const explorerSchool = document.querySelector('#explorer-school');
+    const explorerBranch = document.querySelector('#explorer-branch');
+    const explorerModule = document.querySelector('#explorer-module');
+    const explorerSearch = document.querySelector('#explorer-search');
+    const explorerHead = document.querySelector('#explorer-head');
+    const explorerRows = document.querySelector('#explorer-rows');
+    let platformSchools = [];
     const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
     const request = async (url, options = {}) => {
         const response = await fetch(url, {credentials: 'same-origin', headers: {Accept: 'application/json', ...options.headers}, ...options});
@@ -111,6 +124,12 @@
         const response = await fetch('/superadmin/data', {headers: {Accept: 'application/json'}, credentials: 'same-origin'});
         if (!response.ok) throw new Error('Unable to load platform data.');
         const data = await response.json();
+        platformSchools = data.schools;
+        const selectedSchool = explorerSchool.value;
+        explorerSchool.innerHTML = platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
+        if (platformSchools.some(school => String(school.id) === selectedSchool)) explorerSchool.value = selectedSchool;
+        updateExplorerBranches();
+        loadExplorer().catch(error => { explorerRows.innerHTML = `<tr><td>${esc(error.message)}</td></tr>`; });
         summary.innerHTML = [['schools','Schools'],['branches','Branches'],['members','Members'],['students','Students'],['open_invoices','Open invoices']].map(([key,label]) => `<article><strong>${esc(data.summary[key])}</strong><span>${label}</span></article>`).join('');
         schools.innerHTML = data.schools.map(school => `<tr><td><button class="platform-school-detail" data-id="${school.id}" type="button"><strong>${esc(school.name)}</strong></button><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.branches)}</td><td>${esc(school.members)}</td><td>${esc(school.students)}</td><td>${esc(school.staff)}</td><td>${esc(school.open_invoices)}</td><td><button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="8">No schools registered.</td></tr>';
         audit.innerHTML = data.audit.map(row => `<tr><td>${esc(row.created_at)}</td><td>${esc(row.school_name)}</td><td>${esc(row.actor || 'System')}</td><td>${esc(row.module)}</td><td>${esc(row.action)}</td></tr>`).join('') || '<tr><td colspan="5">No audit events yet.</td></tr>';
@@ -153,7 +172,28 @@
             }
         }));
     };
+    const updateExplorerBranches = () => {
+        const school = platformSchools.find(item => String(item.id) === String(explorerSchool.value));
+        explorerBranch.innerHTML = '<option value="">All branches</option>' + (school?.branch_options || []).map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)} (${esc(branch.code)})${branch.status === 'suspended' ? ' · suspended' : ''}</option>`).join('');
+    };
+    const loadExplorer = async () => {
+        if (!explorerSchool.value) return;
+        const params = new URLSearchParams({search: explorerSearch.value.trim()});
+        if (explorerBranch.value) params.set('branch_id', explorerBranch.value);
+        const data = await request(`/superadmin/schools/${explorerSchool.value}/records/${explorerModule.value}?${params}`);
+        const records = data.records.data || [];
+        if (!records.length) {
+            explorerHead.innerHTML = '<tr><th>Records</th></tr>';
+            explorerRows.innerHTML = '<tr><td>No matching records.</td></tr>';
+            return;
+        }
+        const columns = Object.keys(records[0]);
+        explorerHead.innerHTML = `<tr>${columns.map(column => `<th>${esc(column.replaceAll('_', ' '))}</th>`).join('')}</tr>`;
+        explorerRows.innerHTML = records.map(record => `<tr>${columns.map(column => `<td>${esc(typeof record[column] === 'object' ? JSON.stringify(record[column]) : record[column])}</td>`).join('')}</tr>`).join('');
+    };
     document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
+    explorerSchool.addEventListener('change', updateExplorerBranches);
+    explorerForm.addEventListener('submit', event => { event.preventDefault(); loadExplorer().catch(error => { explorerRows.innerHTML = `<tr><td>${esc(error.message)}</td></tr>`; }); });
     document.querySelector('#create-school-form').addEventListener('submit', async event => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
