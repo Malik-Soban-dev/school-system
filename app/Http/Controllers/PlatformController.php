@@ -73,10 +73,13 @@ class PlatformController extends Controller
 
     public function audit(Request $request): JsonResponse
     {
-        $data = $request->validate(['school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        $data = $request->validate(['school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'branch_id' => ['nullable', 'integer'], 'search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        if (isset($data['branch_id'])) {
+            abort_unless(DB::table('school_branches')->where('id', $data['branch_id'])->when(isset($data['school_id']), fn ($query) => $query->where('school_id', $data['school_id']))->exists(), 404);
+        }
         $search = trim((string) ($data['search'] ?? ''));
-        $schoolAudit = DB::table('school_audit as a')->join('schools as s', 's.id', '=', 'a.school_id')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->when(isset($data['school_id']), fn ($query) => $query->where('a.school_id', $data['school_id']))->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('a.module', 'like', '%'.$search.'%')->orWhere('a.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')->orWhere('s.name', 'like', '%'.$search.'%')))->select(['a.id', 'a.school_id', 's.name as school_name', 'a.module', 'a.action', 'a.changes', 'a.created_at', 'u.name as actor'])->selectRaw("'school' as source");
-        $platformAudit = DB::table('platform_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->when(isset($data['school_id']), fn ($query) => $query->whereRaw('1 = 0'))->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('a.entity_type', 'like', '%'.$search.'%')->orWhere('a.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')))->select(['a.id', DB::raw('null as school_id'), DB::raw("'Platform' as school_name"), DB::raw("'platform' as module"), 'a.action', 'a.changes', 'a.created_at', 'u.name as actor'])->selectRaw("'platform' as source");
+        $schoolAudit = DB::table('school_audit as a')->join('schools as s', 's.id', '=', 'a.school_id')->leftJoin('school_branches as b', 'b.id', '=', 'a.branch_id')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->when(isset($data['school_id']), fn ($query) => $query->where('a.school_id', $data['school_id']))->when(isset($data['branch_id']), fn ($query) => $query->where('a.branch_id', $data['branch_id']))->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('a.module', 'like', '%'.$search.'%')->orWhere('a.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')->orWhere('s.name', 'like', '%'.$search.'%')->orWhere('b.name', 'like', '%'.$search.'%')))->select(['a.id', 'a.school_id', 'a.branch_id', 's.name as school_name', 'b.name as branch_name', 'a.module', 'a.action', 'a.changes', 'a.created_at', 'u.name as actor'])->selectRaw("'school' as source");
+        $platformAudit = DB::table('platform_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->when(isset($data['school_id']) || isset($data['branch_id']), fn ($query) => $query->whereRaw('1 = 0'))->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('a.entity_type', 'like', '%'.$search.'%')->orWhere('a.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')))->select(['a.id', DB::raw('null as school_id'), DB::raw('null as branch_id'), DB::raw("'Platform' as school_name"), DB::raw('null as branch_name'), DB::raw("'platform' as module"), 'a.action', 'a.changes', 'a.created_at', 'u.name as actor'])->selectRaw("'platform' as source");
         $events = DB::query()->fromSub($schoolAudit->unionAll($platformAudit), 'events')->orderByDesc('created_at')->orderByDesc('id')->paginate((int) ($data['per_page'] ?? 50));
 
         return response()->json(['audit' => $events]);
@@ -155,12 +158,12 @@ class PlatformController extends Controller
         ]);
         $school = DB::transaction(function () use ($request, $data): object {
             $schoolId = DB::table('schools')->insertGetId(['name' => $data['name'], 'slug' => $data['slug'], 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
-            DB::table('school_branches')->insert(['school_id' => $schoolId, 'name' => $data['name'].' Main Branch', 'code' => 'main', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+            $branchId = DB::table('school_branches')->insertGetId(['school_id' => $schoolId, 'name' => $data['name'].' Main Branch', 'code' => 'main', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
             $plan = DB::table('platform_plans')->where('id', $data['plan_id'] ?? null)->where('status', 'active')->first(['id', 'code']);
             $plan ??= DB::table('platform_plans')->where('code', 'starter')->where('status', 'active')->first(['id', 'code']);
             abort_unless($plan, 422, 'No active Starter plan is available for onboarding.');
             DB::table('school_subscriptions')->insert(['school_id' => $schoolId, 'plan_id' => $plan->id, 'status' => 'trialing', 'starts_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
-            DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $schoolId, 'action' => 'school_created', 'changes' => json_encode(['name' => $data['name'], 'slug' => $data['slug'], 'plan' => $plan->code]), 'created_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $schoolId, 'branch_id' => $branchId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $schoolId, 'action' => 'school_created', 'changes' => json_encode(['name' => $data['name'], 'slug' => $data['slug'], 'plan' => $plan->code]), 'created_at' => now()]);
 
             return DB::table('schools')->where('id', $schoolId)->first();
         });
@@ -240,7 +243,7 @@ class PlatformController extends Controller
             $maxBranches = $subscription ? DB::table('platform_plans')->where('id', $subscription->plan_id)->value('max_branches') : null;
             abort_if($maxBranches !== null && DB::table('school_branches')->where('school_id', $school)->where('status', 'active')->count() >= (int) $maxBranches, 422, 'This school has reached its plan branch limit. Upgrade the subscription before adding another branch.');
             $branchId = DB::table('school_branches')->insertGetId([...$data, 'school_id' => $school, 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
-            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branchId, 'action' => 'branch_created', 'changes' => json_encode(['name' => $data['name'], 'code' => $data['code']]), 'created_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branchId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branchId, 'action' => 'branch_created', 'changes' => json_encode(['name' => $data['name'], 'code' => $data['code']]), 'created_at' => now()]);
 
             return DB::table('school_branches')->where('id', $branchId)->first();
         });
@@ -260,7 +263,7 @@ class PlatformController extends Controller
             }
 
             DB::table('school_branches')->where('id', $branch)->update(['status' => $data['status'], 'updated_at' => now()]);
-            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_status_updated', 'changes' => json_encode(['before' => ['status' => $branchRecord->status], 'after' => ['status' => $data['status']]]), 'created_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_status_updated', 'changes' => json_encode(['before' => ['status' => $branchRecord->status], 'after' => ['status' => $data['status']]]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Branch status updated.']);
@@ -282,7 +285,7 @@ class PlatformController extends Controller
                 'name' => $data['name'], 'roles' => json_encode($data['roles']), 'token_hash' => hash('sha256', $token),
                 'expires_at' => now()->addHours(48), 'accepted_at' => null, 'created_by' => $request->user()->id, 'created_at' => now(), 'updated_at' => now(),
             ]);
-            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_invitation_issued', 'changes' => json_encode(['branch_id' => $branch, 'email' => $data['email'], 'roles' => $data['roles']]), 'created_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_invitation_issued', 'changes' => json_encode(['branch_id' => $branch, 'email' => $data['email'], 'roles' => $data['roles']]), 'created_at' => now()]);
         });
 
         return response()->json(['url' => route('invitation.show', ['token' => $token]), 'message' => 'Share this single-use link privately. It expires in 48 hours.'], 201);
@@ -303,7 +306,7 @@ class PlatformController extends Controller
                 ['school_id' => $school, 'branch_id' => $data['branch_id'], 'user_id' => $user],
                 ['roles' => json_encode($data['roles']), 'status' => $data['status'], 'updated_at' => now(), 'created_at' => now()]
             );
-            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'branch_access_updated', 'changes' => json_encode(['branch_id' => $data['branch_id'], 'roles' => $data['roles'], 'status' => $data['status']]), 'created_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $data['branch_id'], 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'branch_access_updated', 'changes' => json_encode(['branch_id' => $data['branch_id'], 'roles' => $data['roles'], 'status' => $data['status']]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Branch access updated.']);

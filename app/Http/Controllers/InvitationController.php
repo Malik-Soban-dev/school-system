@@ -42,7 +42,7 @@ class InvitationController extends Controller
             abort_if(in_array('admin', json_decode($invitation->roles, true), true) && ! $tenant->hasRole($request->user(), 'owner'), 403);
             abort_if($invitation->accepted_at !== null, 409, 'This invitation was already accepted. Manage the account from People & access.');
             $tenant->table('school_invitations')->where('id', $id)->update(['expires_at' => now(), 'token_hash' => hash('sha256', Str::random(64)), 'updated_at' => now()]);
-            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'user_id' => $request->user()->id, 'module' => 'invitations', 'record_id' => $id, 'action' => 'revoked', 'changes' => json_encode(['email' => $invitation->email]), 'created_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $request->user()->id, 'module' => 'invitations', 'record_id' => $id, 'action' => 'revoked', 'changes' => json_encode(['email' => $invitation->email]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Invitation revoked. The old link no longer works.']);
@@ -70,7 +70,7 @@ class InvitationController extends Controller
                 'name' => $data['name'], 'roles' => json_encode($data['roles']), 'token_hash' => hash('sha256', $token),
                 'expires_at' => now()->addHours(48), 'accepted_at' => null, 'created_by' => $request->user()->id, 'created_at' => now(), 'updated_at' => now(),
             ]);
-            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'user_id' => $request->user()->id, 'module' => 'invitations', 'record_id' => 0, 'action' => 'issued',
+            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $request->user()->id, 'module' => 'invitations', 'record_id' => 0, 'action' => 'issued',
                 'changes' => json_encode(['email' => $data['email'], 'roles' => $data['roles']]), 'created_at' => now()]);
         });
 

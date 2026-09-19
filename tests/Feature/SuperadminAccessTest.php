@@ -29,13 +29,14 @@ class SuperadminAccessTest extends TestCase
     public function test_superadmin_can_search_paginated_cross_school_audit_without_leaking_other_school_events_when_filtered(): void
     {
         $schoolTwo = DB::table('schools')->insertGetId(['name' => 'Audit School', 'slug' => 'audit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $schoolTwo, 'name' => 'Audit Campus', 'code' => 'audit-campus', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
         DB::table('school_audit')->insert([
-            ['school_id' => 1, 'user_id' => null, 'module' => 'students', 'record_id' => 1, 'action' => 'first_school_event', 'changes' => '{}', 'created_at' => now()->subMinute()],
-            ['school_id' => $schoolTwo, 'user_id' => null, 'module' => 'billing', 'record_id' => 1, 'action' => 'second_school_event', 'changes' => '{}', 'created_at' => now()],
+            ['school_id' => 1, 'branch_id' => null, 'user_id' => null, 'module' => 'students', 'record_id' => 1, 'action' => 'first_school_event', 'changes' => '{}', 'created_at' => now()->subMinute()],
+            ['school_id' => $schoolTwo, 'branch_id' => $branch, 'user_id' => null, 'module' => 'billing', 'record_id' => 1, 'action' => 'second_school_event', 'changes' => '{}', 'created_at' => now()],
         ]);
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
-        $this->actingAs($superadmin)->getJson('/superadmin/audit?school_id='.$schoolTwo.'&per_page=1')->assertOk()->assertJsonPath('audit.total', 1)->assertJsonPath('audit.data.0.action', 'second_school_event');
+        $this->actingAs($superadmin)->getJson('/superadmin/audit?school_id='.$schoolTwo.'&branch_id='.$branch.'&per_page=1')->assertOk()->assertJsonPath('audit.total', 1)->assertJsonPath('audit.data.0.action', 'second_school_event')->assertJsonPath('audit.data.0.branch_id', $branch);
         $this->actingAs($superadmin)->getJson('/superadmin/audit?search=first_school_event')->assertOk()->assertJsonPath('audit.data.0.school_id', 1);
     }
 

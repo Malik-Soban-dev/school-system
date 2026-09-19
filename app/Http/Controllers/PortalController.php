@@ -94,7 +94,7 @@ class PortalController extends Controller
             $rows = array_map(fn (array $record): array => [...$record, 'school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'date' => $date, 'created_at' => $now, 'updated_at' => $now], $data['records']);
             $tenant->table('school_attendance')->upsert($rows, ['school_id', 'student_id', 'date'], ['status', 'updated_at']);
             $saved = $tenant->table('school_attendance')->whereIn('student_id', $ids)->where('date', $date)->get();
-            DB::table('school_audit')->insert($saved->map(fn ($row): array => ['school_id' => $tenant->id(), 'user_id' => $request->user()->id,
+            DB::table('school_audit')->insert($saved->map(fn ($row): array => ['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $request->user()->id,
                 'module' => 'attendance', 'record_id' => $row->id, 'action' => 'class_attendance_saved',
                 'changes' => json_encode(['before' => $before->get($row->student_id), 'after' => $row]), 'created_at' => $now])->all());
             $events = $saved->map(fn ($row): array => ['module' => 'attendance', 'record_id' => $row->id,
@@ -155,7 +155,7 @@ class PortalController extends Controller
             foreach ($data as $key => $value) {
                 DB::table('school_settings')->updateOrInsert(['school_id' => app(TenantContext::class)->id(), 'key' => $key], ['value' => $value]);
             }
-            DB::table('school_audit')->insert(['school_id' => app(TenantContext::class)->id(), 'user_id' => $request->user()->id, 'module' => 'settings', 'record_id' => 0, 'action' => 'updated', 'changes' => json_encode($data), 'created_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => app(TenantContext::class)->id(), 'branch_id' => app(TenantContext::class)->branchId(), 'user_id' => $request->user()->id, 'module' => 'settings', 'record_id' => 0, 'action' => 'updated', 'changes' => json_encode($data), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'School settings saved.']);
@@ -194,7 +194,7 @@ class PortalController extends Controller
             $before = ['roles' => json_decode((string) DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->value('roles'), true) ?: [], 'access_status' => DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->value('status'), 'account_active' => $user->is_active];
             DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->update(['roles' => json_encode($data['roles']), 'status' => $data['is_active'] ? 'active' : 'suspended', 'updated_at' => now()]);
             DB::table('sessions')->where('user_id', $user->id)->delete();
-            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'user_id' => $request->user()->id, 'module' => 'users', 'record_id' => $user->id, 'action' => 'access_updated', 'changes' => json_encode(['before' => $before, 'after' => $data]), 'created_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $request->user()->id, 'module' => 'users', 'record_id' => $user->id, 'action' => 'access_updated', 'changes' => json_encode(['before' => $before, 'after' => $data]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Access updated and previous sessions revoked.']);

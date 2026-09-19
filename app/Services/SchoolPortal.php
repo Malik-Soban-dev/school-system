@@ -348,7 +348,7 @@ class SchoolPortal
             if ($module === 'students') {
                 DB::table('school_enrollments')->updateOrInsert(['school_id' => $this->tenant->id(), 'branch_id' => $this->tenant->branchId(), 'student_id' => $id, 'class_id' => $data['class_id']], ['created_at' => $now, 'updated_at' => $now]);
             }
-            DB::table('school_audit')->insert(['school_id' => $this->tenant->id(), 'user_id' => $user->id, 'module' => $module, 'record_id' => $id,
+            DB::table('school_audit')->insert(['school_id' => $this->tenant->id(), 'branch_id' => $this->tenant->branchId(), 'user_id' => $user->id, 'module' => $module, 'record_id' => $id,
                 'action' => $old ? 'updated' : 'created', 'changes' => json_encode(['before' => $old, 'after' => $data]), 'created_at' => $now]);
             app(SchoolNotifications::class)->enqueue($module, $id, $data);
 

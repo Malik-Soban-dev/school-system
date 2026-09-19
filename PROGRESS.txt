@@ -1,3 +1,9 @@
+- 2026-09-19 BRANCH-SCOPED AUDIT UPDATE:
+  - Added nullable indexed branch_id ownership to school_audit; school-wide and legacy events remain explicitly unscoped while new branch events carry their branch.
+  - Portal CRUD, attendance, settings, user access, invitations and Superadmin branch actions now record branch scope where applicable.
+  - Added branch-aware Superadmin audit filtering and branch labels, with school and platform-event isolation tests.
+  - Verification passed: full PHPUnit suite (78 tests, 435 assertions), focused SuperadminAccessTest (21 tests, 87 assertions), Blade view cache and PHP Pint.
+
 - 2026-09-19 SUPERADMIN AUDIT EXPLORER UPDATE:
   - Added a protected, paginated merged audit endpoint covering school and platform events with school and text filters.
   - Added dashboard audit search, school filtering and pagination; filtered school queries exclude platform and other-school events.
