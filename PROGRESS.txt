@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN GLOBAL BRANCH CONTROLS UPDATE:
+  - Added direct activate/suspend controls to the cross-school branch registry, reusing the existing school/branch ownership validation and audited status endpoint.
+  - Registry actions refresh the filtered view and preserve branch counts and visibility across schools.
+  - Verification passed: full PHPUnit suite (88 tests, 505 assertions), focused branch-control tests (2 tests, 8 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN GLOBAL BRANCH REGISTRY UPDATE:
   - Added a paginated cross-school branch registry API and dashboard section with school/status/search filters and member, student, staff and teacher counts per branch.
   - Branch identity and status remain visible globally without weakening school/branch access isolation or existing detail controls.
