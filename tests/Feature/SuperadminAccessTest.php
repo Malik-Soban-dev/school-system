@@ -52,6 +52,20 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/audit?search=first_school_event')->assertOk()->assertJsonPath('audit.data.0.school_id', 1);
     }
 
+    public function test_superadmin_data_explorer_audit_filter_is_branch_scoped(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Explorer Audit School', 'slug' => 'explorer-audit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branchOne = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'North Campus', 'code' => 'north', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $branchTwo = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'South Campus', 'code' => 'south', 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_audit')->insert([
+            ['school_id' => $school, 'branch_id' => $branchOne, 'user_id' => null, 'module' => 'students', 'record_id' => 1, 'action' => 'north_event', 'changes' => '{}', 'created_at' => now()->subMinute()],
+            ['school_id' => $school, 'branch_id' => $branchTwo, 'user_id' => null, 'module' => 'students', 'record_id' => 2, 'action' => 'south_event', 'changes' => '{}', 'created_at' => now()],
+        ]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/audit?branch_id='.$branchOne)->assertOk()->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.action', 'north_event')->assertJsonPath('records.data.0.branch_id', $branchOne)->assertJsonMissing(['action' => 'south_event']);
+    }
+
     public function test_superadmin_can_assign_and_audit_a_school_subscription(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Billing School', 'slug' => 'billing-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
