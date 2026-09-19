@@ -99,6 +99,11 @@
             explorerModule.insertAdjacentHTML('beforeend', `<option value="${module}">${label}</option>`);
         }
     });
+    [['notification_preferences', 'Notification preferences'], ['notification_events', 'Notification events']].forEach(([module, label]) => {
+        if (! explorerModule.querySelector(`option[value="${module}"]`)) {
+            explorerModule.insertAdjacentHTML('beforeend', `<option value="${module}">${label}</option>`);
+        }
+    });
     const explorerSearch = document.querySelector('#explorer-search');
     const explorerHead = document.querySelector('#explorer-head');
     const explorerRows = document.querySelector('#explorer-rows');

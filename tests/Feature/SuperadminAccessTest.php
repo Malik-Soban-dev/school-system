@@ -158,6 +158,10 @@ class SuperadminAccessTest extends TestCase
         DB::table('school_notification_deliveries')->insert(['school_id' => $school, 'branch_id' => $branch, 'notification_id' => $notification, 'channel' => 'email', 'status' => 'failed', 'attempts' => 2, 'available_at' => now(), 'error_code' => 'provider_error', 'created_at' => now(), 'updated_at' => now()]);
         $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/settings')->assertOk()->assertJsonPath('records.data.0.value', '[redacted asset]')->assertJsonMissing(['value' => 'private-image-data']);
         $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/notification_deliveries?branch_id='.$branch)->assertOk()->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.status', 'failed')->assertJsonPath('records.data.0.recipient', $superadmin->name);
+        DB::table('school_notification_preferences')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $superadmin->id, 'whatsapp_phone' => '+15555550123', 'whatsapp_consented_at' => now(), 'email_consented_at' => null, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_notification_events')->insert(['school_id' => $school, 'branch_id' => $branch, 'module' => 'exams', 'record_id' => $exam, 'event_key' => 'exam:'.$exam.':reminder', 'created_at' => now()]);
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/notification_preferences?branch_id='.$branch)->assertOk()->assertJsonPath('records.data.0.whatsapp_configured', 1)->assertJsonMissing(['whatsapp_phone' => '+15555550123']);
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/notification_events?branch_id='.$branch)->assertOk()->assertJsonPath('records.data.0.event_key', 'exam:'.$exam.':reminder');
     }
 
     public function test_superadmin_can_assign_and_audit_a_school_subscription(): void
