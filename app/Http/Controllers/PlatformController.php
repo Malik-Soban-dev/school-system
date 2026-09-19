@@ -37,7 +37,7 @@ class PlatformController extends Controller
             return $school;
         });
         $recentAudit = DB::table('school_audit as a')->join('schools as s', 's.id', '=', 'a.school_id')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->orderByDesc('a.id')->limit(30)->get(['a.id', 'a.school_id', 's.name as school_name', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);
-        $plans = DB::table('platform_plans')->where('status', 'active')->orderBy('monthly_price_cents')->get(['id', 'code', 'name', 'monthly_price_cents', 'max_branches', 'max_students', 'features']);
+        $plans = DB::table('platform_plans')->orderBy('monthly_price_cents')->get(['id', 'code', 'name', 'monthly_price_cents', 'max_branches', 'max_students', 'features', 'status']);
 
         return response()->json([
             'summary' => ['schools' => $schools->count(), 'active_schools' => $schools->where('status', 'active')->count(), 'branches' => (int) $schools->sum('branches'), 'members' => (int) $schools->sum('members'), 'students' => (int) $schools->sum('students'), 'staff' => (int) $schools->sum('staff'), 'teachers' => (int) $schools->sum('teachers'), 'open_invoices' => (int) $schools->sum('open_invoices')],
@@ -159,6 +159,27 @@ class PlatformController extends Controller
         });
 
         return response()->json(['message' => 'School subscription updated.']);
+    }
+
+    public function updatePlan(Request $request, int $plan): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'monthly_price_cents' => ['required', 'integer', 'min:0', 'max:100000000'],
+            'max_branches' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'max_students' => ['nullable', 'integer', 'min:1', 'max:100000000'],
+            'features' => ['required', 'array'],
+            'features.*' => [Rule::in(['*', 'attendance', 'grades', 'invoices', 'payroll', 'notifications']), 'distinct'],
+            'status' => ['required', Rule::in(['active', 'archived'])],
+        ]);
+        DB::transaction(function () use ($request, $plan, $data): void {
+            $before = DB::table('platform_plans')->where('id', $plan)->lockForUpdate()->first();
+            abort_unless($before, 404);
+            DB::table('platform_plans')->where('id', $plan)->update([...$data, 'features' => json_encode($data['features']), 'updated_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'plan', 'entity_id' => $plan, 'action' => 'plan_updated', 'changes' => json_encode(['before' => $before, 'after' => $data]), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'Platform plan updated.']);
     }
 
     public function school(int $school): JsonResponse

@@ -22,6 +22,10 @@
         <div id="health-content">Loading operational health…</div>
     </section>
     <section class="platform-panel">
+        <div class="platform-panel-heading"><div><p class="eyebrow">PLAN CATALOG</p><h2>Platform plans</h2></div></div>
+        <div class="platform-table-wrap"><table><thead><tr><th>Plan</th><th>Monthly cents</th><th>Max branches</th><th>Max students</th><th>Features</th><th>Status</th><th>Control</th></tr></thead><tbody id="plan-rows"><tr><td colspan="7">Loading plan catalog…</td></tr></tbody></table></div>
+    </section>
+    <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL REGISTRY</p><h2>Every school</h2></div><div><button class="platform-refresh" type="button">Refresh data</button></div></div>
         <form id="create-school-form"><input name="name" required maxlength="150" placeholder="New school name" aria-label="New school name"><input name="slug" required maxlength="80" pattern="[A-Za-z0-9_-]+" placeholder="Slug" aria-label="New school slug"><button type="submit">Onboard school</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Status</th><th>Branches</th><th>Members</th><th>Students</th><th>Staff</th><th>Teachers</th><th>Open invoices</th><th>Control</th></tr></thead><tbody id="school-rows"><tr><td colspan="9">Loading school registry…</td></tr></tbody></table></div>
@@ -47,6 +51,7 @@
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const summary = document.querySelector('#platform-summary');
     const healthContent = document.querySelector('#health-content');
+    const planRows = document.querySelector('#plan-rows');
     const schools = document.querySelector('#school-rows');
     const audit = document.querySelector('#audit-rows');
     const detail = document.querySelector('#school-detail');
@@ -74,6 +79,19 @@
         const data = await request('/superadmin/health');
         const backupRows = data.backups.map(backup => `<tr><td>${esc(backup.name)}</td><td>${esc(backup.bytes)} bytes</td><td>${esc(backup.modified_at)}</td></tr>`).join('') || '<tr><td colspan="3">No encrypted backups found.</td></tr>';
         healthContent.innerHTML = `<p><span class="platform-status ${esc(data.status)}">${esc(data.status)}</span> Database: <strong>${esc(data.database)}</strong> · Active schools: <strong>${esc(data.schools.active)}</strong> · Suspended schools: <strong>${esc(data.schools.suspended)}</strong> · Pending jobs: <strong>${esc(data.queue.pending)}</strong> · Failed jobs: <strong>${esc(data.queue.failed)}</strong> · Sessions: <strong>${esc(data.sessions ?? 'not configured')}</strong> · Last audit: <strong>${esc(data.last_audit_at || 'none')}</strong></p><h3>Recent encrypted backups</h3><div class="platform-table-wrap"><table><thead><tr><th>File</th><th>Size</th><th>Modified</th></tr></thead><tbody>${backupRows}</tbody></table></div>`;
+    };
+    const renderPlans = () => {
+        planRows.innerHTML = platformPlans.map(plan => `<tr><td><input class="plan-name" value="${esc(plan.name)}" aria-label="Plan name"><small>${esc(plan.code)}</small></td><td><input class="plan-price" type="number" min="0" value="${esc(plan.monthly_price_cents)}" aria-label="Monthly price for ${esc(plan.name)}"></td><td><input class="plan-branches" type="number" min="1" value="${esc(plan.max_branches ?? '')}" aria-label="Maximum branches for ${esc(plan.name)}"></td><td><input class="plan-students" type="number" min="1" value="${esc(plan.max_students ?? '')}" aria-label="Maximum students for ${esc(plan.name)}"></td><td><input class="plan-features" value="${esc((JSON.parse(plan.features || '[]')).join(', '))}" aria-label="Features for ${esc(plan.name)}"><small>attendance, grades, invoices, payroll, notifications, *</small></td><td><select class="plan-status" aria-label="Status for ${esc(plan.name)}"><option value="active" ${plan.status === 'active' ? 'selected' : ''}>Active</option><option value="archived" ${plan.status === 'archived' ? 'selected' : ''}>Archived</option></select></td><td><button class="plan-save" data-id="${esc(plan.id)}" type="button">Save</button></td></tr>`).join('') || '<tr><td colspan="7">No plans registered.</td></tr>';
+        document.querySelectorAll('.plan-save').forEach(button => button.addEventListener('click', async event => {
+            const row = event.currentTarget.closest('tr');
+            try {
+                await request(`/superadmin/plans/${event.currentTarget.dataset.id}`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({name: row.querySelector('.plan-name').value, monthly_price_cents: Number(row.querySelector('.plan-price').value), max_branches: row.querySelector('.plan-branches').value || null, max_students: row.querySelector('.plan-students').value || null, features: row.querySelector('.plan-features').value.split(',').map(value => value.trim()).filter(Boolean), status: row.querySelector('.plan-status').value})});
+                window.alert('Plan updated and audited.');
+                await load();
+            } catch (error) {
+                window.alert(error.message);
+            }
+        }));
     };
     const showSchoolDetail = async schoolId => {
         detail.hidden = false;
@@ -172,6 +190,7 @@
         const data = await response.json();
         platformSchools = data.schools;
         platformPlans = data.plans || [];
+        renderPlans();
         const selectedSchool = explorerSchool.value;
         explorerSchool.innerHTML = platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
         if (platformSchools.some(school => String(school.id) === selectedSchool)) explorerSchool.value = selectedSchool;

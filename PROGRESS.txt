@@ -1,3 +1,9 @@
+- 2026-09-19 SUPERADMIN PLAN CATALOG UPDATE:
+  - Added a dedicated indexed platform_audit table for platform-wide changes that are not tied to one school.
+  - Superadmin can edit plan names, monthly pricing, branch/student limits, feature entitlements and active/archived status from the dashboard.
+  - Plan mutations use row locking, validation, transactions and before/after platform audit records.
+  - Verification passed: full PHPUnit suite (73 tests, 407 assertions), focused SuperadminAccessTest (16 tests, 60 assertions), Blade view cache, Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN SCHOOL MEMBERSHIP UPDATE:
   - Added audited school-level membership activation/suspension for client users.
   - Suspending a membership transactionally suspends every branch grant for that school and revokes the user's active sessions; reactivation does not override individually suspended branch grants.

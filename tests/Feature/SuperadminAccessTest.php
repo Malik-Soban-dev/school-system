@@ -38,6 +38,17 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'module' => 'billing', 'action' => 'subscription_updated']);
     }
 
+    public function test_superadmin_can_update_a_plan_with_platform_auditing(): void
+    {
+        $plan = DB::table('platform_plans')->where('code', 'starter')->value('id');
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/superadmin/plans/'.$plan, ['name' => 'Starter Plus', 'monthly_price_cents' => 5900, 'max_branches' => 2, 'max_students' => 500, 'features' => ['attendance', 'grades', 'invoices'], 'status' => 'active'])->assertOk();
+
+        $this->assertDatabaseHas('platform_plans', ['id' => $plan, 'name' => 'Starter Plus', 'monthly_price_cents' => 5900, 'max_students' => 500]);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'plan', 'entity_id' => $plan, 'action' => 'plan_updated']);
+    }
+
     public function test_superadmin_can_review_and_suspend_a_school_with_audited_status_change(): void
     {
         $schoolTwo = DB::table('schools')->insertGetId(['name' => 'Managed School', 'slug' => 'managed-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
