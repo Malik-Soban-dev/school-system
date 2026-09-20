@@ -1,3 +1,7 @@
+- 2026-09-20 STUDENT 360 UI UPDATE:
+  - Added a visible View 360 profile action to student records with a responsive dashboard modal for class, guardians, attendance, fees, results, assignments and authorized welfare notes.
+  - Verification passed: Vite production build; existing StudentProfile focused test remains passing (1 test, 8 assertions).
+
 - 2026-09-20 STUDENT 360 PROFILE UPDATE:
   - Added a tenant-scoped Student 360 JSON profile combining identity/class, guardians, attendance totals, fee balances, published academic results and assignments.
   - Private welfare records are included only for owner/admin users; parents, students and teachers receive only the records allowed by their existing portal relationships. Added regression coverage for linked-parent access and cross-student denial.
