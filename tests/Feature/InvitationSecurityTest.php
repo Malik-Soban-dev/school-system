@@ -81,6 +81,18 @@ class InvitationSecurityTest extends TestCase
         $this->get($url)->assertNotFound();
     }
 
+    public function test_invitation_cannot_be_used_after_the_inviter_loses_branch_access(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $url = $this->actingAs($owner)->postJson('/portal/invitations', ['name' => 'Branch Teacher', 'email' => 'branch-teacher@example.test', 'roles' => ['teacher']])->assertOk()->json('url');
+        $invitation = DB::table('school_invitations')->where('email', 'branch-teacher@example.test')->first(['school_id', 'branch_id']);
+        DB::table('school_user_branches')->where('school_id', $invitation->school_id)->where('branch_id', $invitation->branch_id)->where('user_id', $owner->id)->update(['status' => 'suspended']);
+        auth()->logout();
+
+        $this->get($url)->assertNotFound();
+        $this->assertDatabaseMissing('users', ['email' => 'branch-teacher@example.test']);
+    }
+
     public function test_suspension_revokes_database_sessions_and_blocks_access(): void
     {
         $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);

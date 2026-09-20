@@ -1,3 +1,6 @@
+- 2026-09-19 BRANCH-SCOPED INVITATION AUTHORIZATION UPDATE:
+  - Guest invitation validation now requires the inviter to remain active and retain an owner/admin grant on the exact school branch; global role JSON alone can no longer activate accounts after branch access is suspended. Superadmin invitations remain platform-authorized.
+  - Verification passed: focused invitation security coverage (7 tests, 37 assertions), full PHPUnit suite (125 tests, 805 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN WORKSPACE-CONTEXT VISIBILITY UPDATE:
   - Superadmin portal context listings now expose every school branch, including suspended schools and branches, with explicit superadmin authority metadata; client listings remain limited to active membership grants and branch entitlements.
   - Verification passed: focused workspace-context regression (1 test, 15 assertions), full PHPUnit suite (124 tests, 802 assertions), Pint, and diff check.

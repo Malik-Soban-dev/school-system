@@ -91,7 +91,11 @@ class InvitationController extends Controller
         abort_unless($invitation, 404, 'This invitation has expired or has already been used.');
         $creator = User::find($invitation->created_by);
         $roles = json_decode($invitation->roles, true);
-        abort_unless($creator && ($creator->hasRole('superadmin') || $creator->hasRole('owner') || ($creator->hasRole('admin') && ! in_array('admin', $roles, true))), 404);
+        $creatorIsSuperadmin = $creator?->hasRole('superadmin') === true;
+        $creatorGrantRoles = $creator ? json_decode((string) DB::table('school_user_branches')->where('school_id', $invitation->school_id)->where('branch_id', $invitation->branch_id)->where('user_id', $creator->id)->where('status', 'active')->value('roles'), true) ?: [] : [];
+        $creatorIsOwner = $creatorIsSuperadmin || in_array('owner', $creatorGrantRoles, true);
+        $creatorCanInvite = $creatorIsSuperadmin || in_array('owner', $creatorGrantRoles, true) || in_array('admin', $creatorGrantRoles, true);
+        abort_unless($creator && $creator->is_active && $creatorCanInvite && ($creatorIsOwner || ! in_array('admin', $roles, true)), 404);
 
         return $invitation;
     }
