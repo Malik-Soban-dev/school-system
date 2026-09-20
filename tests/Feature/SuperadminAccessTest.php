@@ -407,6 +407,11 @@ class SuperadminAccessTest extends TestCase
 
         $this->assertDatabaseHas('school_subscriptions', ['school_id' => $school, 'plan_id' => $plan, 'status' => 'active', 'renews_at' => '2027-01-01']);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'module' => 'billing', 'action' => 'subscription_updated']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'subscription', 'entity_id' => $school, 'action' => 'subscription_updated']);
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/subscription', ['plan_id' => $plan, 'status' => 'canceled'])->assertOk();
+        $this->assertNotNull(DB::table('school_subscriptions')->where('school_id', $school)->value('canceled_at'));
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/subscription', ['plan_id' => $plan, 'status' => 'active', 'renews_at' => '2027-01-01'])->assertOk();
+        $this->assertNull(DB::table('school_subscriptions')->where('school_id', $school)->value('canceled_at'));
         $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->assertJsonPath('billing.paid_cents', 4900)->assertJsonPath('billing.outstanding_cents', 14900)->assertJsonPath('billing.invoices.0.invoice_number', 'PLAT-BILLING-OPEN');
     }
 

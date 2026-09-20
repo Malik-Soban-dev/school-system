@@ -618,8 +618,11 @@ class PlatformController extends Controller
             abort_unless(DB::table('schools')->where('id', $school)->lockForUpdate()->exists(), 404);
             $before = DB::table('school_subscriptions')->where('school_id', $school)->first(['plan_id', 'status', 'starts_at', 'renews_at', 'canceled_at', 'created_at']);
             $now = now();
-            DB::table('school_subscriptions')->updateOrInsert(['school_id' => $school], ['plan_id' => $data['plan_id'], 'status' => $data['status'], 'starts_at' => $before?->starts_at ?? $now, 'renews_at' => $data['renews_at'] ?? null, 'canceled_at' => $data['status'] === 'canceled' ? $now : null, 'updated_at' => $now, 'created_at' => $before?->created_at ?? $now]);
-            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'billing', 'record_id' => $school, 'action' => 'subscription_updated', 'changes' => json_encode(['before' => $before, 'after' => ['plan_id' => $data['plan_id'], 'status' => $data['status'], 'renews_at' => $data['renews_at'] ?? null]]), 'created_at' => $now]);
+            $after = ['plan_id' => $data['plan_id'], 'status' => $data['status'], 'renews_at' => $data['renews_at'] ?? null, 'canceled_at' => $data['status'] === 'canceled' ? $now : null];
+            DB::table('school_subscriptions')->updateOrInsert(['school_id' => $school], ['plan_id' => $after['plan_id'], 'status' => $after['status'], 'starts_at' => $before?->starts_at ?? $now, 'renews_at' => $after['renews_at'], 'canceled_at' => $after['canceled_at'], 'updated_at' => $now, 'created_at' => $before?->created_at ?? $now]);
+            $changes = ['before' => $before, 'after' => $after];
+            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'billing', 'record_id' => $school, 'action' => 'subscription_updated', 'changes' => json_encode($changes), 'created_at' => $now]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'subscription', 'entity_id' => $school, 'action' => 'subscription_updated', 'changes' => json_encode(['school_id' => $school, ...$changes]), 'created_at' => $now]);
         });
 
         return response()->json(['message' => 'School subscription updated.']);
