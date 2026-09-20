@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN PLATFORM CENSUS UPDATE:
+  - Expanded the cross-school Superadmin summary and dashboard cards to expose operational totals for subjects, enrollments, attendance, exams, grades, invoices, payments, expenses, leave requests, payroll, payroll payments, notices, notifications and notification deliveries alongside school, branch, student and staff counts.
+  - Added a summary contract test. Verification passed: focused census tests (4 tests, 49 assertions); Blade view cache; full PHPUnit (134 tests, 899 assertions); Pint; diff check.
 - 2026-09-20 SUPERADMIN SENSITIVE-ACTION CONFIRMATION UPDATE:
   - Added explicit confirmation before changing a school default branch and before global/bulk branch-access grants, preserving the audit trail and preventing accidental access-routing changes.
   - Verification passed: focused Superadmin tests (11 tests, 68 assertions); Blade view cache; full PHPUnit (133 tests, 872 assertions); Pint; diff check.

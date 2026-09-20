@@ -534,6 +534,20 @@ class SuperadminAccessTest extends TestCase
         $this->assertSame('branch_limit', collect($payload['entitlement_alerts'])->where('school_id', $school)->first()['type']);
     }
 
+    public function test_superadmin_platform_summary_exposes_the_full_operational_census(): void
+    {
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->assertJsonStructure([
+            'summary' => [
+                'schools', 'branches', 'members', 'accounts', 'students', 'staff', 'teachers', 'classes', 'subjects',
+                'guardians', 'enrollments', 'attendance', 'exams', 'grades', 'invoices', 'open_invoices', 'payments',
+                'expenses', 'leave_requests', 'payroll', 'payroll_payments', 'notices', 'notifications',
+                'notification_deliveries', 'entitlement_alerts',
+            ],
+        ]);
+    }
+
     public function test_superadmin_can_issue_and_reconcile_a_platform_invoice(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Invoice School', 'slug' => 'invoice-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

@@ -53,7 +53,21 @@ class PlatformController extends Controller
         $planDistribution = DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->select('plan.code', 'plan.name')->selectRaw('count(*) as total')->groupBy('plan.id', 'plan.code', 'plan.name')->orderBy('plan.name')->get();
         $platformAccounts = DB::table('school_user')->distinct()->count('user_id');
         $platformClasses = DB::table('school_classes')->count();
+        $platformSubjects = DB::table('school_subjects')->count();
         $platformGuardians = DB::table('school_guardian_links')->where('status', 'active')->distinct()->count('user_id');
+        $platformEnrollments = DB::table('school_enrollments')->count();
+        $platformAttendance = DB::table('school_attendance')->count();
+        $platformExams = DB::table('school_exams')->count();
+        $platformGrades = DB::table('school_grades')->count();
+        $platformInvoices = DB::table('school_invoices')->count();
+        $platformPayments = DB::table('school_payments')->count();
+        $platformExpenses = DB::table('school_expenses')->count();
+        $platformLeaveRequests = DB::table('school_leave_requests')->count();
+        $platformPayroll = DB::table('school_payroll')->count();
+        $platformPayrollPayments = DB::table('school_payroll_payments')->count();
+        $platformNotices = DB::table('school_notices')->count();
+        $platformNotifications = DB::table('school_notifications')->count();
+        $platformNotificationDeliveries = DB::table('school_notification_deliveries')->count();
         $entitlementAlerts = $schools->flatMap(function (object $school): array {
             $alerts = [];
             if (! $school->subscription_status) {
@@ -72,7 +86,7 @@ class PlatformController extends Controller
         })->values();
 
         return response()->json([
-            'summary' => ['schools' => $schools->count(), 'active_schools' => $schools->where('status', 'active')->count(), 'branches' => (int) $schools->sum('branches'), 'members' => (int) $schools->sum('members'), 'accounts' => $platformAccounts, 'students' => (int) $schools->sum('students'), 'staff' => (int) $schools->sum('staff'), 'teachers' => (int) $schools->sum('teachers'), 'classes' => $platformClasses, 'guardians' => $platformGuardians, 'open_invoices' => (int) $schools->sum('open_invoices'), 'entitlement_alerts' => $entitlementAlerts->count()],
+            'summary' => ['schools' => $schools->count(), 'active_schools' => $schools->where('status', 'active')->count(), 'branches' => (int) $schools->sum('branches'), 'members' => (int) $schools->sum('members'), 'accounts' => $platformAccounts, 'students' => (int) $schools->sum('students'), 'staff' => (int) $schools->sum('staff'), 'teachers' => (int) $schools->sum('teachers'), 'classes' => $platformClasses, 'subjects' => $platformSubjects, 'guardians' => $platformGuardians, 'enrollments' => $platformEnrollments, 'attendance' => $platformAttendance, 'exams' => $platformExams, 'grades' => $platformGrades, 'invoices' => $platformInvoices, 'open_invoices' => (int) $schools->sum('open_invoices'), 'payments' => $platformPayments, 'expenses' => $platformExpenses, 'leave_requests' => $platformLeaveRequests, 'payroll' => $platformPayroll, 'payroll_payments' => $platformPayrollPayments, 'notices' => $platformNotices, 'notifications' => $platformNotifications, 'notification_deliveries' => $platformNotificationDeliveries, 'entitlement_alerts' => $entitlementAlerts->count()],
             'billing' => ['mrr_cents' => $mrrCents, 'subscriptions' => ['active' => (int) ($subscriptionCounts['active'] ?? 0), 'trialing' => (int) ($subscriptionCounts['trialing'] ?? 0), 'past_due' => (int) ($subscriptionCounts['past_due'] ?? 0), 'canceled' => (int) ($subscriptionCounts['canceled'] ?? 0)], 'plan_distribution' => $planDistribution],
             'schools' => $schools, 'plans' => $plans, 'audit' => $recentAudit, 'entitlement_alerts' => $entitlementAlerts,
         ]);
