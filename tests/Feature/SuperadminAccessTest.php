@@ -75,6 +75,22 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_user_branches', ['school_id' => $school, 'branch_id' => $branch, 'user_id' => $owner->id, 'roles' => json_encode(['admin'])]);
     }
 
+    public function test_superadmin_can_grant_one_client_access_to_multiple_school_branches_atomically(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Bulk Access School', 'slug' => 'bulk-access-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branches = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'North', 'code' => 'north', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $south = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'South', 'code' => 'south', 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/members/'.$client->id.'/branch-access/bulk', ['branch_ids' => [$branches, $south], 'roles' => ['admin'], 'status' => 'active'])->assertOk();
+        $this->assertDatabaseCount('school_user_branches', 2);
+        $this->assertDatabaseHas('school_user_branches', ['school_id' => $school, 'branch_id' => $branches, 'user_id' => $client->id, 'status' => 'active']);
+        $this->assertDatabaseHas('school_user_branches', ['school_id' => $school, 'branch_id' => $south, 'user_id' => $client->id, 'status' => 'active']);
+        $this->assertDatabaseCount('school_audit', 3);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'bulk_branch_access_updated']);
+    }
+
     public function test_superadmin_can_review_a_paginated_cross_school_branch_registry(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Branch Registry School', 'slug' => 'branch-registry-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN BULK BRANCH-ACCESS UPDATE:
+  - Added an atomic Superadmin operation to grant or suspend one client account's role across up to 100 branches within the same school, with per-branch school audit records and a platform-level summary audit.
+  - The school detail dashboard now supports multi-select branch assignment for existing client accounts.
+  - Verification passed: full PHPUnit suite (107 tests, 647 assertions), focused Superadmin suite (48 tests, 293 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN EXPORT RETENTION UPDATE:
   - Added a scheduled platform:prune-exports command that safely removes expired private export files and metadata, records export_pruned audit events, and runs daily at 01:10 without overlap.
   - Verification passed: full PHPUnit suite (106 tests, 641 assertions), focused Superadmin suite (47 tests, 287 assertions), PHP Pint and git diff check.
