@@ -25,9 +25,13 @@ class AssignmentSubmissionTest extends TestCase
         $assignment = $portal->save('assignments', $owner, ['class_id' => $class, 'subject_id' => $subject, 'teacher_id' => $owner->id, 'title' => 'Science worksheet', 'description' => 'Complete the worksheet.', 'due_on' => '2026-09-25', 'status' => 'published']);
 
         $submission = $this->actingAs($studentUser)->postJson('/portal/records/submissions', ['assignment_id' => $assignment, 'student_id' => $student, 'content' => 'My completed answers.', 'status' => 'submitted'])->assertOk()->json('id');
+        $this->artisan('school:notifications')->assertSuccessful();
+        $this->actingAs($owner)->getJson('/portal/notifications')->assertOk()->assertJsonFragment(['title' => 'New assignment submission']);
         $this->actingAs($studentUser)->postJson('/portal/records/submissions', ['assignment_id' => $assignment, 'student_id' => $student, 'content' => 'Duplicate answers.', 'status' => 'submitted'])->assertUnprocessable();
         $this->actingAs($parent)->getJson('/portal/records/submissions')->assertOk()->assertJsonPath('rows.0.id', $submission)->assertJsonPath('rows.0.status', 'submitted');
         $this->actingAs($owner)->putJson('/portal/records/submissions/'.$submission, ['assignment_id' => $assignment, 'student_id' => $student, 'content' => 'My completed answers.', 'status' => 'returned', 'grade' => '92.50', 'feedback' => 'Strong work.'])->assertOk();
+        $this->artisan('school:notifications')->assertSuccessful();
+        $this->actingAs($parent)->getJson('/portal/notifications')->assertOk()->assertJsonFragment(['title' => 'Assignment feedback available']);
         $this->assertDatabaseHas('school_submissions', ['id' => $submission, 'status' => 'returned', 'grade' => 92.5]);
     }
 }

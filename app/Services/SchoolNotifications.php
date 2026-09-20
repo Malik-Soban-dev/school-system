@@ -13,7 +13,7 @@ class SchoolNotifications
 
     public function enqueue(string $module, int $id, array $data): void
     {
-        if (! in_array($module, ['notices', 'exams', 'invoices', 'payments', 'payroll', 'payroll_payments', 'attendance', 'leave_requests'])) {
+        if (! in_array($module, ['notices', 'exams', 'invoices', 'payments', 'payroll', 'payroll_payments', 'attendance', 'leave_requests', 'assignments', 'submissions'])) {
             return;
         }
         DB::table('school_notification_events')->insertOrIgnore(['school_id' => $this->tenant->id(), 'branch_id' => $this->tenant->branchId(), 'module' => $module, 'record_id' => $id,
@@ -78,6 +78,15 @@ class SchoolNotifications
 
             return array_unique([$record->user_id, ...$admins]);
         }
+        if ($module === 'assignments') {
+            return $this->family($this->tenant->table('school_students')->where('class_id', $record->class_id)->where('status', 'active')->pluck('id')->all());
+        }
+        if ($module === 'submissions') {
+            $assignment = $this->tenant->table('school_assignments')->find($record->assignment_id);
+            $family = $this->family([$record->student_id]);
+
+            return array_values(array_unique([...$family, ...array_filter([$assignment?->teacher_id])]));
+        }
 
         return [];
     }
@@ -85,7 +94,7 @@ class SchoolNotifications
     public function publish(string $module, int $id, string $eventKey, ?string $reminder = null): void
     {
         $record = $this->tenant->table('school_'.$module)->find($id);
-        if (! $record || ($module === 'notices' && $record->status !== 'published') || ($module === 'exams' && $record->schedule_status === 'draft' && $record->status !== 'published')) {
+        if (! $record || ($module === 'notices' && $record->status !== 'published') || ($module === 'assignments' && $record->status !== 'published') || ($module === 'exams' && $record->schedule_status === 'draft' && $record->status !== 'published')) {
             return;
         }
         [$title, $body] = match ($module) {
@@ -97,6 +106,8 @@ class SchoolNotifications
             'payroll_payments' => ['Salary payment recorded', 'Payment '.$record->reference.' was recorded on '.$record->paid_on.' using '.str_replace('_', ' ', $record->method).'. Open Salary payments for details.'],
             'attendance' => ['Attendance update', 'Attendance for '.$record->date.' was recorded as '.$record->status.'. Open Attendance for the student and details.'],
             'leave_requests' => ['Leave request update', 'Leave from '.$record->starts_on.' to '.$record->ends_on.' is '.$record->status.'.'],
+            'assignments' => ['New assignment published', $record->title.' for '.$this->tenant->table('school_classes')->where('id', $record->class_id)->value('name').' is due on '.$record->due_on.'. Open Assignments for the instructions.'],
+            'submissions' => [$record->status === 'returned' ? 'Assignment feedback available' : 'New assignment submission', $record->status === 'returned' ? 'Feedback and grade are available for your assignment submission.' : 'A student submitted work for review. Open Assignment submissions to review it.'],
             default => ['', ''],
         };
         $ids = $this->recipients($module, $record);

@@ -1,3 +1,8 @@
+- 2026-09-20 ASSIGNMENT NOTIFICATION UPDATE:
+  - Assignment publication, student submissions and returned feedback now create private account notifications for the correct teacher, student and guardian relationships.
+  - Draft assignments are not announced, and notification access still follows the current assignment/submission permissions.
+  - Verification passed: full PHPUnit (155 tests, 1118 assertions); AssignmentSubmission focused test (1 test, 13 assertions); Vite production build; diff check.
+
 - 2026-09-20 ASSIGNMENT SUBMISSIONS UPDATE:
   - Added student submissions for published assignments with duplicate prevention, submission timestamps and review status.
   - Teachers/admins can return feedback and grades; students can submit only their own available work; parents can view linked submissions. Added Superadmin explorer and export support.
