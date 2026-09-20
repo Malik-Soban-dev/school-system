@@ -29,7 +29,7 @@ class PortalController extends Controller
         $settings = $settingsQuery->pluck('value', 'key')->all();
 
         return response()->json([
-            'user' => [...$request->user()->only(['id', 'name', 'username', 'roles', 'tutorials']), 'interface_preferences' => $request->user()->interfacePreferences()],
+            'user' => [...$request->user()->only(['id', 'name', 'username', 'roles', 'tutorials']), 'effective_roles' => $tenant->roles($request->user()), 'interface_preferences' => $request->user()->interfacePreferences()],
             'modules' => $this->portal->modules($request->user()),
             'options' => $this->portal->options($request->user()),
             'settings' => (object) $settings,

@@ -1,3 +1,6 @@
+- 2026-09-19 BRANCH EFFECTIVE-ROLE METADATA UPDATE:
+  - Portal metadata now exposes effective_roles for the selected branch, alongside the account’s global roles, so branch-scoped administrator UI and behavior remain aligned with Superadmin grants.
+  - Verification passed: focused branch-role metadata coverage (1 test, 6 assertions), full PHPUnit suite (126 tests, 811 assertions), Pint, and diff check.
 - 2026-09-19 EFFECTIVE BRANCH-ROLE CONSISTENCY UPDATE:
   - TenantContext now exposes effective roles for the selected branch; notice audiences use those scoped roles instead of global user roles, while Superadmin capability bypass remains intact. User option queries were qualified for joined branch access.
   - Verification passed: focused branch-role notice and Superadmin regressions (5 tests, 28 assertions), full PHPUnit suite (126 tests, 809 assertions), Pint, and diff check.

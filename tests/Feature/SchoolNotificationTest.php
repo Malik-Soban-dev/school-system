@@ -48,6 +48,7 @@ class SchoolNotificationTest extends TestCase
         $portal->save('notices', $owner, ['title' => 'Teacher notice', 'body' => 'Teacher audience', 'audience' => 'teacher', 'status' => 'published']);
         $portal->save('notices', $owner, ['title' => 'Parent notice', 'body' => 'Parent audience', 'audience' => 'parent', 'status' => 'published']);
 
+        $this->actingAs($branchUser)->getJson('/portal/meta')->assertOk()->assertJsonPath('user.effective_roles.0', 'parent');
         $this->actingAs($branchUser)->getJson('/portal/records/notices')->assertOk()->assertJsonCount(1, 'rows')->assertJsonPath('rows.0.title', 'Parent notice');
     }
 
