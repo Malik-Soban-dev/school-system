@@ -43,9 +43,13 @@ class ReportCardController extends Controller
         $percentage = $complete ? round($rows->sum(fn ($row) => $row['percentage'] * $row['weight']) / $rows->sum('weight'), 2) : null;
         $gpa = $complete && $rows->every(fn ($row) => $row['gpa'] !== null) ? $rows->sum(fn ($row) => $row['gpa'] * $row['weight']) / $rows->sum('weight') : null;
         $overallBand = $percentage !== null ? $scale->first(fn ($band) => $percentage >= (float) $band['minimum']) : null;
+        $attendance = $tenant->table('school_attendance')->where('student_id', $student)->where('date', '<=', $examRecord->date)->pluck('status')->countBy();
+        $attendanceTotal = $attendance->sum();
+        $attendancePresent = ($attendance->get('present', 0) + $attendance->get('late', 0));
 
         return view('reports.report-card', ['exam' => $examRecord, 'student' => $studentRecord, 'rows' => $rows, 'complete' => $complete,
             'planned' => $planned, 'percentage' => $percentage, 'gpa' => $gpa, 'overallBand' => $overallBand['name'] ?? null,
+            'attendance' => ['total' => $attendanceTotal, 'present' => $attendancePresent, 'late' => $attendance->get('late', 0), 'absent' => $attendance->get('absent', 0), 'excused' => $attendance->get('excused', 0), 'percentage' => $attendanceTotal > 0 ? round($attendancePresent / $attendanceTotal * 100, 2) : null],
             'school' => $tenant->table('school_settings')->where('key', 'school_name')->value('value') ?: 'School System',
             'class' => $tenant->table('school_classes')->where('id', $examRecord->class_id)->value('name')]);
     }

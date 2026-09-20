@@ -36,9 +36,13 @@ class ReportCardTest extends TestCase
         $this->actingAs($owner)->get($url)->assertOk()->assertSee('Incomplete report')->assertDontSee('Weighted overall result:');
         $this->actingAs($parent)->get($url)->assertNotFound();
         $save('grades', ['exam_id' => $exam, 'subject_id' => $english, 'student_id' => $student, 'marks' => 30, 'maximum' => 50]);
+        $save('attendance', ['student_id' => $student, 'date' => '2026-09-01', 'status' => 'present']);
+        $save('attendance', ['student_id' => $student, 'date' => '2026-09-02', 'status' => 'late']);
+        $save('attendance', ['student_id' => $student, 'date' => '2026-09-03', 'status' => 'absent']);
+        $save('attendance', ['student_id' => $student, 'date' => '2026-09-04', 'status' => 'excused']);
         $this->actingAs($owner)->putJson('/portal/records/exams/'.$exam, [...$examData, 'status' => 'published'])->assertOk();
         $this->putJson('/portal/records/grade_bands/'.$band, ['name' => 'Changed', 'minimum' => 80, 'gpa' => 1])->assertOk();
-        $this->actingAs($parent)->get($url)->assertOk()->assertSee('75.00%')->assertSee('3.75')->assertSee('Overall grade: B')->assertDontSee('Changed')->assertDontSee('<script>alert(1)</script>', false)->assertSee('&lt;script&gt;', false);
+        $this->actingAs($parent)->get($url)->assertOk()->assertSee('75.00%')->assertSee('3.75')->assertSee('Overall grade: B')->assertSee('50.00%')->assertSee('Present / late')->assertDontSee('Changed')->assertDontSee('<script>alert(1)</script>', false)->assertSee('&lt;script&gt;', false);
         $this->actingAs($other)->get($url)->assertNotFound();
         $this->actingAs($owner)->putJson('/portal/records/exam_subjects/'.$plan, ['exam_id' => $exam, 'subject_id' => $math, 'maximum' => 100, 'weight' => 2])->assertUnprocessable();
         DB::table('school_guardian_links')->where('id', $link)->update(['status' => 'revoked']);

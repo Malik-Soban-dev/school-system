@@ -1,3 +1,6 @@
+- 2026-09-20 REPORT CARD ATTENDANCE UPDATE:
+  - Added an attendance summary to printed report cards using existing records through the exam date: recorded days, present/late, absent, excused, and attendance rate. No migration was required.
+  - Verification passed: ReportCard feature suite (2 tests, 23 assertions); Blade view cache; diff check.
 - 2026-09-20 LOGIN PERFORMANCE UPDATE:
   - Changed the default Render/Turso session storage to encrypted cookie sessions, avoiding a remote database read/write on every authentication and dashboard request. Database sessions remain available when explicitly configured.
   - Verification passed: Authentication feature suite (16 tests, 54 assertions); diff check.
