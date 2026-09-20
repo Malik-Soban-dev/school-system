@@ -46,12 +46,13 @@ class AuthController extends Controller
 
             return redirect()->route('mfa.challenge');
         }
+        $defaultDestination = $request->user()?->hasRole('superadmin') ? route('superadmin.dashboard') : route('dashboard');
 
         if ($request->expectsJson()) {
-            return response()->json(['redirect' => route('dashboard')]);
+            return response()->json(['redirect' => $defaultDestination]);
         }
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->intended($defaultDestination);
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -167,7 +168,7 @@ class AuthController extends Controller
         $request->session()->regenerate();
         $request->session()->put('mfa_verified_user_id', $user->id);
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->intended(route('superadmin.dashboard'));
     }
 
     /** @return list<string> */

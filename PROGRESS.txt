@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN LOGIN DESTINATION UPDATE:
+  - Successful Superadmin authentication now defaults to the protected platform dashboard, including after MFA verification; client owner/admin accounts continue to land on the normal portal dashboard. This removes ambiguity when opening /superadmin while preserving route authorization.
+  - Verification passed: focused authentication/Superadmin coverage (3 tests, 25 assertions); full PHPUnit (139 tests, 1008 assertions); Blade view cache; Pint; diff check.
 - 2026-09-20 SUPERADMIN LIFECYCLE CENSUS UPDATE:
   - Added active and suspended school totals plus active and suspended branch totals to the global Superadmin census and dashboard cards, making lifecycle capacity and disabled client state visible without drilling into each registry.
   - Verification passed: focused lifecycle-census coverage (1 test, 43 assertions); full PHPUnit (138 tests, 1003 assertions); Blade view cache; Pint; diff check.

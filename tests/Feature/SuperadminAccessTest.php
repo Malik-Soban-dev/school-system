@@ -39,7 +39,7 @@ class SuperadminAccessTest extends TestCase
 
         $this->post('/logout')->assertRedirect(route('login'));
         $this->post('/login', ['username' => 'mfa.superadmin', 'password' => 'password'])->assertRedirect(route('mfa.challenge'));
-        $this->post('/mfa/challenge', ['code' => $recoveryCode])->assertRedirect(route('dashboard'));
+        $this->post('/mfa/challenge', ['code' => $recoveryCode])->assertRedirect(route('superadmin.dashboard'));
         $this->get('/superadmin')->assertOk();
         $this->assertCount(7, json_decode((string) User::find($superadmin->id)->mfa_recovery_codes, true));
     }
