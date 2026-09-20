@@ -192,6 +192,9 @@ class SuperadminAccessTest extends TestCase
 
         $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_id='.$branch.'&role=admin')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.email', 'suspended-registry-client@example.test')->assertJsonPath('users.data.0.access.0.status', 'suspended');
         $this->actingAs($superadmin)->getJson('/superadmin/users?branch_id='.$branch)->assertOk()->assertJsonPath('users.total', 1);
+        DB::table('school_user')->where('school_id', $school)->where('user_id', $client->id)->update(['status' => 'suspended']);
+        $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&membership_status=suspended')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.access.0.membership_status', 'suspended');
+        $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&membership_status=active')->assertOk()->assertJsonPath('users.total', 0);
     }
 
     public function test_superadmin_can_review_platform_health_without_backup_contents(): void

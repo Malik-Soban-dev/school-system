@@ -56,7 +56,7 @@
     </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">PLATFORM ACCOUNTS</p><h2>Every user</h2></div></div>
-        <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><select id="user-school" aria-label="Filter users by school"><option value="">All schools</option></select><select id="user-branch" aria-label="Filter users by branch"><option value="">All branches</option></select><select id="user-role" aria-label="Filter users by role"><option value="">All roles</option><option value="superadmin">Superadmin</option><option value="owner">Owner</option><option value="admin">Admin</option><option value="teacher">Teacher</option><option value="student">Student</option><option value="parent">Parent</option><option value="accountant">Accountant</option></select><select id="user-status" aria-label="Filter users by account status"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><button type="submit">Search</button></form>
+        <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><select id="user-school" aria-label="Filter users by school"><option value="">All schools</option></select><select id="user-branch" aria-label="Filter users by branch"><option value="">All branches</option></select><select id="user-role" aria-label="Filter users by role"><option value="">All roles</option><option value="superadmin">Superadmin</option><option value="owner">Owner</option><option value="admin">Admin</option><option value="teacher">Teacher</option><option value="student">Student</option><option value="parent">Parent</option><option value="accountant">Accountant</option></select><select id="user-status" aria-label="Filter users by account status"><option value="">All account statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><select id="user-membership-status" aria-label="Filter school membership status"><option value="">All school memberships</option><option value="active">Membership active</option><option value="suspended">Membership suspended</option></select><button type="submit">Search</button></form>
         <form id="user-access-form"><select id="user-access-user" required aria-label="User to grant branch access"><option value="">Select a loaded user</option></select><select id="user-access-school" required aria-label="Access school"><option value="">Select school</option></select><select id="user-access-branch" required aria-label="Access branch"><option value="">Select branch</option></select><select id="user-access-roles" name="roles" required aria-label="Access roles" multiple size="3"><option value="admin">Admin</option><option value="owner">Owner</option><option value="teacher">Teacher</option><option value="student">Student</option><option value="parent">Parent</option><option value="accountant">Accountant</option></select><select id="user-access-status" required aria-label="Access status"><option value="active">Active</option><option value="suspended">Suspended</option></select><button type="submit">Grant / update branch access</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>User</th><th>Status</th><th>School / branch access</th><th>Control</th></tr></thead><tbody id="user-rows"><tr><td colspan="4">Loading platform users…</td></tr></tbody></table></div><div id="user-pagination"></div>
     </section>
@@ -100,6 +100,7 @@
     const userBranch = document.querySelector('#user-branch');
     const userRole = document.querySelector('#user-role');
     const userStatus = document.querySelector('#user-status');
+    const userMembershipStatus = document.querySelector('#user-membership-status');
     const userAccessForm = document.querySelector('#user-access-form');
     const userAccessUser = document.querySelector('#user-access-user');
     const userAccessSchool = document.querySelector('#user-access-school');
@@ -506,6 +507,7 @@
         if (userBranch.value) params.set('branch_id', userBranch.value);
         if (userRole.value) params.set('role', userRole.value);
         if (userStatus.value) params.set('status', userStatus.value);
+        if (userMembershipStatus.value) params.set('membership_status', userMembershipStatus.value);
         const data = await request(`/superadmin/users?${params}`);
         const selectedAccessUser = userAccessUser.value;
         userAccessUser.innerHTML = '<option value="">Select a loaded user</option>' + data.users.data.filter(user => !user.is_superadmin).map(user => `<option value="${esc(user.id)}">${esc(user.name)} · ${esc(user.email || user.username || '')}</option>`).join('');

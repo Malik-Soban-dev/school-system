@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN MEMBERSHIP-STATUS FILTER UPDATE:
+  - Global user registry search now filters active or suspended school memberships independently from global account status, including correct school resolution when filtering by branch; the dashboard exposes both filters for restoration and support workflows.
+  - Verification passed: focused membership-registry coverage (4 tests, 41 assertions), Blade view cache, full PHPUnit (133 tests, 869 assertions), Pint, and diff check.
+
 - 2026-09-19 SUPERADMIN MEMBERSHIP-STATUS VISIBILITY UPDATE:
   - Global user-registry access rows now include the parent school membership status alongside each branch grant status, and the dashboard labels both states so suspended school access cannot be mistaken for an active client workspace.
   - Verification passed: focused registry coverage (3 tests, 30 assertions), Blade view cache, full PHPUnit (133 tests, 864 assertions), Pint, and diff check.
