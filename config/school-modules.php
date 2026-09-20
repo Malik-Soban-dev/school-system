@@ -227,6 +227,47 @@ return [
             'choices' => ['active', 'ended'],
         ]],
     ],
+    'materials' => [
+        'label' => 'Class materials',
+        'singular' => 'material',
+        'help' => 'Publish syllabus notes, reading links and class resources for students and parents.',
+        'read' => ['owner', 'admin', 'teacher', 'student', 'parent'],
+        'write' => ['owner', 'admin', 'teacher'],
+        'fields' => [[
+            'name' => 'class_id',
+            'label' => 'Class',
+            'type' => 'relation',
+            'relation' => 'classes',
+        ], [
+            'name' => 'subject_id',
+            'label' => 'Subject',
+            'type' => 'relation',
+            'relation' => 'subjects',
+        ], [
+            'name' => 'teacher_id',
+            'label' => 'Teacher account',
+            'type' => 'relation',
+            'relation' => 'users',
+        ], [
+            'name' => 'title',
+            'label' => 'Title',
+            'type' => 'text',
+        ], [
+            'name' => 'description',
+            'label' => 'Description',
+            'type' => 'textarea',
+        ], [
+            'name' => 'resource_url',
+            'label' => 'Resource link',
+            'type' => 'text',
+            'optional' => true,
+        ], [
+            'name' => 'status',
+            'label' => 'Visibility',
+            'type' => 'select',
+            'choices' => ['draft', 'published'],
+        ]],
+    ],
     'submissions' => [
         'label' => 'Assignment submissions',
         'singular' => 'submission',

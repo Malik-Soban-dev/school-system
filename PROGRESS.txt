@@ -1,3 +1,8 @@
+- 2026-09-20 CLASS MATERIALS UPDATE:
+  - Added class materials with subject, description, optional resource link and draft/published visibility.
+  - Linked students and parents see published class resources; teachers are restricted to their assigned class and subject. Added Superadmin explorer and export support.
+  - Verification passed: full PHPUnit (156 tests, 1122 assertions); Material focused test (1 test, 4 assertions); Vite production build; diff check.
+
 - 2026-09-20 ASSIGNMENT NOTIFICATION UPDATE:
   - Assignment publication, student submissions and returned feedback now create private account notifications for the correct teacher, student and guardian relationships.
   - Draft assignments are not announced, and notification access still follows the current assignment/submission permissions.

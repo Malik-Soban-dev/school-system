@@ -138,6 +138,16 @@ class SchoolPortal
                 }
             });
         }
+        if ($module === 'materials') {
+            $classes = $this->tenant->table('school_students')->whereIn('id', $family)->select('class_id');
+
+            return $query->where(function (Builder $scope) use ($classes, $user): void {
+                $scope->where('status', 'published')->whereIn('class_id', $classes);
+                if ($this->tenant->hasRole($user, 'teacher')) {
+                    $scope->orWhere('teacher_id', $user->id);
+                }
+            });
+        }
         if ($module === 'submissions') {
             $assignments = $this->query('assignments', $user)->select('id');
             if ($this->tenant->hasRole($user, 'teacher')) {
@@ -246,7 +256,7 @@ class SchoolPortal
     public function options(User $user): array
     {
         $options = [];
-        foreach (['academic_years', 'classes', 'subjects', 'staff', 'students', 'exams', 'assignments', 'invoices'] as $module) {
+        foreach (['academic_years', 'classes', 'subjects', 'staff', 'students', 'exams', 'assignments', 'materials', 'invoices'] as $module) {
             if (! $this->can($user, $this->definition($module)['read'])) {
                 continue;
             }
@@ -379,8 +389,8 @@ class SchoolPortal
                 abort_unless($id !== null, 403, 'Teachers review existing submissions rather than creating them.');
             }
         }
-        if ($module === 'assignments' && $this->tenant->hasRole($user, 'teacher')) {
-            abort_unless((int) $data['teacher_id'] === $user->id, 403, 'Teachers can only publish assignments under their own account.');
+        if (in_array($module, ['assignments', 'materials'], true) && $this->tenant->hasRole($user, 'teacher')) {
+            abort_unless((int) $data['teacher_id'] === $user->id, 403, 'Teachers can only publish their own class work.');
             abort_unless($this->tenant->table('school_teacher_assignments')->where('user_id', $user->id)->where('class_id', $data['class_id'])->where('subject_id', $data['subject_id'])->where('status', 'active')->exists(), 403, 'You are not assigned to this class and subject.');
         }
         if ($module === 'exams') {
