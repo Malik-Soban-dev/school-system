@@ -193,8 +193,11 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_id='.$branch.'&role=admin')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.email', 'suspended-registry-client@example.test')->assertJsonPath('users.data.0.access.0.status', 'suspended')->assertJsonPath('users.data.0.access.0.branch_status', 'active');
         $this->actingAs($superadmin)->getJson('/superadmin/users?branch_id='.$branch)->assertOk()->assertJsonPath('users.total', 1);
         DB::table('school_branches')->where('id', $branch)->update(['status' => 'suspended']);
-        $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_status=suspended')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.access.0.branch_status', 'suspended');
+        $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_status=suspended')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.access.0.branch_status', 'suspended')->assertJsonPath('users.data.0.access.0.school_status', 'active');
         $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_status=active')->assertOk()->assertJsonPath('users.total', 0);
+        DB::table('schools')->where('id', $school)->update(['status' => 'suspended']);
+        $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&school_status=suspended')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.access.0.school_status', 'suspended');
+        $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&school_status=active')->assertOk()->assertJsonPath('users.total', 0);
         DB::table('school_user')->where('school_id', $school)->where('user_id', $client->id)->update(['status' => 'suspended']);
         $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&membership_status=suspended')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.access.0.membership_status', 'suspended');
         $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&membership_status=active')->assertOk()->assertJsonPath('users.total', 0);
@@ -281,7 +284,7 @@ class SuperadminAccessTest extends TestCase
             $this->assertStringContainsString('Export Client', $csv);
             $this->assertStringContainsString('school_membership_status', $csv);
             $this->assertStringContainsString('branch_status', $csv);
-            $this->assertStringContainsString('"Export School",active,"Export Branch"', $csv);
+            $this->assertStringContainsString('"Export School",active,active,"Export Branch"', $csv);
             $this->assertStringNotContainsString('password', strtolower($csv));
             $this->assertDatabaseHas('platform_audit', ['entity_type' => 'export', 'entity_id' => $exportId, 'action' => 'user_export_completed']);
             $this->assertDatabaseHas('platform_audit', ['entity_type' => 'export', 'entity_id' => $exportId, 'action' => 'user_export_downloaded']);

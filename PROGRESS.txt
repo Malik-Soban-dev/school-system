@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN SCHOOL-LIFECYCLE VISIBILITY UPDATE:
+  - Global user access rows, branch-access explorer records and queued user exports now expose school_status separately from membership status, and the global registry supports active/suspended school filtering for restoration and support workflows.
+  - Verification passed: focused registry/export coverage (3 tests, 50 assertions); Blade view cache; full PHPUnit (137 tests, 935 assertions); Pint; diff check.
 - 2026-09-20 SUSPENDED-SCHOOL INVITATION SAFETY UPDATE:
   - Invitation lookup, acceptance and Superadmin branch-invitation issuance now require an active parent school as well as an active branch; acceptance locks the school and branch lifecycle rows before creating the account.
   - Verification passed: focused school/branch invitation coverage (3 tests, 19 assertions); Blade view cache; full PHPUnit (137 tests, 929 assertions); Pint; diff check.
