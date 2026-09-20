@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN DASHBOARD OVERVIEW REDESIGN:
+  - Reworked the first Superadmin screen into a platform control center with a clear overview hero, primary KPI cards, live school/branch health bars, platform composition bars, full census inventory toggle, refresh action and operations shortcut. Existing registry, billing, audit, data explorer and control panels remain available below.
+  - Verification passed: Feature PHPUnit (141 tests, 1029 assertions); Vite production build; Blade view cache; diff check.
 - 2026-09-20 SUPERADMIN SETUP REGISTRATION FIX:
   - Normalized setup usernames/emails before validation so platform-owner usernames such as Platform.Owner register as platform.owner; preserved separate-account uniqueness and optional email behavior.
   - Verification passed: focused setup coverage (1 test, 9 assertions); full PHPUnit (142 tests, 1030 assertions); Pint; diff check.
