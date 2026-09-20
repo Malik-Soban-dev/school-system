@@ -549,7 +549,7 @@ class SuperadminAccessTest extends TestCase
 
         $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->assertJsonStructure([
             'summary' => [
-                'schools', 'branches', 'members', 'branch_access', 'accounts', 'students', 'staff', 'teachers', 'classes',
+                'schools', 'active_schools', 'suspended_schools', 'branches', 'active_branches', 'suspended_branches', 'members', 'branch_access', 'accounts', 'students', 'staff', 'teachers', 'classes',
                 'academic_years', 'subjects', 'teacher_assignments', 'guardians', 'guardian_links', 'enrollments', 'attendance',
                 'timetables', 'exams', 'exam_subjects', 'grade_bands', 'grades', 'invoices', 'open_invoices', 'payments',
                 'expenses', 'leave_requests', 'payroll', 'payroll_payments', 'notices', 'invitations', 'notifications',

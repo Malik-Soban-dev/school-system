@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN LIFECYCLE CENSUS UPDATE:
+  - Added active and suspended school totals plus active and suspended branch totals to the global Superadmin census and dashboard cards, making lifecycle capacity and disabled client state visible without drilling into each registry.
+  - Verification passed: focused lifecycle-census coverage (1 test, 43 assertions); full PHPUnit (138 tests, 1003 assertions); Blade view cache; Pint; diff check.
 - 2026-09-20 SUPERADMIN BRANCH REGISTRY UI UPDATE:
   - Updated the global Every branch dashboard table to display the complete branch operational census returned by the API, including academic, attendance, exam, finance, HR, notice, invitation and notification totals, with corrected empty/error table spans.
   - Verification passed: Blade view cache; Vite production build (1,557 modules); diff check.
