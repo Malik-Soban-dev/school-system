@@ -136,12 +136,16 @@ class SuperadminAccessTest extends TestCase
     public function test_superadmin_can_review_platform_health_without_backup_contents(): void
     {
         $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+        $school = DB::table('schools')->insertGetId(['name' => 'Health notification school', 'slug' => 'health-notification-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Health branch', 'code' => 'health', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $notification = DB::table('school_notifications')->insertGetId(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $user->id, 'event_key' => 'health-test', 'module' => 'exams', 'record_id' => 1, 'title' => 'Health test', 'body' => 'Health body', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_notification_deliveries')->insert(['school_id' => $school, 'branch_id' => $branch, 'notification_id' => $notification, 'channel' => 'email', 'status' => 'failed', 'attempts' => 2, 'error_code' => 'provider_error', 'available_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
         $schedulerRuns = app(PlatformSchedulerRuns::class);
         $schedulerRuns->start('platform:mark-overdue-invoices');
         $schedulerRuns->finish('platform:mark-overdue-invoices', 0);
         app(PlatformErrorRecorder::class)->record(new \RuntimeException('private diagnostic message must not be exposed'));
 
-        $this->actingAs($user)->getJson('/superadmin/health')->assertOk()->assertJsonPath('database', 'ok')->assertJsonPath('storage.available', true)->assertJsonPath('scheduled_runs.0.command', 'platform:mark-overdue-invoices')->assertJsonPath('scheduled_runs.0.status', 'success')->assertJsonPath('application_errors.last_24h', 1)->assertJsonStructure(['status', 'queue' => ['pending', 'failed'], 'schools' => ['active', 'suspended'], 'storage' => ['available', 'bytes', 'files'], 'scheduled_runs', 'application_errors' => ['last_24h', 'recent'], 'backups'])->assertJsonMissing(['private diagnostic message must not be exposed']);
+        $this->actingAs($user)->getJson('/superadmin/health')->assertOk()->assertJsonPath('database', 'ok')->assertJsonPath('status', 'attention')->assertJsonPath('storage.available', true)->assertJsonPath('scheduled_runs.0.command', 'platform:mark-overdue-invoices')->assertJsonPath('scheduled_runs.0.status', 'success')->assertJsonPath('application_errors.last_24h', 1)->assertJsonPath('notification_deliveries.last_24h', 1)->assertJsonPath('notification_deliveries.failed_24h', 1)->assertJsonPath('notification_deliveries.by_status.0.status', 'failed')->assertJsonPath('notification_deliveries.recent_failures.0.school_name', 'Health notification school')->assertJsonStructure(['status', 'queue' => ['pending', 'failed'], 'schools' => ['active', 'suspended'], 'storage' => ['available', 'bytes', 'files'], 'scheduled_runs', 'application_errors' => ['last_24h', 'recent'], 'notification_deliveries' => ['available', 'last_24h', 'failed_24h', 'by_status', 'recent_failures'], 'backups'])->assertJsonMissing(['private diagnostic message must not be exposed']);
     }
 
     public function test_superadmin_can_create_an_encrypted_backup_without_receiving_contents(): void

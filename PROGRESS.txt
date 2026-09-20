@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN NOTIFICATION-HEALTH UPDATE:
+  - Added platform-wide notification delivery health with verified availability, total activity in the last 24 hours, status counts, recent failed/unknown deliveries, school/branch context and safe error codes; recipients and provider identifiers remain excluded.
+  - Added an indexed status/update path and made recent delivery failures contribute to the explicit attention state while preserving tenant-scoped source data.
+  - Verification passed: focused Superadmin suite (55 tests, 376 assertions), full PHPUnit suite (114 tests, 730 assertions), Pint, Vite build, and diff check.
 - 2026-09-19 SUPERADMIN ERROR-HEALTH UPDATE:
   - Added a privacy-preserving platform_errors ledger for server-side application failures, retaining safe exception type/status/request metadata and a bounded 90-day history without messages or payloads.
   - Superadmin health now reports 24-hour error counts and the latest safe error records alongside scheduler, storage and backup health.

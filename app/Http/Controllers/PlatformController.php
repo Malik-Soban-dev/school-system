@@ -160,13 +160,25 @@ class PlatformController extends Controller
         $applicationErrors = Schema::hasTable('platform_errors')
             ? ['last_24h' => DB::table('platform_errors')->where('occurred_at', '>=', now()->subDay())->count(), 'recent' => DB::table('platform_errors')->orderByDesc('occurred_at')->limit(20)->get(['error_type', 'status', 'method', 'route', 'fingerprint', 'occurred_at'])]
             : ['last_24h' => null, 'recent' => collect()];
+        $notificationHealth = ['available' => false, 'last_24h' => null, 'failed_24h' => null, 'by_status' => collect(), 'recent_failures' => collect()];
+        if (Schema::hasTable('school_notification_deliveries')) {
+            $lastDay = now()->subDay();
+            $notificationHealth = [
+                'available' => true,
+                'last_24h' => DB::table('school_notification_deliveries')->where('updated_at', '>=', $lastDay)->count(),
+                'failed_24h' => DB::table('school_notification_deliveries')->whereIn('status', ['failed', 'unknown'])->where('updated_at', '>=', $lastDay)->count(),
+                'by_status' => DB::table('school_notification_deliveries')->select('status')->selectRaw('count(*) as total')->groupBy('status')->orderBy('status')->get(),
+                'recent_failures' => DB::table('school_notification_deliveries as d')->join('schools as s', 's.id', '=', 'd.school_id')->leftJoin('school_branches as b', 'b.id', '=', 'd.branch_id')->whereIn('d.status', ['failed', 'unknown'])->orderByDesc('d.updated_at')->limit(20)->get(['s.name as school_name', 'b.name as branch_name', 'd.channel', 'd.status', 'd.attempts', 'd.error_code', 'd.updated_at']),
+            ];
+        }
+        $recentNotificationFailures = $notificationHealth['available'] ? $notificationHealth['failed_24h'] : null;
         $backups = collect();
         $backupDirectory = storage_path('app/private/backups');
         if (File::isDirectory($backupDirectory)) {
             $backups = collect(File::files($backupDirectory))->sortByDesc(fn ($file): int => $file->getMTime())->take(10)->values()->map(fn ($file): array => ['name' => $file->getFilename(), 'bytes' => $file->getSize(), 'modified_at' => date(DATE_ATOM, $file->getMTime()), 'download_url' => route('superadmin.backup.download', ['name' => $file->getFilename()])]);
         }
 
-        return response()->json(['status' => $database === 'ok' && $failedJobs === 0 ? 'ok' : 'attention', 'database' => $database, 'queue' => ['pending' => $pendingJobs, 'failed' => $failedJobs], 'sessions' => $sessions, 'storage' => $storage, 'scheduled_runs' => $scheduledRuns, 'application_errors' => $applicationErrors, 'schools' => ['active' => DB::table('schools')->where('status', 'active')->count(), 'suspended' => DB::table('schools')->where('status', 'suspended')->count()], 'last_audit_at' => DB::table('school_audit')->max('created_at'), 'backups' => $backups]);
+        return response()->json(['status' => $database === 'ok' && $failedJobs === 0 && $recentNotificationFailures === 0 ? 'ok' : 'attention', 'database' => $database, 'queue' => ['pending' => $pendingJobs, 'failed' => $failedJobs], 'sessions' => $sessions, 'storage' => $storage, 'scheduled_runs' => $scheduledRuns, 'application_errors' => $applicationErrors, 'notification_deliveries' => $notificationHealth, 'schools' => ['active' => DB::table('schools')->where('status', 'active')->count(), 'suspended' => DB::table('schools')->where('status', 'suspended')->count()], 'last_audit_at' => DB::table('school_audit')->max('created_at'), 'backups' => $backups]);
     }
 
     public function createBackup(Request $request): JsonResponse
