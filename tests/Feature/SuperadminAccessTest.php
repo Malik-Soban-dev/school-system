@@ -427,6 +427,16 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->assertJsonPath('billing.paid_cents', 4900)->assertJsonPath('billing.outstanding_cents', 14900)->assertJsonPath('billing.invoices.0.invoice_number', 'PLAT-BILLING-OPEN');
     }
 
+    public function test_superadmin_dashboard_recent_audit_keeps_school_and_branch_attribution(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Dashboard School', 'slug' => 'dashboard-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'North Branch', 'code' => 'NORTH', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+        DB::table('platform_audit')->insert(['user_id' => $superadmin->id, 'school_id' => $school, 'branch_id' => $branch, 'action' => 'branch_status_updated', 'entity_type' => 'branch', 'entity_id' => $branch, 'changes' => json_encode(['status' => 'active']), 'created_at' => now()]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->assertJsonFragment(['action' => 'branch_status_updated', 'school_name' => 'Dashboard School', 'branch_name' => 'North Branch']);
+    }
+
     public function test_school_billing_totals_include_history_beyond_the_display_window(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Long Billing School', 'slug' => 'long-billing-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN DASHBOARD AUDIT ATTRIBUTION UPDATE:
+  - Platform dashboard data now preserves structured school and branch names for recent platform audit events; school-detail activity also shows branch context beside the actor.
+  - Verification passed: focused regression, full PHPUnit (128 tests, 818 assertions), Pint, and git diff check.
+
 - 2026-09-19 BRANCH-ISOLATED NOTIFICATION WORKER UPDATE:
   - Scheduled school notifications now process active branches individually, and all-notice recipient queries require a current branch grant; users assigned only to another branch are excluded. Testing-only null-branch compatibility remains isolated from production worker behavior.
   - Verification passed: focused notification branch-isolation coverage (2 tests, 9 assertions), full PHPUnit suite (127 tests, 814 assertions), Pint, and diff check.
