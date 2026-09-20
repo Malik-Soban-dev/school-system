@@ -315,6 +315,7 @@ class SchoolPortal
         $today = $this->today();
         $stats = [];
         $attendance = ['total' => 0, 'attended' => 0, 'percentage' => 0];
+        $staffAttendance = ['total' => 0, 'present' => 0, 'late' => 0, 'absent' => 0, 'leave' => 0, 'percentage' => 0];
         $fees = ['billed' => 0, 'collected' => 0, 'outstanding' => 0, 'overdue' => 0, 'collection_rate' => 0];
 
         if ($this->can($user, $this->definition('students')['read'])) {
@@ -351,8 +352,16 @@ class SchoolPortal
         if ($this->can($user, $this->definition('staff')['read'])) {
             $stats[] = ['key' => 'staff', 'label' => 'Active staff', 'value' => $this->query('staff', $user)->where('status', 'active')->count(), 'icon' => 'staff'];
         }
+        if ($this->can($user, $this->definition('staff_attendance')['read'])) {
+            $staffQuery = $this->query('staff_attendance', $user)->where('date', $today);
+            $staffAttendance['total'] = (clone $staffQuery)->count();
+            foreach (['present', 'late', 'absent', 'leave'] as $status) {
+                $staffAttendance[$status] = (clone $staffQuery)->where('status', $status)->count();
+            }
+            $staffAttendance['percentage'] = $staffAttendance['total'] > 0 ? (int) round(($staffAttendance['present'] + $staffAttendance['late']) / $staffAttendance['total'] * 100) : 0;
+        }
 
-        return ['stats' => $stats, 'attendance' => $attendance, 'fees' => $fees, 'today' => $today];
+        return ['stats' => $stats, 'attendance' => $attendance, 'staff_attendance' => $staffAttendance, 'fees' => $fees, 'today' => $today];
     }
 
     public function save(string $module, User $user, array $input, ?int $id = null): int

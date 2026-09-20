@@ -21,6 +21,7 @@ class StaffAttendanceTest extends TestCase
         $id = $this->actingAs($owner)->postJson('/portal/records/staff_attendance', ['user_id' => $teacher->id, 'date' => '2026-09-20', 'status' => 'late', 'check_in' => '08:35', 'note' => 'Traffic'])->assertOk()->json('id');
         $this->actingAs($teacher)->getJson('/portal/records/staff_attendance')->assertOk()->assertJsonPath('rows.0.id', $id)->assertJsonPath('rows.0.status', 'late');
         $this->actingAs($owner)->postJson('/portal/records/staff_attendance', ['user_id' => $teacher->id, 'date' => '2026-09-20', 'status' => 'present'])->assertUnprocessable()->assertJsonValidationErrors('user_id');
+        $this->actingAs($owner)->getJson('/portal/meta')->assertOk()->assertJsonPath('overview.staff_attendance.total', 1)->assertJsonPath('overview.staff_attendance.late', 1)->assertJsonPath('overview.staff_attendance.percentage', 100);
         $this->assertDatabaseHas('school_staff_attendance', ['user_id' => $teacher->id, 'status' => 'late']);
     }
 }
