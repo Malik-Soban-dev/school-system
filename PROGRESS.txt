@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN BRANCH REGISTRY UI UPDATE:
+  - Updated the global Every branch dashboard table to display the complete branch operational census returned by the API, including academic, attendance, exam, finance, HR, notice, invitation and notification totals, with corrected empty/error table spans.
+  - Verification passed: Blade view cache; Vite production build (1,557 modules); diff check.
 - 2026-09-20 SUPERADMIN PLATFORM CENSUS COMPLETENESS UPDATE:
   - Aligned the top-level Superadmin summary and dashboard cards with the complete tenant inventory: settings, academic years, teaching assignments, guardian links, timetables, exam subjects, grading bands, invitations, notification events/preferences, branch-access grants and audit events are now counted platform-wide alongside existing operational totals.
   - Verification passed: focused platform-census coverage (1 test, 39 assertions); full PHPUnit (138 tests, 999 assertions); Blade view cache; Pint; diff check.
