@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN SCHOOL-REGISTRY FILTER UPDATE:
+  - Added school-name/slug search and active/suspended status filters to the Superadmin school registry while retaining school switching, drill-down and status controls.
+  - Filter controls operate on the loaded platform registry without changing the all-school aggregate census or tenant authorization paths.
+  - Verification passed: focused Superadmin suite (55 tests, 352 assertions), full PHPUnit suite (114 tests, 706 assertions), Pint, Vite build, and diff check.
 - 2026-09-19 SUPERADMIN PLATFORM CENSUS UPDATE:
   - Expanded the global dashboard census with distinct client accounts, classes, and active guardians alongside schools, branches, students, staff, teachers and invoices.
   - Added regression coverage for cross-tenant class totals while retaining the existing detailed data explorer and school/branch filters.

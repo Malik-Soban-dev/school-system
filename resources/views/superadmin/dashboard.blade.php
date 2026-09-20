@@ -36,6 +36,7 @@
     </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL REGISTRY</p><h2>Every school</h2></div><div><button class="platform-refresh" type="button">Refresh data</button></div></div>
+        <form id="school-registry-filter"><input id="school-registry-search" maxlength="100" placeholder="Search school or slug" aria-label="Search schools"><select id="school-registry-status" aria-label="Filter schools by status"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><button type="submit">Filter schools</button></form>
         <form id="create-school-form"><input name="name" required maxlength="150" placeholder="New school name" aria-label="New school name"><input name="slug" required maxlength="80" pattern="[A-Za-z0-9_-]+" placeholder="Slug" aria-label="New school slug"><select id="onboard-plan" name="plan_id" aria-label="Initial school plan"><option value="">Starter trial</option></select><input name="owner_name" maxlength="100" placeholder="Initial owner name (optional)" aria-label="Initial owner name"><input name="owner_email" type="email" maxlength="255" placeholder="Initial owner email (optional)" aria-label="Initial owner email"><select name="owner_role" aria-label="Initial administrator role"><option value="owner">Owner</option><option value="admin">Admin</option></select><button type="submit">Onboard school</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Status</th><th>Plan / subscription</th><th>Branches</th><th>Members</th><th>Students</th><th>Staff</th><th>Teachers</th><th>Open invoices</th><th>Control</th></tr></thead><tbody id="school-rows"><tr><td colspan="10">Loading school registry…</td></tr></tbody></table></div>
     </section>
@@ -65,6 +66,9 @@
 (() => {
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const summary = document.querySelector('#platform-summary');
+    const schoolRegistryFilter = document.querySelector('#school-registry-filter');
+    const schoolRegistrySearch = document.querySelector('#school-registry-search');
+    const schoolRegistryStatus = document.querySelector('#school-registry-status');
     const entitlementAlertContent = document.querySelector('#entitlement-alert-content');
     const healthContent = document.querySelector('#health-content');
     const failedJobContent = document.querySelector('#failed-job-content');
@@ -134,6 +138,13 @@
             throw new Error((await response.json().catch(() => ({}))).message || 'The platform request failed.');
         }
         return response.status === 204 ? null : response.json();
+    };
+    const filterSchoolRegistry = () => {
+        const search = schoolRegistrySearch.value.trim().toLowerCase();
+        const status = schoolRegistryStatus.value;
+        schools.querySelectorAll('tr[data-school-name]').forEach(row => {
+            row.hidden = (search !== '' && !`${row.dataset.schoolName} ${row.dataset.schoolSlug}`.toLowerCase().includes(search)) || (status !== '' && row.dataset.schoolStatus !== status);
+        });
     };
     const loadHealth = async () => {
         const data = await request('/superadmin/health');
@@ -420,7 +431,8 @@
         loadExplorer().catch(error => { explorerRows.innerHTML = `<tr><td>${esc(error.message)}</td></tr>`; });
         const mrr = Number(data.billing?.mrr_cents || 0) / 100;
         summary.innerHTML = [['schools','Schools'],['branches','Branches'],['members','Memberships'],['accounts','Accounts'],['students','Students'],['staff','Staff'],['teachers','Teachers'],['classes','Classes'],['guardians','Guardians'],['open_invoices','Open invoices'],['mrr','Projected MRR'],['past_due','Past due'],['entitlement_alerts','Alerts']].map(([key,label]) => { const value = key === 'mrr' ? `$${mrr.toFixed(2)}` : key === 'past_due' ? (data.billing?.subscriptions?.past_due || 0) : data.summary[key]; return `<article><strong>${esc(value)}</strong><span>${label}</span></article>`; }).join('');
-        schools.innerHTML = data.schools.map(school => { const defaultBranch = school.branch_options.find(branch => branch.is_default) || school.branch_options[0]; const branchLimit = school.max_branches ? `${esc(school.branches)} / ${esc(school.max_branches)}` : `${esc(school.branches)} / unlimited`; const studentLimit = school.max_students ? `${esc(school.students)} / ${esc(school.max_students)}` : `${esc(school.students)} / unlimited`; return `<tr><td><button class="platform-school-detail" data-id="${school.id}" type="button"><strong>${esc(school.name)}</strong></button><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.plan_name || 'No plan')}<small>${esc(school.subscription_status || 'unassigned')}</small></td><td>${branchLimit}</td><td>${esc(school.members)}</td><td>${studentLimit}</td><td>${esc(school.staff)}</td><td>${esc(school.teachers)}</td><td>${esc(school.open_invoices)}</td><td>${defaultBranch ? `<button class="platform-workspace" data-school="${esc(school.id)}" data-branch="${esc(defaultBranch.id)}">Open workspace</button>` : ''} <button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`; }).join('') || '<tr><td colspan="10">No schools registered.</td></tr>';
+        schools.innerHTML = data.schools.map(school => { const defaultBranch = school.branch_options.find(branch => branch.is_default) || school.branch_options[0]; const branchLimit = school.max_branches ? `${esc(school.branches)} / ${esc(school.max_branches)}` : `${esc(school.branches)} / unlimited`; const studentLimit = school.max_students ? `${esc(school.students)} / ${esc(school.max_students)}` : `${esc(school.students)} / unlimited`; return `<tr data-school-name="${esc(school.name)}" data-school-slug="${esc(school.slug)}" data-school-status="${esc(school.status)}"><td><button class="platform-school-detail" data-id="${school.id}" type="button"><strong>${esc(school.name)}</strong></button><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.plan_name || 'No plan')}<small>${esc(school.subscription_status || 'unassigned')}</small></td><td>${branchLimit}</td><td>${esc(school.members)}</td><td>${studentLimit}</td><td>${esc(school.staff)}</td><td>${esc(school.teachers)}</td><td>${esc(school.open_invoices)}</td><td>${defaultBranch ? `<button class="platform-workspace" data-school="${esc(school.id)}" data-branch="${esc(defaultBranch.id)}">Open workspace</button>` : ''} <button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`; }).join('') || '<tr><td colspan="10">No schools registered.</td></tr>';
+        filterSchoolRegistry();
         loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="5">${esc(error.message)}</td></tr>`; });
         loadPlatformInvoices().catch(error => { platformInvoiceRows.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; });
         document.querySelectorAll('.platform-school-detail').forEach(button => button.addEventListener('click', () => showSchoolDetail(button.dataset.id).catch(error => { detailContent.innerHTML = esc(error.message); })));
@@ -576,6 +588,7 @@
         }
     });
     document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
+    schoolRegistryFilter.addEventListener('submit', event => { event.preventDefault(); filterSchoolRegistry(); });
     userSchool.addEventListener('change', () => { const school = platformSchools.find(item => String(item.id) === String(userSchool.value)); userBranch.innerHTML = '<option value="">All branches</option>' + (school?.branch_options || []).map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)}</option>`).join(''); });
     const updateUserAccessBranches = () => { const school = platformSchools.find(item => String(item.id) === String(userAccessSchool.value)); userAccessBranch.innerHTML = '<option value="">Select branch</option>' + (school?.branch_options || []).map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)}</option>`).join(''); };
     userAccessSchool.addEventListener('change', updateUserAccessBranches);
