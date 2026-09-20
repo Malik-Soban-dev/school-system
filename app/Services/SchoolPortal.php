@@ -116,6 +116,18 @@ class SchoolPortal
         }
         $students = $this->studentScope($user);
         $family = $this->studentScope($user, false);
+        if ($module === 'subject_attendance') {
+            return $query->where(function (Builder $scope) use ($family, $user): void {
+                $scope->whereIn('student_id', $family);
+                if ($this->tenant->hasRole($user, 'teacher')) {
+                    $scope->orWhereExists(function (Builder $assigned) use ($user): void {
+                        $assigned->selectRaw('1')->from('school_students as student')->join('school_teacher_assignments as assignment', function ($join): void {
+                            $join->on('assignment.class_id', '=', 'student.class_id')->on('assignment.subject_id', '=', 'school_subject_attendance.subject_id');
+                        })->whereColumn('student.id', 'school_subject_attendance.student_id')->where('assignment.user_id', $user->id)->where('assignment.status', 'active');
+                    });
+                }
+            });
+        }
         if ($module === 'grades') {
             return $query->where(function (Builder $query) use ($user, $family): void {
                 $query->where(function (Builder $query) use ($family): void {

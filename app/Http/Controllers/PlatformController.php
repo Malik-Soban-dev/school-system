@@ -513,6 +513,11 @@ class PlatformController extends Controller
             'attendance' => DB::table('school_attendance as r')->join('school_students as s', function ($join) use ($branchId): void {
                 $join->on('s.id', '=', 'r.student_id')->when($branchId !== null, fn ($q) => $q->where('s.branch_id', $branchId));
             })->where('r.school_id', $school)->when($branchId !== null, fn ($q) => $q->where('r.branch_id', $branchId))->when($search !== '', fn ($q) => $q->where(fn ($x) => $x->where('s.name', 'like', '%'.$search.'%')->orWhere('r.status', 'like', '%'.$search.'%')))->orderByDesc('r.date')->select(['r.id', 's.name as student', 'r.date', 'r.status', 'r.note', 'r.created_at']),
+            'subject_attendance' => DB::table('school_subject_attendance as r')->join('school_students as s', function ($join) use ($branchId): void {
+                $join->on('s.id', '=', 'r.student_id')->when($branchId !== null, fn ($q) => $q->where('s.branch_id', $branchId));
+            })->join('school_subjects as u', function ($join) use ($branchId): void {
+                $join->on('u.id', '=', 'r.subject_id')->when($branchId !== null, fn ($q) => $q->where('u.branch_id', $branchId));
+            })->where('r.school_id', $school)->when($branchId !== null, fn ($q) => $q->where('r.branch_id', $branchId))->when($search !== '', fn ($q) => $q->where(fn ($x) => $x->where('s.name', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')->orWhere('r.status', 'like', '%'.$search.'%')))->orderByDesc('r.date')->select(['r.id', 's.name as student', 'u.name as subject', 'r.date', 'r.status', 'r.note', 'r.created_at']),
             'timetables' => DB::table('school_timetables as r')->join('school_classes as c', function ($join) use ($branchId): void {
                 $join->on('c.id', '=', 'r.class_id')->when($branchId !== null, fn ($q) => $q->where('c.branch_id', $branchId));
             })->join('school_subjects as s', function ($join) use ($branchId): void {

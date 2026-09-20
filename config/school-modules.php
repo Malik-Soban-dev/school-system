@@ -227,6 +227,38 @@ return [
             'choices' => ['active', 'ended'],
         ]],
     ],
+    'subject_attendance' => [
+        'label' => 'Subject attendance',
+        'singular' => 'subject attendance record',
+        'help' => 'Record attendance for a particular subject or lesson. The daily attendance register remains separate.',
+        'read' => ['owner', 'admin', 'teacher', 'student', 'parent'],
+        'write' => ['owner', 'admin', 'teacher'],
+        'fields' => [[
+            'name' => 'student_id',
+            'label' => 'Student',
+            'type' => 'relation',
+            'relation' => 'students',
+        ], [
+            'name' => 'subject_id',
+            'label' => 'Subject',
+            'type' => 'relation',
+            'relation' => 'subjects',
+        ], [
+            'name' => 'date',
+            'label' => 'Date',
+            'type' => 'date',
+        ], [
+            'name' => 'status',
+            'label' => 'Status',
+            'type' => 'select',
+            'choices' => ['present', 'absent', 'late', 'excused'],
+        ], [
+            'name' => 'note',
+            'label' => 'Note',
+            'type' => 'textarea',
+            'optional' => true,
+        ]],
+    ],
     'attendance' => [
         'label' => 'Attendance',
         'singular' => 'attendance record',
