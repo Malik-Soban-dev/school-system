@@ -805,11 +805,12 @@ class SuperadminAccessTest extends TestCase
         DB::table('sessions')->insert(['id' => 'branch-status-session', 'user_id' => $admin->id, 'payload' => '', 'last_activity' => time()]);
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
-        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/members/'.$admin->id.'/status', ['status' => 'suspended'])->assertOk();
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/members/'.$admin->id.'/status', ['status' => 'suspended'])->assertOk()->assertJsonPath('revoked_sessions', 1);
 
         $this->assertDatabaseHas('school_user', ['school_id' => $school, 'user_id' => $admin->id, 'status' => 'suspended']);
         $this->assertDatabaseHas('school_user_branches', ['school_id' => $school, 'branch_id' => $branch, 'user_id' => $admin->id, 'status' => 'suspended']);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $admin->id, 'action' => 'school_membership_status_updated']);
+        $this->assertStringContainsString('"revoked_sessions":1', (string) DB::table('school_audit')->where('school_id', $school)->where('record_id', $admin->id)->where('action', 'school_membership_status_updated')->value('changes'));
     }
 
     public function test_superadmin_can_onboard_a_school_with_a_default_branch(): void
@@ -903,14 +904,16 @@ class SuperadminAccessTest extends TestCase
         $school = DB::table('schools')->insertGetId(['name' => 'Account School', 'slug' => 'account-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         $client = User::factory()->create(['name' => 'Client Admin', 'email' => 'client-admin@example.test', 'roles' => ['admin'], 'is_active' => true]);
         DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $client->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('sessions')->insert(['id' => 'account-status-session', 'user_id' => $client->id, 'payload' => '', 'last_activity' => time()]);
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
         $this->actingAs($superadmin)->getJson('/superadmin/users?search=client-admin')->assertOk()->assertJsonPath('users.data.0.email', 'client-admin@example.test');
-        $this->actingAs($superadmin)->putJson('/superadmin/users/'.$client->id.'/status', ['is_active' => false])->assertOk();
+        $this->actingAs($superadmin)->putJson('/superadmin/users/'.$client->id.'/status', ['is_active' => false])->assertOk()->assertJsonPath('revoked_sessions', 1);
 
         $this->assertDatabaseHas('users', ['id' => $client->id, 'is_active' => false]);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $client->id, 'action' => 'user_status_updated']);
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'user_status_updated']);
+        $this->assertStringContainsString('"revoked_sessions":1', (string) DB::table('platform_audit')->where('entity_id', $client->id)->where('action', 'user_status_updated')->value('changes'));
     }
 
     public function test_superadmin_can_control_an_unassigned_client_account(): void

@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN ACCESS-LIFECYCLE EVIDENCE UPDATE:
+  - Global account suspension and school-membership suspension now return the revoked-session count and include it in school/platform audit changes, with schema-safe handling when sessions are unavailable.
+  - Verification passed: focused lifecycle coverage (5 tests, 33 assertions), full PHPUnit (130 tests, 831 assertions), Pint, and diff check.
+
 - 2026-09-19 SUPERADMIN ORPHAN-ACCOUNT CONTROL UPDATE:
   - Superadmin account status controls now work for non-Superadmin users even when they have no active school membership, while platform Superadmin identities remain protected and all changes remain audited.
   - Verification passed: focused account-control coverage (5 tests, 16 assertions), full PHPUnit (130 tests, 827 assertions), Pint, and diff check.

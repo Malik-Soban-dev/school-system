@@ -539,20 +539,23 @@ class PlatformController extends Controller
     public function updateUserStatus(Request $request, int $user): JsonResponse
     {
         $data = $request->validate(['is_active' => ['required', 'boolean']]);
-        DB::transaction(function () use ($request, $user, $data): void {
+        $revokedSessions = DB::transaction(function () use ($request, $user, $data): int {
             $userRecord = DB::table('users')->where('id', $user)->lockForUpdate()->first(['id', 'is_active', 'roles']);
             abort_unless($userRecord, 404);
             abort_if(in_array('superadmin', json_decode((string) $userRecord->roles, true) ?: [], true), 422, 'Platform Superadmin accounts are managed separately.');
             $memberships = DB::table('school_user')->where('user_id', $user)->where('status', 'active')->pluck('school_id');
             DB::table('users')->where('id', $user)->update(['is_active' => $data['is_active'], 'updated_at' => now()]);
-            DB::table('sessions')->where('user_id', $user)->delete();
+            $revokedSessions = Schema::hasTable('sessions') ? DB::table('sessions')->where('user_id', $user)->delete() : 0;
+            $changes = ['before' => ['is_active' => (bool) $userRecord->is_active], 'after' => ['is_active' => $data['is_active']], 'revoked_sessions' => $revokedSessions];
             foreach ($memberships as $schoolId) {
-                DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'user_status_updated', 'changes' => json_encode(['before' => ['is_active' => (bool) $userRecord->is_active], 'after' => ['is_active' => $data['is_active']]]), 'created_at' => now()]);
+                DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'user_status_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
             }
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'user_status_updated', 'changes' => json_encode(['school_ids' => $memberships->values()->all(), 'before' => ['is_active' => (bool) $userRecord->is_active], 'after' => ['is_active' => $data['is_active']]]), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'user_status_updated', 'changes' => json_encode([...$changes, 'school_ids' => $memberships->values()->all()]), 'created_at' => now()]);
+
+            return $revokedSessions;
         });
 
-        return response()->json(['message' => 'Account status updated and active sessions revoked.']);
+        return response()->json(['message' => 'Account status updated and active sessions revoked.', 'revoked_sessions' => $revokedSessions]);
     }
 
     public function revokeUserSessions(Request $request, int $user): JsonResponse
@@ -948,25 +951,28 @@ class PlatformController extends Controller
     public function updateMembershipStatus(Request $request, int $school, int $user): JsonResponse
     {
         $data = $request->validate(['status' => ['required', Rule::in(['active', 'suspended'])]]);
-        DB::transaction(function () use ($request, $school, $user, $data): void {
+        $revokedSessions = DB::transaction(function () use ($request, $school, $user, $data): int {
             $membership = DB::table('school_user')->where('school_id', $school)->where('user_id', $user)->lockForUpdate()->first(['status']);
             abort_unless($membership, 404);
             abort_if(DB::table('users')->where('id', $user)->whereJsonContains('roles', 'superadmin')->exists(), 422, 'Platform Superadmin access is managed separately.');
             if ($membership->status === $data['status']) {
-                return;
+                return 0;
             }
 
             DB::table('school_user')->where('school_id', $school)->where('user_id', $user)->update(['status' => $data['status'], 'updated_at' => now()]);
+            $revokedSessions = 0;
             if ($data['status'] === 'suspended') {
                 DB::table('school_user_branches')->where('school_id', $school)->where('user_id', $user)->update(['status' => 'suspended', 'updated_at' => now()]);
-                DB::table('sessions')->where('user_id', $user)->delete();
+                $revokedSessions = Schema::hasTable('sessions') ? DB::table('sessions')->where('user_id', $user)->delete() : 0;
             }
-            $changes = ['school_id' => $school, 'user_id' => $user, 'before' => ['status' => $membership->status], 'after' => ['status' => $data['status']]];
+            $changes = ['school_id' => $school, 'user_id' => $user, 'before' => ['status' => $membership->status], 'after' => ['status' => $data['status']], 'revoked_sessions' => $revokedSessions];
             DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'school_membership_status_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
             DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'school_membership_status_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+
+            return $revokedSessions;
         });
 
-        return response()->json(['message' => 'School membership status updated.']);
+        return response()->json(['message' => 'School membership status updated.', 'revoked_sessions' => $revokedSessions]);
     }
 
     public function updateStatus(Request $request, int $school): JsonResponse
