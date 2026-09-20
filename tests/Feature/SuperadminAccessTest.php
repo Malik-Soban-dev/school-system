@@ -163,6 +163,32 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'failed_job', 'entity_id' => $job, 'action' => 'failed_job_retried']);
     }
 
+    public function test_superadmin_can_queue_and_download_a_complete_user_registry_export_without_secrets(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Export School', 'slug' => 'export-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Export Branch', 'code' => 'export', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['name' => 'Export Client', 'username' => 'export-client', 'roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $client->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $client->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $response = $this->actingAs($superadmin)->postJson('/superadmin/operations/exports/users')->assertAccepted();
+        $exportId = $response->json('export.id');
+        $this->assertDatabaseHas('platform_exports', ['id' => $exportId, 'type' => 'users', 'status' => 'completed', 'row_count' => 2]);
+        $path = storage_path('app/private/exports/users-'.$exportId.'.csv');
+        try {
+            $this->assertFileExists($path);
+            $this->actingAs($superadmin)->get('/superadmin/operations/exports/'.$exportId.'/download')->assertDownload('school-system-users-'.$exportId.'.csv');
+            $csv = file_get_contents($path);
+            $this->assertStringContainsString('Export Client', $csv);
+            $this->assertStringNotContainsString('password', strtolower($csv));
+            $this->assertDatabaseHas('platform_audit', ['entity_type' => 'export', 'entity_id' => $exportId, 'action' => 'user_export_completed']);
+            $this->assertDatabaseHas('platform_audit', ['entity_type' => 'export', 'entity_id' => $exportId, 'action' => 'user_export_downloaded']);
+        } finally {
+            File::delete($path);
+        }
+    }
+
     public function test_superadmin_can_search_paginated_cross_school_audit_without_leaking_other_school_events_when_filtered(): void
     {
         $schoolTwo = DB::table('schools')->insertGetId(['name' => 'Audit School', 'slug' => 'audit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

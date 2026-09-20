@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN USER-REGISTRY EXPORT UPDATE:
+  - Added a queued, private CSV export of the complete platform user and branch-access registry, excluding passwords, MFA secrets and tokens; exports have tracked status, seven-day expiry, authorized download and request/completion/download audit events.
+  - Added dashboard controls for queuing and monitoring exports, with chunked tenant-safe queries suitable for large client rosters.
+  - Verification passed: full PHPUnit suite (105 tests, 635 assertions), focused Superadmin suite (46 tests, 281 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN SUSPENSION SESSION-REVOCATION UPDATE:
   - Suspending a school or branch now immediately revokes database sessions for affected client users instead of waiting for their next request; reactivation preserves access grants for controlled restoration.
   - Suspension audit records include the revoked-session count, with regression coverage for both school-wide and branch-only suspension.

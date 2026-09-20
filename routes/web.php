@@ -32,6 +32,9 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, EnsureS
     Route::get('/superadmin/operations/failed-jobs', [PlatformController::class, 'failedJobs']);
     Route::post('/superadmin/operations/failed-jobs/{job}/retry', [PlatformController::class, 'retryFailedJob'])->whereNumber('job');
     Route::delete('/superadmin/operations/failed-jobs/{job}', [PlatformController::class, 'forgetFailedJob'])->whereNumber('job');
+    Route::post('/superadmin/operations/exports/users', [PlatformController::class, 'createUserExport']);
+    Route::get('/superadmin/operations/exports', [PlatformController::class, 'exports']);
+    Route::get('/superadmin/operations/exports/{export}/download', [PlatformController::class, 'downloadExport'])->whereNumber('export')->name('superadmin.export.download');
     Route::get('/superadmin/audit', [PlatformController::class, 'audit']);
     Route::get('/superadmin/users', [PlatformController::class, 'users']);
     Route::get('/superadmin/schools/{school}/records/{module}', [PlatformController::class, 'records'])->whereNumber('school')->whereIn('module', ['academic_years', 'students', 'staff', 'classes', 'subjects', 'teacher_assignments', 'guardian_links', 'attendance', 'timetables', 'exams', 'grade_bands', 'exam_subjects', 'grades', 'invoices', 'payments', 'expenses', 'leave_requests', 'payroll', 'payroll_payments', 'notices', 'enrollments', 'invitations', 'notifications', 'notification_deliveries', 'notification_preferences', 'notification_events', 'settings', 'users', 'audit']);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\BuildPlatformUserExport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
 class PlatformController extends Controller
@@ -161,6 +163,40 @@ class PlatformController extends Controller
         $jobs = Schema::hasTable('failed_jobs') ? DB::table('failed_jobs')->orderByDesc('id')->paginate((int) ($data['per_page'] ?? 50), ['id', 'uuid', 'connection', 'queue', 'failed_at']) : collect();
 
         return response()->json(['failed_jobs' => $jobs]);
+    }
+
+    public function createUserExport(Request $request): JsonResponse
+    {
+        $export = DB::transaction(function () use ($request): object {
+            $id = DB::table('platform_exports')->insertGetId(['requested_by' => $request->user()->id, 'type' => 'users', 'status' => 'queued', 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'export', 'entity_id' => $id, 'action' => 'user_export_requested', 'changes' => json_encode(['type' => 'users']), 'created_at' => now()]);
+
+            return DB::table('platform_exports')->where('id', $id)->first();
+        });
+        BuildPlatformUserExport::dispatch($export->id);
+
+        return response()->json(['export' => $export, 'message' => 'User export queued. It will be available for download when processing completes.'], 202);
+    }
+
+    public function exports(Request $request): JsonResponse
+    {
+        $data = $request->validate(['per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        $exports = DB::table('platform_exports')->where('type', 'users')->orderByDesc('id')->paginate((int) ($data['per_page'] ?? 20));
+
+        return response()->json(['exports' => $exports->through(function (object $export): array {
+            return [...(array) $export, 'download_url' => $export->status === 'completed' && $export->expires_at !== null && $export->expires_at > now() ? route('superadmin.export.download', ['export' => $export->id]) : null];
+        })]);
+    }
+
+    public function downloadExport(Request $request, int $export): BinaryFileResponse
+    {
+        $record = DB::table('platform_exports')->where('id', $export)->where('type', 'users')->where('status', 'completed')->where('expires_at', '>', now())->first(['id', 'file_path']);
+        abort_unless($record && $record->file_path && basename($record->file_path) === 'users-'.$export.'.csv', 404);
+        $path = storage_path('app/private/'.$record->file_path);
+        abort_unless(File::isFile($path), 404);
+        DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'export', 'entity_id' => $export, 'action' => 'user_export_downloaded', 'changes' => json_encode(['type' => 'users']), 'created_at' => now()]);
+
+        return response()->download($path, 'school-system-users-'.$export.'.csv', ['Content-Type' => 'text/csv']);
     }
 
     public function forgetFailedJob(Request $request, int $job): JsonResponse

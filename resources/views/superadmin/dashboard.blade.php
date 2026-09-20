@@ -19,8 +19,8 @@
         <article><strong>Loading…</strong><span>Schools</span></article><article><strong>Loading…</strong><span>Branches</span></article><article><strong>Loading…</strong><span>Members</span></article><article><strong>Loading…</strong><span>Students</span></article><article><strong>Loading…</strong><span>Open invoices</span></article>
     </section>
     <section class="platform-panel" id="platform-health">
-        <div class="platform-panel-heading"><div><p class="eyebrow">OPERATIONS</p><h2>Platform health</h2></div><div><button class="platform-refresh" id="backup-create" type="button">Create encrypted backup</button> <button class="platform-refresh" id="health-refresh" type="button">Refresh health</button></div></div>
-        <div id="health-content">Loading operational health…</div><div id="failed-job-content">Loading failed jobs…</div>
+        <div class="platform-panel-heading"><div><p class="eyebrow">OPERATIONS</p><h2>Platform health</h2></div><div><button class="platform-refresh" id="backup-create" type="button">Create encrypted backup</button> <button class="platform-refresh" id="user-export-create" type="button">Export user registry</button> <button class="platform-refresh" id="health-refresh" type="button">Refresh health</button></div></div>
+        <div id="health-content">Loading operational health…</div><div id="failed-job-content">Loading failed jobs…</div><div id="export-content">Loading exports…</div>
     </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">PLAN CATALOG</p><h2>Platform plans</h2></div></div>
@@ -65,7 +65,9 @@
     const summary = document.querySelector('#platform-summary');
     const healthContent = document.querySelector('#health-content');
     const failedJobContent = document.querySelector('#failed-job-content');
+    const exportContent = document.querySelector('#export-content');
     const backupCreate = document.querySelector('#backup-create');
+    const userExportCreate = document.querySelector('#user-export-create');
     const planRows = document.querySelector('#plan-rows');
     const platformInvoiceSchool = document.querySelector('#platform-invoice-school');
     const platformInvoiceRows = document.querySelector('#platform-invoice-rows');
@@ -144,6 +146,15 @@
         document.querySelectorAll('.failed-job-retry').forEach(button => button.addEventListener('click', async () => { if (!window.confirm('Requeue this failed job? It may run again and should be safe to retry.')) return; try { await request(`/superadmin/operations/failed-jobs/${button.dataset.id}/retry`, {method: 'POST', headers: {'X-CSRF-TOKEN': csrf}}); await loadHealth(); await loadFailedJobs(); } catch (error) { window.alert(error.message); } }));
         document.querySelectorAll('.failed-job-forget').forEach(button => button.addEventListener('click', async () => { if (!window.confirm('Remove this failed-job record? The serialized payload is not retried.')) return; try { await request(`/superadmin/operations/failed-jobs/${button.dataset.id}`, {method: 'DELETE', headers: {'X-CSRF-TOKEN': csrf}}); await loadHealth(); await loadFailedJobs(); } catch (error) { window.alert(error.message); } }));
     };
+    const loadExports = async () => {
+        const data = await request('/superadmin/operations/exports?per_page=20');
+        exportContent.innerHTML = `<h3>User registry exports</h3><div class="platform-table-wrap"><table><thead><tr><th>Created</th><th>Status</th><th>Rows</th><th>Expires</th><th>Control</th></tr></thead><tbody>${data.exports.data.map(item => `<tr><td>${esc(item.created_at)}</td><td><span class="platform-status ${esc(item.status)}">${esc(item.status)}</span>${item.error ? `<small>${esc(item.error)}</small>` : ''}</td><td>${esc(item.row_count ?? '—')}</td><td>${esc(item.expires_at || '—')}</td><td>${item.download_url ? `<a href="${esc(item.download_url)}">Download CSV</a>` : '<small>Processing…</small>'}</td></tr>`).join('') || '<tr><td colspan="5">No exports created.</td></tr>'}</tbody></table></div>`;
+    };
+    userExportCreate.addEventListener('click', async () => {
+        if (!window.confirm('Queue a complete user and branch-access CSV export? Passwords, MFA secrets and tokens are excluded.')) return;
+        userExportCreate.disabled = true;
+        try { await request('/superadmin/operations/exports/users', {method: 'POST', headers: {'X-CSRF-TOKEN': csrf}}); await loadExports(); } catch (error) { window.alert(error.message); } finally { userExportCreate.disabled = false; }
+    });
     backupCreate.addEventListener('click', async () => {
         if (!window.confirm('Create a new encrypted database backup now?')) return;
         backupCreate.disabled = true;
@@ -556,6 +567,7 @@
     load().catch(error => { schools.innerHTML = `<tr><td colspan="9">${esc(error.message)}</td></tr>`; });
     loadHealth().catch(error => { healthContent.textContent = error.message; });
     loadFailedJobs().catch(error => { failedJobContent.textContent = error.message; });
+    loadExports().catch(error => { exportContent.textContent = error.message; });
     loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; });
     loadBranches().catch(error => { branchRows.innerHTML = `<tr><td colspan="8">${esc(error.message)}</td></tr>`; });
 })();
