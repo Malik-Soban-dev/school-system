@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN MULTI-ROLE ACCESS UPDATE:
+  - Superadmin branch grants, bulk grants, invitations and member-access controls now accept combined roles from the dashboard, including owner, admin, teacher, student, parent and accountant; server-side role validation and audit behavior remain unchanged.
+  - Verification passed: focused Superadmin coverage (10 tests, 66 assertions), Blade view cache, full PHPUnit (133 tests, 860 assertions), Pint, and diff check.
+
 - 2026-09-19 SUPERADMIN SCHOOL CENSUS UPDATE:
   - School detail now exposes active members, distinct active teachers and guardians, students, staff, classes, enrollments, invoices, payments, payroll disbursements, notifications and audit totals alongside the existing branch drill-down and record explorer.
   - Verification passed: focused school-detail coverage (4 tests, 29 assertions), full PHPUnit (133 tests, 860 assertions), Pint, and diff check.
