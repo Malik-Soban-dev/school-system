@@ -36,6 +36,13 @@ class AuthenticationTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    public function test_superadmin_cannot_open_the_school_dashboard(): void
+    {
+        $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($user)->get('/dashboard')->assertRedirect(route('superadmin.dashboard'));
+    }
+
     #[TestWith([true, 'wrong-password'])]
     #[TestWith([false, 'password'])]
     public function test_invalid_or_inactive_credentials_are_rejected(bool $active, string $password): void
