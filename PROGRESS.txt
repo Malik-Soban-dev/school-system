@@ -1,3 +1,8 @@
+- 2026-09-19 BRANCH ADMIN AUTO-ATTACH HARDENING UPDATE:
+  - Removed the unsafe legacy path that let an ordinary branch administrator auto-attach arbitrary accounts by calling a direct user URL; explicit branch access is now required.
+  - Preserved intentional owner and Superadmin grant authority, including legacy owner compatibility, with regression coverage for cross-school and unassigned-account boundaries.
+  - Verification passed: full PHPUnit suite (102 tests, 618 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN WORKSPACE AUTHORITY UPDATE:
   - Superadmin branch workspaces can now manage existing owner grants and assign the owner role through People & access, while ordinary administrators retain the private owner-protection rule and platform Superadmin identities remain protected.
   - Verification passed: full PHPUnit suite (101 tests, 616 assertions), focused Superadmin suite (42 tests, 262 assertions), PHP Pint and git diff check.

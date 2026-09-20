@@ -179,18 +179,7 @@ class PortalController extends Controller
     {
         abort_unless($this->portal->admin($request->user()), 403);
         $tenant = app(TenantContext::class);
-        $sameBranch = DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->exists();
-        if (! $sameBranch && DB::table('schools')->count() === 1) {
-            DB::table('school_user')->insertOrIgnore(['school_id' => $tenant->id(), 'user_id' => $user->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
-            DB::table('school_user_branches')->insertOrIgnore(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $user->id, 'roles' => json_encode($user->roles ?? []), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
-            $sameBranch = true;
-        }
-        abort_unless($sameBranch, 404);
-        abort_if($user->id === $request->user()->id, 403, 'You cannot change your own access.');
         $isSuperadmin = $request->user()->hasRole('superadmin');
-        $currentRoles = json_decode((string) DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->value('roles'), true) ?: [];
-        abort_if(in_array('owner', $currentRoles, true) && ! $isSuperadmin, 403, 'Owner access must be managed privately.');
-        abort_if(in_array('admin', $currentRoles, true) && ! $isSuperadmin && ! $tenant->hasRole($request->user(), 'owner'), 403);
         $allowed = ['teacher', 'parent', 'student', 'accountant'];
         if ($isSuperadmin || $tenant->hasRole($request->user(), 'owner')) {
             $allowed[] = 'admin';
@@ -199,6 +188,22 @@ class PortalController extends Controller
             $allowed[] = 'owner';
         }
         $data = $request->validate(['roles' => ['required', 'array', 'min:1'], 'roles.*' => [Rule::in($allowed), 'distinct'], 'is_active' => ['required', 'boolean']]);
+        $sameBranch = DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->exists();
+        $isOwner = $tenant->hasRole($request->user(), 'owner');
+        if (! $sameBranch && ! $isSuperadmin && ! $isOwner) {
+            abort_if(DB::table('school_user')->where('user_id', $user->id)->where('school_id', '!=', $tenant->id())->exists(), 404);
+            abort(403, 'The account has no access grant for this branch.');
+        }
+        if (! $sameBranch && ($isSuperadmin || $isOwner) && DB::table('schools')->count() === 1) {
+            DB::table('school_user')->insertOrIgnore(['school_id' => $tenant->id(), 'user_id' => $user->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('school_user_branches')->insertOrIgnore(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $user->id, 'roles' => json_encode($user->roles ?? []), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+            $sameBranch = true;
+        }
+        abort_unless($sameBranch, 404);
+        abort_if($user->id === $request->user()->id, 403, 'You cannot change your own access.');
+        $currentRoles = json_decode((string) DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->value('roles'), true) ?: [];
+        abort_if(in_array('owner', $currentRoles, true) && ! $isSuperadmin, 403, 'Owner access must be managed privately.');
+        abort_if(in_array('admin', $currentRoles, true) && ! $isSuperadmin && ! $tenant->hasRole($request->user(), 'owner'), 403);
         DB::transaction(function () use ($user, $data, $request): void {
             $tenant = app(TenantContext::class);
             $before = ['roles' => json_decode((string) DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->value('roles'), true) ?: [], 'access_status' => DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->value('status'), 'account_active' => $user->is_active];

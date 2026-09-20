@@ -380,6 +380,15 @@ class SuperadminAccessTest extends TestCase
         $this->putJson('/portal/users/'.$other->id, ['roles' => ['teacher'], 'is_active' => true])->assertNotFound();
     }
 
+    public function test_branch_admin_cannot_auto_attach_an_unassigned_account_by_direct_url(): void
+    {
+        $admin = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        $unassigned = User::factory()->create(['roles' => ['teacher'], 'is_active' => true]);
+
+        $this->actingAs($admin)->putJson('/portal/users/'.$unassigned->id, ['roles' => ['teacher'], 'is_active' => true])->assertForbidden();
+        $this->assertDatabaseMissing('school_user_branches', ['user_id' => $unassigned->id]);
+    }
+
     public function test_superadmin_can_create_a_branch_and_grant_scoped_admin_access(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Branch School', 'slug' => 'branch-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
