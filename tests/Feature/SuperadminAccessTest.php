@@ -141,6 +141,15 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->assertJsonCount(101, 'members');
     }
 
+    public function test_superadmin_school_detail_does_not_truncate_available_account_rosters(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Available Roster School', 'slug' => 'available-roster-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        User::factory()->count(101)->create(['roles' => ['admin'], 'is_active' => true]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->assertJsonCount(101, 'available_users');
+    }
+
     public function test_superadmin_user_registry_preserves_pagination_and_branch_access_metadata(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'User Registry School', 'slug' => 'user-registry-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
