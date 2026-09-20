@@ -442,6 +442,19 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_subscriptions', ['id' => $subscription, 'renews_at' => '2026-11-01 00:00:00']);
     }
 
+    public function test_platform_invoice_overdue_command_is_repeat_safe_and_audited(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Overdue School', 'slug' => 'overdue-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $invoice = DB::table('platform_billing_invoices')->insertGetId(['school_id' => $school, 'invoice_number' => 'PLAT-OVERDUE-1', 'amount_cents' => 4900, 'currency' => 'USD', 'period_start' => '2026-08-01', 'period_end' => '2026-08-31', 'due_on' => '2026-09-01', 'status' => 'issued', 'created_at' => now(), 'updated_at' => now()]);
+
+        Artisan::call('platform:mark-overdue-invoices', ['--until' => '2026-09-19']);
+        Artisan::call('platform:mark-overdue-invoices', ['--until' => '2026-09-19']);
+
+        $this->assertDatabaseHas('platform_billing_invoices', ['id' => $invoice, 'status' => 'overdue']);
+        $this->assertDatabaseCount('platform_audit', 1);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'platform_invoice', 'entity_id' => $invoice, 'action' => 'invoice_marked_overdue']);
+    }
+
     public function test_superadmin_can_update_a_plan_with_platform_auditing(): void
     {
         $plan = DB::table('platform_plans')->where('code', 'starter')->value('id');

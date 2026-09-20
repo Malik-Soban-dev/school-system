@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN OVERDUE-INVOICE AUTOMATION UPDATE:
+  - Added a repeat-safe platform:mark-overdue-invoices command scheduled daily at 00:20; issued invoices due before the run date become overdue inside a transaction and receive platform audit events.
+  - Added regression coverage proving a second run does not duplicate transitions or audit records.
+  - Verification passed: full PHPUnit suite (113 tests, 694 assertions), focused Superadmin suite (54 tests, 340 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN ENTITLEMENT-ALERT UPDATE:
   - Added a global alert feed for missing, past-due or canceled subscriptions and schools at branch/student plan limits; alerts appear in the dashboard with usage details where applicable.
   - Added regression coverage for capacity alert generation while preserving unrestricted Superadmin visibility.
