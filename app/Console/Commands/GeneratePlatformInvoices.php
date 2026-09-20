@@ -73,6 +73,7 @@ class GeneratePlatformInvoices extends Command
                         ]);
                     DB::table('platform_audit')->insert([
                         'user_id' => null,
+                        'school_id' => $subscription->school_id,
                         'entity_type' => 'platform_invoice',
                         'entity_id' => $invoiceId,
                         'action' => 'invoice_generated',

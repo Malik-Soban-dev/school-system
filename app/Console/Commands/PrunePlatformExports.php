@@ -20,7 +20,7 @@ class PrunePlatformExports extends Command
             ->whereNotNull('expires_at')
             ->where('expires_at', '<=', now())
             ->orderBy('id')
-            ->select(['id', 'requested_by', 'type', 'file_path', 'row_count', 'expires_at'])
+            ->select(['id', 'school_id', 'requested_by', 'type', 'file_path', 'row_count', 'expires_at'])
             ->chunkById(100, function ($exports) use (&$pruned): void {
                 foreach ($exports as $export) {
                     $path = $this->safeExportPath($export->file_path);
@@ -32,6 +32,7 @@ class PrunePlatformExports extends Command
                         DB::table('platform_exports')->where('id', $export->id)->delete();
                         DB::table('platform_audit')->insert([
                             'user_id' => $export->requested_by,
+                            'school_id' => $export->school_id,
                             'entity_type' => 'export',
                             'entity_id' => $export->id,
                             'action' => 'export_pruned',

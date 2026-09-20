@@ -416,7 +416,9 @@ class SuperadminAccessTest extends TestCase
 
         $this->assertDatabaseHas('school_subscriptions', ['school_id' => $school, 'plan_id' => $plan, 'status' => 'active', 'renews_at' => '2027-01-01']);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'module' => 'billing', 'action' => 'subscription_updated']);
-        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'subscription', 'entity_id' => $school, 'action' => 'subscription_updated']);
+        $this->assertDatabaseHas('platform_audit', ['school_id' => $school, 'entity_type' => 'subscription', 'entity_id' => $school, 'action' => 'subscription_updated']);
+        $platformAudit = collect($this->actingAs($superadmin)->getJson('/superadmin/audit?school_id='.$school)->assertOk()->json('audit.data'))->first(fn (array $row): bool => $row['source'] === 'platform' && $row['action'] === 'subscription_updated');
+        $this->assertSame('Billing School', $platformAudit['school_name']);
         $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/subscription', ['plan_id' => $plan, 'status' => 'canceled'])->assertOk();
         $this->assertNotNull(DB::table('school_subscriptions')->where('school_id', $school)->value('canceled_at'));
         $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/subscription', ['plan_id' => $plan, 'status' => 'active', 'renews_at' => '2027-01-01'])->assertOk();

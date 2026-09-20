@@ -64,7 +64,7 @@ class BuildPlatformSchoolExport implements ShouldQueue
 
         $expiresAt = now()->addDays(7);
         DB::table('platform_exports')->where('id', $this->exportId)->update(['status' => 'completed', 'file_path' => $relativePath, 'row_count' => $rows, 'expires_at' => $expiresAt, 'updated_at' => now()]);
-        DB::table('platform_audit')->insert(['user_id' => $export->requested_by, 'entity_type' => 'export', 'entity_id' => $this->exportId, 'action' => 'school_export_completed', 'changes' => json_encode(['school_id' => $this->schoolId, 'rows' => $rows, 'expires_at' => $expiresAt->toIso8601String()]), 'created_at' => now()]);
+        DB::table('platform_audit')->insert(['user_id' => $export->requested_by, 'school_id' => $this->schoolId, 'entity_type' => 'export', 'entity_id' => $this->exportId, 'action' => 'school_export_completed', 'changes' => json_encode(['school_id' => $this->schoolId, 'rows' => $rows, 'expires_at' => $expiresAt->toIso8601String()]), 'created_at' => now()]);
     }
 
     public function failed(\Throwable $exception): void
@@ -73,7 +73,7 @@ class BuildPlatformSchoolExport implements ShouldQueue
         File::delete(storage_path('app/private/exports/school-'.$this->schoolId.'-'.$this->exportId.'.ndjson'));
         DB::table('platform_exports')->where('id', $this->exportId)->update(['status' => 'failed', 'file_path' => null, 'expires_at' => null, 'error' => substr($exception->getMessage(), 0, 2000), 'updated_at' => now()]);
         if ($export) {
-            DB::table('platform_audit')->insert(['user_id' => $export->requested_by, 'entity_type' => 'export', 'entity_id' => $this->exportId, 'action' => 'school_export_failed', 'changes' => json_encode(['type' => $export->type, 'school_id' => $this->schoolId]), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $export->requested_by, 'school_id' => $this->schoolId, 'entity_type' => 'export', 'entity_id' => $this->exportId, 'action' => 'school_export_failed', 'changes' => json_encode(['type' => $export->type, 'school_id' => $this->schoolId]), 'created_at' => now()]);
         }
     }
 

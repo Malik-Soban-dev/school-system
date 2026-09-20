@@ -63,7 +63,7 @@ class PortalController extends Controller
         app(TenantContext::class)->set((int) $context->school_id, (int) $context->branch_id);
 
         if ($request->user()->hasRole('superadmin')) {
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'workspace', 'entity_id' => (int) $context->branch_id, 'action' => 'superadmin_context_switched', 'changes' => json_encode(['school_id' => (int) $context->school_id, 'branch_id' => (int) $context->branch_id]), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => (int) $context->school_id, 'branch_id' => (int) $context->branch_id, 'entity_type' => 'workspace', 'entity_id' => (int) $context->branch_id, 'action' => 'superadmin_context_switched', 'changes' => json_encode(['school_id' => (int) $context->school_id, 'branch_id' => (int) $context->branch_id]), 'created_at' => now()]);
         }
 
         return response()->json(['message' => 'Workspace branch switched.', 'current' => ['school_id' => (int) $context->school_id, 'branch_id' => (int) $context->branch_id]]);

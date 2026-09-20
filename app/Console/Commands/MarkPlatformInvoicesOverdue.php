@@ -33,7 +33,7 @@ class MarkPlatformInvoicesOverdue extends Command
                     }
 
                     DB::table('platform_billing_invoices')->where('id', $invoiceId)->update(['status' => 'overdue', 'updated_at' => now()]);
-                    DB::table('platform_audit')->insert(['user_id' => null, 'entity_type' => 'platform_invoice', 'entity_id' => $invoiceId, 'action' => 'invoice_marked_overdue', 'changes' => json_encode(['school_id' => $invoice->school_id, 'due_on' => $invoice->due_on, 'as_of' => $until, 'before_status' => 'issued', 'after_status' => 'overdue']), 'created_at' => now()]);
+                    DB::table('platform_audit')->insert(['user_id' => null, 'school_id' => $invoice->school_id, 'entity_type' => 'platform_invoice', 'entity_id' => $invoiceId, 'action' => 'invoice_marked_overdue', 'changes' => json_encode(['school_id' => $invoice->school_id, 'due_on' => $invoice->due_on, 'as_of' => $until, 'before_status' => 'issued', 'after_status' => 'overdue']), 'created_at' => now()]);
 
                     return 'marked';
                 });

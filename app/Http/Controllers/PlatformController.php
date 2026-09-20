@@ -111,7 +111,7 @@ class PlatformController extends Controller
             abort_unless(DB::table('schools')->where('id', $school)->lockForUpdate()->exists(), 404);
             $subscription = DB::table('school_subscriptions')->where('school_id', $school)->whereIn('status', ['trialing', 'active'])->first(['id']);
             $invoiceId = DB::table('platform_billing_invoices')->insertGetId(['school_id' => $school, 'subscription_id' => $subscription?->id, 'created_by' => $request->user()->id, 'invoice_number' => 'PLAT-'.str_pad((string) $school, 6, '0', STR_PAD_LEFT).'-'.now()->format('Ym').'-'.Str::upper(Str::random(6)), 'amount_cents' => $data['amount_cents'], 'currency' => strtoupper($data['currency'] ?? 'USD'), 'period_start' => $data['period_start'], 'period_end' => $data['period_end'], 'due_on' => $data['due_on'], 'status' => 'issued', 'notes' => $data['notes'] ?? null, 'created_at' => now(), 'updated_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'platform_invoice', 'entity_id' => $invoiceId, 'action' => 'invoice_created', 'changes' => json_encode(['school_id' => $school, 'amount_cents' => $data['amount_cents'], 'currency' => strtoupper($data['currency'] ?? 'USD'), 'period_start' => $data['period_start'], 'period_end' => $data['period_end'], 'due_on' => $data['due_on']]), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'entity_type' => 'platform_invoice', 'entity_id' => $invoiceId, 'action' => 'invoice_created', 'changes' => json_encode(['school_id' => $school, 'amount_cents' => $data['amount_cents'], 'currency' => strtoupper($data['currency'] ?? 'USD'), 'period_start' => $data['period_start'], 'period_end' => $data['period_end'], 'due_on' => $data['due_on']]), 'created_at' => now()]);
 
             return DB::table('platform_billing_invoices')->where('id', $invoiceId)->first();
         });
@@ -128,7 +128,7 @@ class PlatformController extends Controller
             abort_if($data['status'] === 'paid' && blank($data['payment_reference'] ?? $before->payment_reference), 422, 'A payment reference is required before marking an invoice paid.');
             $paidAt = $data['status'] === 'paid' ? ($before->paid_at ?? now()) : null;
             DB::table('platform_billing_invoices')->where('id', $invoice)->update(['status' => $data['status'], 'payment_reference' => $data['payment_reference'] ?? $before->payment_reference, 'paid_at' => $paidAt, 'updated_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'platform_invoice', 'entity_id' => $invoice, 'action' => 'invoice_status_updated', 'changes' => json_encode(['school_id' => $before->school_id, 'before' => $before, 'after' => ['status' => $data['status'], 'payment_reference' => $data['payment_reference'] ?? $before->payment_reference, 'paid_at' => $paidAt]]), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $before->school_id, 'entity_type' => 'platform_invoice', 'entity_id' => $invoice, 'action' => 'invoice_status_updated', 'changes' => json_encode(['school_id' => $before->school_id, 'before' => $before, 'after' => ['status' => $data['status'], 'payment_reference' => $data['payment_reference'] ?? $before->payment_reference, 'paid_at' => $paidAt]]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Platform invoice status updated.']);
@@ -244,7 +244,7 @@ class PlatformController extends Controller
         $export = DB::transaction(function () use ($request, $school): object {
             abort_unless(DB::table('schools')->where('id', $school)->lockForUpdate()->exists(), 404);
             $id = DB::table('platform_exports')->insertGetId(['requested_by' => $request->user()->id, 'school_id' => $school, 'type' => 'school', 'status' => 'queued', 'created_at' => now(), 'updated_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'export', 'entity_id' => $id, 'action' => 'school_export_requested', 'changes' => json_encode(['school_id' => $school, 'type' => 'school']), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'entity_type' => 'export', 'entity_id' => $id, 'action' => 'school_export_requested', 'changes' => json_encode(['school_id' => $school, 'type' => 'school']), 'created_at' => now()]);
 
             return DB::table('platform_exports')->where('id', $id)->first();
         });
@@ -271,7 +271,7 @@ class PlatformController extends Controller
         $path = storage_path('app/private/'.$record->file_path);
         abort_unless(File::isFile($path), 404);
         $isSchool = $record->type === 'school';
-        DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'export', 'entity_id' => $export, 'action' => $isSchool ? 'school_export_downloaded' : 'user_export_downloaded', 'changes' => json_encode(['type' => $record->type, 'school_id' => $record->school_id]), 'created_at' => now()]);
+        DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $record->school_id, 'entity_type' => 'export', 'entity_id' => $export, 'action' => $isSchool ? 'school_export_downloaded' : 'user_export_downloaded', 'changes' => json_encode(['type' => $record->type, 'school_id' => $record->school_id]), 'created_at' => now()]);
 
         return response()->download($path, $isSchool ? 'school-system-school-'.$record->school_id.'-'.$export.'.ndjson' : 'school-system-users-'.$export.'.csv', ['Content-Type' => $isSchool ? 'application/x-ndjson' : 'text/csv']);
     }
@@ -309,18 +309,20 @@ class PlatformController extends Controller
         }
         $search = trim((string) ($data['search'] ?? ''));
         $schoolAudit = DB::table('school_audit as a')->join('schools as s', 's.id', '=', 'a.school_id')->leftJoin('school_branches as b', 'b.id', '=', 'a.branch_id')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->when(isset($data['school_id']), fn ($query) => $query->where('a.school_id', $data['school_id']))->when(isset($data['branch_id']), fn ($query) => $query->where('a.branch_id', $data['branch_id']))->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('a.module', 'like', '%'.$search.'%')->orWhere('a.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')->orWhere('s.name', 'like', '%'.$search.'%')->orWhere('b.name', 'like', '%'.$search.'%')))->select(['a.id', 'a.school_id', 'a.branch_id', 's.name as school_name', 'b.name as branch_name', 'a.module', 'a.action', 'a.changes', 'a.created_at', 'u.name as actor'])->selectRaw("'school' as source");
-        $platformAudit = DB::table('platform_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')
+        $platformAudit = DB::table('platform_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->leftJoin('schools as ps', 'ps.id', '=', 'a.school_id')->leftJoin('school_branches as pb', 'pb.id', '=', 'a.branch_id')
             ->when(isset($data['school_id']), fn ($query) => $query->where(function ($scope) use ($data): void {
-                $scope->whereJsonContains('a.changes->school_id', $data['school_id'])
+                $scope->where('a.school_id', $data['school_id'])
+                    ->orWhereJsonContains('a.changes->school_id', $data['school_id'])
                     ->orWhereJsonContains('a.changes->school_ids', $data['school_id'])
                     ->orWhere(fn ($entity) => $entity->whereIn('a.entity_type', ['school', 'subscription', 'school_feature'])->where('a.entity_id', $data['school_id']));
             }))
             ->when(isset($data['branch_id']), fn ($query) => $query->where(function ($scope) use ($data): void {
-                $scope->whereJsonContains('a.changes->branch_id', $data['branch_id'])
+                $scope->where('a.branch_id', $data['branch_id'])
+                    ->orWhereJsonContains('a.changes->branch_id', $data['branch_id'])
                     ->orWhereJsonContains('a.changes->branch_ids', $data['branch_id'])
                     ->orWhere(fn ($entity) => $entity->whereIn('a.entity_type', ['branch', 'workspace'])->where('a.entity_id', $data['branch_id']));
             }))
-            ->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('a.entity_type', 'like', '%'.$search.'%')->orWhere('a.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')))->select(['a.id', DB::raw('null as school_id'), DB::raw('null as branch_id'), DB::raw("'Platform' as school_name"), DB::raw('null as branch_name'), DB::raw("'platform' as module"), 'a.action', 'a.changes', 'a.created_at', 'u.name as actor'])->selectRaw("'platform' as source");
+            ->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('a.entity_type', 'like', '%'.$search.'%')->orWhere('a.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')->orWhere('ps.name', 'like', '%'.$search.'%')->orWhere('pb.name', 'like', '%'.$search.'%')))->select(['a.id', 'a.school_id', 'a.branch_id', DB::raw("coalesce(ps.name, 'Platform') as school_name"), 'pb.name as branch_name', DB::raw("'platform' as module"), 'a.action', 'a.changes', 'a.created_at', 'u.name as actor'])->selectRaw("'platform' as source");
         $events = DB::query()->fromSub($schoolAudit->unionAll($platformAudit), 'events')->orderByDesc('created_at')->orderByDesc('id')->paginate((int) ($data['per_page'] ?? 50));
 
         return response()->json(['audit' => $events]);
@@ -392,7 +394,7 @@ class PlatformController extends Controller
             $revokedSessions = $data['status'] === 'suspended' && Schema::hasTable('sessions') ? DB::table('sessions')->where('user_id', $user)->delete() : 0;
             $changes = ['school_id' => $data['school_id'], 'branch_id' => $data['branch_id'], 'before' => $access ? ['roles' => json_decode((string) $access->roles, true) ?: [], 'status' => $access->status] : null, 'after' => ['roles' => $data['roles'], 'status' => $data['status']], 'revoked_sessions' => $revokedSessions];
             DB::table('school_audit')->insert(['school_id' => $data['school_id'], 'branch_id' => $data['branch_id'], 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'branch_access_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'user_branch_access_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $data['school_id'], 'branch_id' => $data['branch_id'], 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'user_branch_access_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'User branch access updated.']);
@@ -602,7 +604,7 @@ class PlatformController extends Controller
                 $invitationId = DB::table('school_invitations')->insertGetId(['school_id' => $schoolId, 'branch_id' => $branchId, 'name' => $data['owner_name'], 'email' => $email, 'roles' => json_encode($roles), 'token_hash' => hash('sha256', $token), 'expires_at' => now()->addHours(48), 'accepted_at' => null, 'created_by' => $request->user()->id, 'created_at' => now(), 'updated_at' => now()]);
                 $auditChanges = ['invitation_id' => $invitationId, 'branch_id' => $branchId, 'email' => $email, 'roles' => $roles];
                 DB::table('school_audit')->insert(['school_id' => $schoolId, 'branch_id' => $branchId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $invitationId, 'action' => 'initial_admin_invitation_issued', 'changes' => json_encode($auditChanges), 'created_at' => now()]);
-                DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'school', 'entity_id' => $schoolId, 'action' => 'initial_admin_invitation_issued', 'changes' => json_encode($auditChanges), 'created_at' => now()]);
+                DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $schoolId, 'branch_id' => $branchId, 'entity_type' => 'school', 'entity_id' => $schoolId, 'action' => 'initial_admin_invitation_issued', 'changes' => json_encode($auditChanges), 'created_at' => now()]);
                 $invitation = ['id' => $invitationId, 'token' => $token, 'branch_id' => $branchId, 'email' => $email, 'roles' => $roles];
             }
 
@@ -633,7 +635,7 @@ class PlatformController extends Controller
             DB::table('school_subscriptions')->updateOrInsert(['school_id' => $school], ['plan_id' => $after['plan_id'], 'status' => $after['status'], 'starts_at' => $before?->starts_at ?? $now, 'renews_at' => $after['renews_at'], 'canceled_at' => $after['canceled_at'], 'updated_at' => $now, 'created_at' => $before?->created_at ?? $now]);
             $changes = ['before' => $before, 'after' => $after];
             DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'billing', 'record_id' => $school, 'action' => 'subscription_updated', 'changes' => json_encode($changes), 'created_at' => $now]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'subscription', 'entity_id' => $school, 'action' => 'subscription_updated', 'changes' => json_encode(['school_id' => $school, ...$changes]), 'created_at' => $now]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'entity_type' => 'subscription', 'entity_id' => $school, 'action' => 'subscription_updated', 'changes' => json_encode(['school_id' => $school, ...$changes]), 'created_at' => $now]);
         });
 
         return response()->json(['message' => 'School subscription updated.']);
@@ -692,7 +694,7 @@ class PlatformController extends Controller
             $before = DB::table('schools')->where('id', $school)->lockForUpdate()->first(['id', 'name', 'slug', 'status']);
             abort_unless($before, 404);
             DB::table('schools')->where('id', $school)->update(['name' => $data['name'], 'slug' => $data['slug'], 'updated_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'school', 'entity_id' => $school, 'action' => 'school_updated', 'changes' => json_encode(['before' => $before, 'after' => $data]), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'entity_type' => 'school', 'entity_id' => $school, 'action' => 'school_updated', 'changes' => json_encode(['before' => $before, 'after' => $data]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'School profile updated.']);
@@ -741,7 +743,7 @@ class PlatformController extends Controller
             }
             $changes = ['feature' => $data['feature'], 'before' => $before === null ? null : (bool) $before, 'after' => $data['enabled']];
             DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => null, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => 0, 'action' => 'school_feature_override_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'school_feature', 'entity_id' => $school, 'action' => 'school_feature_override_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'entity_type' => 'school_feature', 'entity_id' => $school, 'action' => 'school_feature_override_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'School feature access updated and audited.', 'feature' => $data['feature'], 'enabled' => $data['enabled']]);
@@ -758,7 +760,7 @@ class PlatformController extends Controller
             $branchId = DB::table('school_branches')->insertGetId([...$data, 'school_id' => $school, 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
             $changes = ['school_id' => $school, 'branch_id' => $branchId, 'name' => $data['name'], 'code' => $data['code']];
             DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branchId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branchId, 'action' => 'branch_created', 'changes' => json_encode($changes), 'created_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'branch', 'entity_id' => $branchId, 'action' => 'branch_created', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'branch_id' => $branchId, 'entity_type' => 'branch', 'entity_id' => $branchId, 'action' => 'branch_created', 'changes' => json_encode($changes), 'created_at' => now()]);
 
             return DB::table('school_branches')->where('id', $branchId)->first();
         });
@@ -778,7 +780,7 @@ class PlatformController extends Controller
             DB::table('school_branches')->where('id', $branch)->update(['name' => $data['name'], 'code' => $data['code'], 'updated_at' => now()]);
             $changes = ['school_id' => $school, 'branch_id' => $branch, 'before' => $before, 'after' => $data];
             DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'branch', 'entity_id' => $branch, 'action' => 'branch_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'branch_id' => $branch, 'entity_type' => 'branch', 'entity_id' => $branch, 'action' => 'branch_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Branch details updated.']);
@@ -795,7 +797,7 @@ class PlatformController extends Controller
             DB::table('school_branches')->where('id', $branch)->update(['is_default' => true, 'updated_at' => now()]);
             $changes = ['school_id' => $school, 'before' => ['branch_id' => $previous], 'after' => ['branch_id' => $branch]];
             DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_default_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'branch', 'entity_id' => $branch, 'action' => 'branch_default_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'branch_id' => $branch, 'entity_type' => 'branch', 'entity_id' => $branch, 'action' => 'branch_default_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'School default branch updated.']);
@@ -824,7 +826,7 @@ class PlatformController extends Controller
             }
             $changes = ['school_id' => $school, 'branch_id' => $branch, 'before' => ['status' => $branchRecord->status], 'after' => ['status' => $data['status']], 'revoked_sessions' => $revokedSessions];
             DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_status_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'branch', 'entity_id' => $branch, 'action' => 'branch_status_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'branch_id' => $branch, 'entity_type' => 'branch', 'entity_id' => $branch, 'action' => 'branch_status_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Branch status updated.']);
@@ -849,7 +851,7 @@ class PlatformController extends Controller
             $invitationId = DB::table('school_invitations')->where('school_id', $school)->where('branch_id', $branch)->where('email', $data['email'])->value('id');
             $changes = ['school_id' => $school, 'branch_id' => $branch, 'invitation_id' => $invitationId, 'email' => $data['email'], 'roles' => $data['roles']];
             DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_invitation_issued', 'changes' => json_encode($changes), 'created_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'invitation', 'entity_id' => $invitationId, 'action' => 'branch_invitation_issued', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'branch_id' => $branch, 'entity_type' => 'invitation', 'entity_id' => $invitationId, 'action' => 'branch_invitation_issued', 'changes' => json_encode($changes), 'created_at' => now()]);
         });
 
         return response()->json(['url' => route('invitation.show', ['token' => $token]), 'message' => 'Share this single-use link privately. It expires in 48 hours.'], 201);
@@ -864,7 +866,7 @@ class PlatformController extends Controller
             DB::table('school_invitations')->where('id', $invitation)->update(['expires_at' => now(), 'token_hash' => hash('sha256', Str::random(64)), 'updated_at' => now()]);
             $changes = ['school_id' => $school, 'branch_id' => $record->branch_id, 'email' => $record->email];
             DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $record->branch_id, 'user_id' => $request->user()->id, 'module' => 'invitations', 'record_id' => $invitation, 'action' => 'invitation_revoked', 'changes' => json_encode($changes), 'created_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'invitation', 'entity_id' => $invitation, 'action' => 'invitation_revoked', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'branch_id' => $record->branch_id, 'entity_type' => 'invitation', 'entity_id' => $invitation, 'action' => 'invitation_revoked', 'changes' => json_encode($changes), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Invitation revoked. The old link no longer works.']);
@@ -899,7 +901,7 @@ class PlatformController extends Controller
             }
             $changes = ['school_id' => $school, 'branch_id' => $data['branch_id'], 'user_id' => $user, 'roles' => $data['roles'], 'status' => $data['status']];
             DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $data['branch_id'], 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'branch_access_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'branch_access_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'branch_id' => $data['branch_id'], 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'branch_access_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Branch access updated.']);
@@ -938,7 +940,7 @@ class PlatformController extends Controller
             if ($membershipCreated) {
                 DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'school_membership_created', 'changes' => json_encode(['user_id' => $user, 'bulk' => true]), 'created_at' => now()]);
             }
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'bulk_branch_access_updated', 'changes' => json_encode(['school_id' => $school, 'branch_ids' => $data['branch_ids'], 'roles' => $data['roles'], 'status' => $data['status']]), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'bulk_branch_access_updated', 'changes' => json_encode(['school_id' => $school, 'branch_ids' => $data['branch_ids'], 'roles' => $data['roles'], 'status' => $data['status']]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Branch access updated for all selected branches.']);
@@ -962,7 +964,7 @@ class PlatformController extends Controller
             }
             $changes = ['school_id' => $school, 'user_id' => $user, 'before' => ['status' => $membership->status], 'after' => ['status' => $data['status']]];
             DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'school_membership_status_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'school_membership_status_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'school_membership_status_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'School membership status updated.']);
@@ -989,7 +991,7 @@ class PlatformController extends Controller
             }
             $changes = ['school_id' => $school, 'before' => ['status' => $schoolRecord->status], 'after' => ['status' => $data['status']], 'revoked_sessions' => $revokedSessions];
             DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $school, 'action' => 'school_status_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
-            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'school', 'entity_id' => $school, 'action' => 'school_status_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'school_id' => $school, 'entity_type' => 'school', 'entity_id' => $school, 'action' => 'school_status_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'School status updated.']);
