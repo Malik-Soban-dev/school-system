@@ -1,3 +1,7 @@
+- 2026-09-20 SCHOOL FEE SUMMARY UPDATE:
+  - Added a dashboard financial snapshot showing collection rate, billed/collected totals, outstanding balance and overdue balance for the current school context.
+  - Verification passed: MonthlySettlement feature suite (4 tests, 48 assertions); Vite production build; diff check.
+
 - 2026-09-20 OVERDUE FEE VISIBILITY UPDATE:
   - Invoice listings now label any unpaid balance past its due date as overdue while preserving paid, partially paid and unpaid states.
   - Verification passed: MonthlySettlement feature suite (4 tests, 42 assertions); diff check.

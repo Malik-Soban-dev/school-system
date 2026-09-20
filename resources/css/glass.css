@@ -26,3 +26,4 @@ input:not([type=checkbox]):not([type=hidden]),select,textarea{background:var(--i
 /* Keep the school-admin navigation visible while records scroll */
 .workspace>aside{position:sticky!important;top:18px!important;align-self:flex-start!important;height:calc(100dvh - 36px)!important;max-height:calc(100dvh - 36px)!important;overflow-y:auto!important;overflow-x:hidden!important}
 @media(max-width:760px){.workspace>aside{position:fixed!important;top:116px!important;height:calc(100dvh - 128px)!important;max-height:calc(100dvh - 128px)!important}}
+.fee-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}.fee-summary span{display:grid;gap:3px;color:var(--muted);font-size:.76rem}.fee-summary strong{color:var(--ink);font-size:.9rem}@media(max-width:520px){.fee-summary{grid-template-columns:1fr}}

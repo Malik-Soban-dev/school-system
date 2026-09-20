@@ -84,5 +84,6 @@ class MonthlySettlementTest extends TestCase
         $invoice = $portal->save('invoices', $owner, ['student_id' => $student, 'reference' => 'OVERDUE-1', 'description' => 'Past due tuition', 'amount' => '100.00', 'due_on' => today()->subDay()->toDateString(), 'billing_month' => '2026-09']);
 
         $this->actingAs($owner)->getJson('/portal/records/invoices')->assertOk()->assertJsonPath('rows.0.id', $invoice)->assertJsonPath('rows.0.payment_status', 'overdue');
+        $this->actingAs($owner)->getJson('/portal/meta')->assertOk()->assertJsonPath('overview.fees.billed', 10000)->assertJsonPath('overview.fees.collected', 0)->assertJsonPath('overview.fees.outstanding', 10000)->assertJsonPath('overview.fees.overdue', 10000)->assertJsonPath('overview.fees.collection_rate', 0);
     }
 }
