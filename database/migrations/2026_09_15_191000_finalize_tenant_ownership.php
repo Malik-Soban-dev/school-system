@@ -32,6 +32,8 @@ return new class extends Migration
             if (app()->environment('testing')) {
                 continue;
             }
+            // Turso/SQLite may leave a temporary rebuild table after an interrupted deploy. Clean only this migration's known temp table before retrying.
+            Schema::dropIfExists('__temp__'.$tableName);
             Schema::table($tableName, function (Blueprint $table): void {
                 $table->unsignedBigInteger('school_id')->nullable(false)->change();
             });
@@ -44,6 +46,8 @@ return new class extends Migration
             if (! Schema::hasTable($tableName) || ! Schema::hasColumn($tableName, 'school_id')) {
                 continue;
             }
+            // Turso/SQLite may leave a temporary rebuild table after an interrupted deploy. Clean only this migration's known temp table before retrying.
+            Schema::dropIfExists('__temp__'.$tableName);
             Schema::table($tableName, function (Blueprint $table): void {
                 $table->unsignedBigInteger('school_id')->nullable()->change();
             });

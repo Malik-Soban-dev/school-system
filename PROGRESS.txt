@@ -1,3 +1,6 @@
+- 2026-09-20 RENDER TURSO MIGRATION RECOVERY UPDATE:
+  - Fixed the tenant ownership migration to remove only stale __temp__<table> rebuild artifacts left by an interrupted SQLite/Turso migration before retrying the column change. This addresses Render's SQL_INPUT_ERROR for __temp__school_academic_years.
+  - Verification passed: full PHPUnit (142 tests, 1030 assertions); Pint; diff check.
 - 2026-09-20 SUPERADMIN FREE-PLAN SETUP UPDATE:
   - Added a one-time token-gated /superadmin/setup web flow for Render free plan deployments. It creates a separate platform Superadmin, hashes the password through the User model, writes a platform audit event, and becomes unavailable once an active Superadmin exists.
   - Verification passed: focused setup/provisioning coverage (3 tests, 22 assertions); full PHPUnit (142 tests, 1030 assertions); Blade view cache; route registration; Pint; diff check.
