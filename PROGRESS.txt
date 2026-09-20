@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN TENANT-EXPORT UPDATE:
+  - Added a queued, audited seven-day private NDJSON export for an entire school tenant, including branch structure, memberships, students, staff, academic, finance, notification and audit records plus related safe user profiles.
+  - Authentication credentials and private secrets are excluded; the school detail dashboard can queue the export and Platform health lists/downloads it beside user-registry exports.
+  - Verification passed: full PHPUnit suite (108 tests, 657 assertions), focused Superadmin suite (49 tests, 303 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN BULK BRANCH-ACCESS UPDATE:
   - Added an atomic Superadmin operation to grant or suspend one client account's role across up to 100 branches within the same school, with per-branch school audit records and a platform-level summary audit.
   - The school detail dashboard now supports multi-select branch assignment for existing client accounts.

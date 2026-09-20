@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\BuildPlatformSchoolExport;
 use App\Jobs\BuildPlatformUserExport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -188,10 +189,24 @@ class PlatformController extends Controller
         return response()->json(['export' => $export, 'message' => 'User export queued. It will be available for download when processing completes.'], 202);
     }
 
+    public function createSchoolExport(Request $request, int $school): JsonResponse
+    {
+        $export = DB::transaction(function () use ($request, $school): object {
+            abort_unless(DB::table('schools')->where('id', $school)->lockForUpdate()->exists(), 404);
+            $id = DB::table('platform_exports')->insertGetId(['requested_by' => $request->user()->id, 'school_id' => $school, 'type' => 'school', 'status' => 'queued', 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'export', 'entity_id' => $id, 'action' => 'school_export_requested', 'changes' => json_encode(['school_id' => $school, 'type' => 'school']), 'created_at' => now()]);
+
+            return DB::table('platform_exports')->where('id', $id)->first();
+        });
+        BuildPlatformSchoolExport::dispatch($export->id, $school);
+
+        return response()->json(['export' => $export, 'message' => 'School data export queued. Secrets and authentication credentials are excluded.'], 202);
+    }
+
     public function exports(Request $request): JsonResponse
     {
-        $data = $request->validate(['per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
-        $exports = DB::table('platform_exports')->where('type', 'users')->orderByDesc('id')->paginate((int) ($data['per_page'] ?? 20));
+        $data = $request->validate(['type' => ['nullable', Rule::in(['users', 'school'])], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        $exports = DB::table('platform_exports as export')->leftJoin('schools', 'schools.id', '=', 'export.school_id')->when(isset($data['type']), fn ($query) => $query->where('export.type', $data['type']))->orderByDesc('export.id')->paginate((int) ($data['per_page'] ?? 20), ['export.*', 'schools.name as school_name']);
 
         return response()->json(['exports' => $exports->through(function (object $export): array {
             return [...(array) $export, 'download_url' => $export->status === 'completed' && $export->expires_at !== null && $export->expires_at > now() ? route('superadmin.export.download', ['export' => $export->id]) : null];
@@ -200,13 +215,15 @@ class PlatformController extends Controller
 
     public function downloadExport(Request $request, int $export): BinaryFileResponse
     {
-        $record = DB::table('platform_exports')->where('id', $export)->where('type', 'users')->where('status', 'completed')->where('expires_at', '>', now())->first(['id', 'file_path']);
-        abort_unless($record && $record->file_path && basename($record->file_path) === 'users-'.$export.'.csv', 404);
+        $record = DB::table('platform_exports')->where('id', $export)->whereIn('type', ['users', 'school'])->where('status', 'completed')->where('expires_at', '>', now())->first(['id', 'type', 'school_id', 'file_path']);
+        $expectedName = $record?->type === 'school' ? 'school-'.$record->school_id.'-'.$export.'.ndjson' : 'users-'.$export.'.csv';
+        abort_unless($record && $record->file_path && basename($record->file_path) === $expectedName, 404);
         $path = storage_path('app/private/'.$record->file_path);
         abort_unless(File::isFile($path), 404);
-        DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'export', 'entity_id' => $export, 'action' => 'user_export_downloaded', 'changes' => json_encode(['type' => 'users']), 'created_at' => now()]);
+        $isSchool = $record->type === 'school';
+        DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'export', 'entity_id' => $export, 'action' => $isSchool ? 'school_export_downloaded' : 'user_export_downloaded', 'changes' => json_encode(['type' => $record->type, 'school_id' => $record->school_id]), 'created_at' => now()]);
 
-        return response()->download($path, 'school-system-users-'.$export.'.csv', ['Content-Type' => 'text/csv']);
+        return response()->download($path, $isSchool ? 'school-system-school-'.$record->school_id.'-'.$export.'.ndjson' : 'school-system-users-'.$export.'.csv', ['Content-Type' => $isSchool ? 'application/x-ndjson' : 'text/csv']);
     }
 
     public function forgetFailedJob(Request $request, int $job): JsonResponse

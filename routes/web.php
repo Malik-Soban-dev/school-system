@@ -34,6 +34,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, EnsureS
     Route::post('/superadmin/operations/failed-jobs/{job}/retry', [PlatformController::class, 'retryFailedJob'])->whereNumber('job');
     Route::delete('/superadmin/operations/failed-jobs/{job}', [PlatformController::class, 'forgetFailedJob'])->whereNumber('job');
     Route::post('/superadmin/operations/exports/users', [PlatformController::class, 'createUserExport']);
+    Route::post('/superadmin/schools/{school}/operations/exports', [PlatformController::class, 'createSchoolExport'])->whereNumber('school');
     Route::get('/superadmin/operations/exports', [PlatformController::class, 'exports']);
     Route::get('/superadmin/operations/exports/{export}/download', [PlatformController::class, 'downloadExport'])->whereNumber('export')->name('superadmin.export.download');
     Route::get('/superadmin/audit', [PlatformController::class, 'audit']);

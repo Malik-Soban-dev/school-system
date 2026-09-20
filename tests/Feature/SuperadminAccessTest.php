@@ -207,6 +207,33 @@ class SuperadminAccessTest extends TestCase
         }
     }
 
+    public function test_superadmin_can_queue_and_download_a_school_data_export_without_credentials(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Tenant Export School', 'slug' => 'tenant-export-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Tenant Branch', 'code' => 'tenant', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['name' => 'Tenant Export Client', 'username' => 'tenant-export-client', 'roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $client->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $client->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $response = $this->actingAs($superadmin)->postJson('/superadmin/schools/'.$school.'/operations/exports')->assertAccepted();
+        $exportId = $response->json('export.id');
+        $this->assertDatabaseHas('platform_exports', ['id' => $exportId, 'school_id' => $school, 'type' => 'school', 'status' => 'completed']);
+        $path = storage_path('app/private/exports/school-'.$school.'-'.$exportId.'.ndjson');
+        try {
+            $this->assertFileExists($path);
+            $this->assertStringContainsString('Tenant Export School', file_get_contents($path));
+            $this->assertStringContainsString('Tenant Export Client', file_get_contents($path));
+            $this->assertStringNotContainsString('password', strtolower(file_get_contents($path)));
+            $this->assertStringNotContainsString('token_hash', file_get_contents($path));
+            $this->actingAs($superadmin)->get('/superadmin/operations/exports/'.$exportId.'/download')->assertDownload('school-system-school-'.$school.'-'.$exportId.'.ndjson');
+            $this->assertDatabaseHas('platform_audit', ['entity_type' => 'export', 'entity_id' => $exportId, 'action' => 'school_export_completed']);
+            $this->assertDatabaseHas('platform_audit', ['entity_type' => 'export', 'entity_id' => $exportId, 'action' => 'school_export_downloaded']);
+        } finally {
+            File::delete($path);
+        }
+    }
+
     public function test_expired_platform_exports_are_pruned_with_audit_trail(): void
     {
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
