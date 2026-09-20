@@ -1,3 +1,6 @@
+- 2026-09-20 LOGIN PERFORMANCE UPDATE:
+  - Changed the default Render/Turso session storage to encrypted cookie sessions, avoiding a remote database read/write on every authentication and dashboard request. Database sessions remain available when explicitly configured.
+  - Verification passed: Authentication feature suite (16 tests, 54 assertions); diff check.
 - 2026-09-20 ADMIN SIDEBAR AND API ERROR HANDLING UPDATE:
   - Made the school-admin sidebar sticky on desktop while preserving the fixed mobile menu. Hardened login, school portal, and Superadmin requests so HTML redirects/errors are not parsed as JSON; users now receive a clear response instead of Unexpected token '<'.
   - Verification passed: Vite production build; diff check.

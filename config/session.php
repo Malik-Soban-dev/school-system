@@ -18,7 +18,11 @@ return [
     |
     */
 
-    'driver' => env('SESSION_DRIVER', 'database'),
+    // Remote Turso sessions add a network round trip to every authenticated request.
+    // Cookie sessions are encrypted by Laravel and are the faster default for the
+    // single-container Render deployment. Set SESSION_DRIVER=database when shared
+    // database sessions are required.
+    'driver' => env('SESSION_DRIVER', env('DB_CONNECTION') === 'libsql' ? 'cookie' : 'database'),
 
     /*
     |--------------------------------------------------------------------------
