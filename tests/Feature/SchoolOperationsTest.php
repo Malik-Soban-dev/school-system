@@ -59,6 +59,16 @@ class SchoolOperationsTest extends TestCase
         $this->getJson('/portal/notification-preferences')->assertForbidden();
     }
 
+    public function test_superadmin_can_enable_a_plan_feature_for_one_school(): void
+    {
+        $starter = DB::table('platform_plans')->where('code', 'starter')->value('id');
+        DB::table('school_subscriptions')->where('school_id', 1)->update(['plan_id' => $starter, 'status' => 'active']);
+        $superadmin = $this->person('superadmin');
+
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/1/features', ['feature' => 'payroll', 'enabled' => true])->assertOk();
+        $this->actingAs($this->person('owner'))->getJson('/portal/meta')->assertOk()->assertJsonFragment(['key' => 'payroll']);
+    }
+
     public function test_superadmin_can_use_entitled_modules_and_exceed_student_limit(): void
     {
         $superadmin = $this->person('superadmin');

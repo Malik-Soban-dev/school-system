@@ -2,10 +2,13 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final class SchoolEntitlements
 {
+    public const FEATURES = ['attendance', 'grades', 'invoices', 'payroll', 'notifications'];
+
     public function __construct(private TenantContext $tenant) {}
 
     public function plan(): ?object
@@ -20,6 +23,13 @@ final class SchoolEntitlements
     {
         if (auth()->user()?->hasRole('superadmin')) {
             return true;
+        }
+
+        if (Schema::hasTable('school_feature_overrides')) {
+            $override = \DB::table('school_feature_overrides')->where('school_id', $this->tenant->id())->where('feature', $feature)->value('enabled');
+            if ($override !== null) {
+                return (bool) $override;
+            }
         }
 
         $plan = $this->plan();

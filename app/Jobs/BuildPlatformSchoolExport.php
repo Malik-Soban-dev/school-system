@@ -23,7 +23,7 @@ class BuildPlatformSchoolExport implements ShouldQueue
         'school_leave_requests', 'school_payroll', 'school_payroll_payments', 'school_notices', 'school_enrollments',
         'school_invitations', 'school_notification_events', 'school_notifications', 'school_notification_deliveries',
         'school_notification_preferences', 'school_exam_subjects', 'school_grade_bands', 'school_settings', 'school_audit',
-        'school_subscriptions', 'platform_billing_invoices',
+        'school_subscriptions', 'school_feature_overrides', 'platform_billing_invoices',
     ];
 
     /** @var list<string> */

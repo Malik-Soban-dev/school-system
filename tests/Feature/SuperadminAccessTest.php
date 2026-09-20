@@ -367,6 +367,20 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'module' => 'billing', 'action' => 'subscription_updated']);
     }
 
+    public function test_superadmin_can_override_a_school_feature_and_clear_it_back_to_the_plan(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Feature Override School', 'slug' => 'feature-override-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $plan = DB::table('platform_plans')->where('code', 'starter')->value('id');
+        DB::table('school_subscriptions')->insert(['school_id' => $school, 'plan_id' => $plan, 'status' => 'active', 'starts_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/features', ['feature' => 'payroll', 'enabled' => true])->assertOk()->assertJsonPath('enabled', true);
+        $this->assertDatabaseHas('school_feature_overrides', ['school_id' => $school, 'feature' => 'payroll', 'enabled' => 1]);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'school_feature', 'entity_id' => $school, 'action' => 'school_feature_override_updated']);
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/features', ['feature' => 'payroll', 'enabled' => null])->assertOk()->assertJsonPath('enabled', null);
+        $this->assertDatabaseMissing('school_feature_overrides', ['school_id' => $school, 'feature' => 'payroll']);
+    }
+
     public function test_platform_summary_reports_billing_metrics(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Metrics School', 'slug' => 'metrics-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

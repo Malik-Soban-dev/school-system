@@ -47,6 +47,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, EnsureS
     Route::put('/superadmin/users/{user}/status', [PlatformController::class, 'updateUserStatus'])->whereNumber('user');
     Route::post('/superadmin/schools', [PlatformController::class, 'createSchool']);
     Route::put('/superadmin/schools/{school}/subscription', [PlatformController::class, 'updateSubscription'])->whereNumber('school');
+    Route::put('/superadmin/schools/{school}/features', [PlatformController::class, 'updateSchoolFeature'])->whereNumber('school');
     Route::post('/superadmin/plans', [PlatformController::class, 'createPlan']);
     Route::put('/superadmin/plans/{plan}', [PlatformController::class, 'updatePlan'])->whereNumber('plan');
     Route::put('/superadmin/schools/{school}', [PlatformController::class, 'updateSchool'])->whereNumber('school');

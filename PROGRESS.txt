@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN SCHOOL-FEATURE-OVERRIDE UPDATE:
+  - Added explicit per-school module overrides for attendance, grades, invoices, payroll and notifications; each school can inherit its plan, enable a feature, or disable a feature from the Superadmin school detail view.
+  - Overrides are enforced server-side, exported with school data, and recorded in both school and platform audit trails with actor, school, feature and before/after state.
+  - Verification passed: focused Superadmin suite (56 tests, 383 assertions), SchoolOperations suite (14 tests, 77 assertions), full PHPUnit suite (117 tests, 742 assertions), Pint, Vite build, and diff check.
 - 2026-09-19 SUPERADMIN ENTITLEMENT-ENFORCEMENT UPDATE:
   - Completed plan feature enforcement for attendance, grades/exams, invoices/payments and payroll modules; notification feeds and preferences now require the subscribed notifications feature.
   - Superadmin remains unrestricted through the entitlement bypass, while client plans now consistently control the capabilities configured from the Superadmin plan catalog.

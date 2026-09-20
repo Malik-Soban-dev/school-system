@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\BuildPlatformSchoolExport;
 use App\Jobs\BuildPlatformUserExport;
+use App\Support\SchoolEntitlements;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -659,8 +660,28 @@ class PlatformController extends Controller
         $invitations = DB::table('school_invitations as invitation')->leftJoin('school_branches as branch', 'branch.id', '=', 'invitation.branch_id')->where('invitation.school_id', $school)->whereNull('invitation.accepted_at')->orderByDesc('invitation.id')->get(['invitation.id', 'invitation.name', 'invitation.email', 'invitation.roles', 'invitation.expires_at', 'branch.id as branch_id', 'branch.name as branch_name']);
         $audit = DB::table('school_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->where('a.school_id', $school)->orderByDesc('a.id')->limit(50)->get(['a.id', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);
         $subscription = DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->where('subscription.school_id', $school)->first(['subscription.id', 'subscription.plan_id', 'subscription.status', 'subscription.starts_at', 'subscription.renews_at', 'subscription.canceled_at', 'plan.code as plan_code', 'plan.name as plan_name', 'plan.monthly_price_cents', 'plan.max_branches', 'plan.max_students', 'plan.features']);
+        $featureOverrides = DB::table('school_feature_overrides')->where('school_id', $school)->pluck('enabled', 'feature');
 
-        return response()->json(['school' => DB::table('schools')->where('id', $school)->first(), 'branches' => $branches, 'counts' => $counts, 'subscription' => $subscription, 'members' => $members, 'available_users' => $availableUsers, 'access' => $access, 'invitations' => $invitations, 'audit' => $audit]);
+        return response()->json(['school' => DB::table('schools')->where('id', $school)->first(), 'branches' => $branches, 'counts' => $counts, 'subscription' => $subscription, 'feature_overrides' => $featureOverrides, 'members' => $members, 'available_users' => $availableUsers, 'access' => $access, 'invitations' => $invitations, 'audit' => $audit]);
+    }
+
+    public function updateSchoolFeature(Request $request, int $school): JsonResponse
+    {
+        $data = $request->validate(['feature' => ['required', 'string', Rule::in(SchoolEntitlements::FEATURES)], 'enabled' => ['present', 'nullable', 'boolean']]);
+        DB::transaction(function () use ($request, $school, $data): void {
+            abort_unless(DB::table('schools')->where('id', $school)->exists(), 404);
+            $before = DB::table('school_feature_overrides')->where('school_id', $school)->where('feature', $data['feature'])->value('enabled');
+            if ($data['enabled'] === null) {
+                DB::table('school_feature_overrides')->where('school_id', $school)->where('feature', $data['feature'])->delete();
+            } else {
+                DB::table('school_feature_overrides')->updateOrInsert(['school_id' => $school, 'feature' => $data['feature']], ['enabled' => $data['enabled'], 'updated_at' => now(), 'created_at' => now()]);
+            }
+            $changes = ['feature' => $data['feature'], 'before' => $before === null ? null : (bool) $before, 'after' => $data['enabled']];
+            DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => null, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => 0, 'action' => 'school_feature_override_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'school_feature', 'entity_id' => $school, 'action' => 'school_feature_override_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'School feature access updated and audited.', 'feature' => $data['feature'], 'enabled' => $data['enabled']]);
     }
 
     public function createBranch(Request $request, int $school): JsonResponse
