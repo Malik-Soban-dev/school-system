@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Services\SchoolPortal;
+use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class MonthlySettlementTest extends TestCase
@@ -85,5 +87,28 @@ class MonthlySettlementTest extends TestCase
 
         $this->actingAs($owner)->getJson('/portal/records/invoices')->assertOk()->assertJsonPath('rows.0.id', $invoice)->assertJsonPath('rows.0.payment_status', 'overdue');
         $this->actingAs($owner)->getJson('/portal/meta')->assertOk()->assertJsonPath('overview.fees.billed', 10000)->assertJsonPath('overview.fees.collected', 0)->assertJsonPath('overview.fees.outstanding', 10000)->assertJsonPath('overview.fees.overdue', 10000)->assertJsonPath('overview.fees.collection_rate', 0);
+    }
+
+    public function test_school_late_fee_command_is_repeat_safe_and_skips_paid_invoices(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $portal = app(SchoolPortal::class);
+        $year = $portal->save('academic_years', $owner, ['name' => '2026', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
+        $class = $portal->save('classes', $owner, ['name' => 'Grade 8', 'year_id' => $year, 'capacity' => 30]);
+        $student = $portal->save('students', $owner, ['name' => 'Late Fee Student', 'admission_number' => 'LATE-1', 'class_id' => $class, 'status' => 'active']);
+        $invoice = $portal->save('invoices', $owner, ['student_id' => $student, 'reference' => 'LATE-ORIGINAL', 'description' => 'September tuition', 'amount' => '100.00', 'due_on' => today()->subDays(3)->toDateString(), 'billing_month' => '2026-09']);
+        DB::table('school_settings')->updateOrInsert(['school_id' => app(TenantContext::class)->id(), 'key' => 'late_fee_amount'], ['value' => '500']);
+        DB::table('school_settings')->updateOrInsert(['school_id' => app(TenantContext::class)->id(), 'key' => 'late_fee_grace_days'], ['value' => '1']);
+
+        $this->artisan('school:late-fees', ['--until' => today()->toDateString()])->assertSuccessful();
+        $this->artisan('school:late-fees', ['--until' => today()->toDateString()])->assertSuccessful();
+        $this->assertDatabaseCount('school_invoices', 2);
+        $this->assertDatabaseHas('school_invoices', ['reference' => 'LATE-'.$invoice.'-'.today()->format('Ym'), 'amount' => 500]);
+        $this->assertDatabaseHas('school_audit', ['module' => 'invoices', 'action' => 'late_fee_created']);
+
+        $paid = $portal->save('invoices', $owner, ['student_id' => $student, 'reference' => 'LATE-PAID', 'description' => 'Paid tuition', 'amount' => '100.00', 'due_on' => today()->subDays(3)->toDateString(), 'billing_month' => '2026-09']);
+        $this->actingAs($owner)->postJson('/portal/records/payments', ['invoice_id' => $paid, 'reference' => 'LATE-PAYMENT', 'amount' => '100.00', 'paid_on' => today()->toDateString(), 'method' => 'cash'])->assertOk();
+        $this->artisan('school:late-fees', ['--until' => today()->toDateString()])->assertSuccessful();
+        $this->assertDatabaseMissing('school_invoices', ['reference' => 'LATE-'.$paid.'-'.today()->format('Ym')]);
     }
 }
