@@ -200,6 +200,23 @@ class PortalController extends Controller
         return response()->json(['message' => $rows->count().' invoices created; '.count($existing).' existing invoices skipped.', 'created' => $rows->count(), 'skipped' => count($existing)]);
     }
 
+    public function reconciliation(Request $request): JsonResponse
+    {
+        abort_unless($this->portal->can($request->user(), ['owner', 'admin', 'accountant']), 403);
+        $data = $request->validate(['month' => ['nullable', 'date_format:Y-m']]);
+        $payments = $this->portal->query('payments', $request->user());
+        $invoices = $this->portal->query('invoices', $request->user());
+        if (! empty($data['month'])) {
+            $invoices->where('billing_month', $data['month']);
+            $payments->whereIn('invoice_id', (clone $invoices)->select('id'));
+        }
+        $billed = (int) (clone $invoices)->sum('amount');
+        $collected = (int) (clone $payments)->sum('amount');
+        $methods = (clone $payments)->select('method')->selectRaw('count(*) as receipts')->selectRaw('sum(amount) as amount')->groupBy('method')->orderBy('method')->get();
+
+        return response()->json(['month' => $data['month'] ?? null, 'billed' => $billed, 'collected' => $collected, 'outstanding' => max(0, $billed - $collected), 'receipts' => (int) (clone $payments)->count(), 'methods' => $methods]);
+    }
+
     public function tutorial(Request $request): JsonResponse
     {
         $data = $request->validate(['module' => ['required', Rule::in(['overview', 'people', 'invitations', 'notifications', 'settings', ...array_keys(config('school-modules'))])]]);

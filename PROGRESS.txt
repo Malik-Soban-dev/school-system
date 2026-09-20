@@ -1,3 +1,7 @@
+- 2026-09-20 PAYMENT RECONCILIATION UPDATE:
+  - Added a protected Payments reconciliation panel for owners, admins and accountants with billed, collected, outstanding and receipt totals by month and payment method.
+  - Verification passed: MonthlySettlement feature suite (5 tests, 63 assertions); Vite production build; diff check.
+
 - 2026-09-20 LATE FEE AUTOMATION UPDATE:
   - Added owner-configurable late-fee amount and grace period in School settings.
   - Added the repeat-safe school:late-fees scheduler command; it creates audited late-fee invoices for overdue balances, skips paid invoices and prevents duplicates.

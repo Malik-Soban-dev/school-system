@@ -47,6 +47,7 @@ class MonthlySettlementTest extends TestCase
         $invoice = ['student_id' => $student, 'reference' => 'FEE-1', 'description' => 'August tuition', 'amount' => '100.10', 'due_on' => '2026-08-15', 'billing_month' => '2026-08'];
         $id = $portal->save('invoices', $owner, $invoice);
         $this->actingAs($owner)->postJson('/portal/records/payments', ['invoice_id' => $id, 'reference' => 'REC-1', 'amount' => '100.10', 'paid_on' => today()->toDateString(), 'method' => 'online_manual'])->assertOk();
+        $this->actingAs($owner)->getJson('/portal/payments/reconciliation?month=2026-08')->assertOk()->assertJsonPath('billed', 10010)->assertJsonPath('collected', 10010)->assertJsonPath('outstanding', 0)->assertJsonPath('receipts', 1)->assertJsonPath('methods.0.method', 'online_manual')->assertJsonPath('methods.0.amount', 10010);
         $this->getJson('/portal/records/payments?month=2026-08')->assertJsonCount(1, 'rows');
         $this->getJson('/portal/records/payments?month=2026-07')->assertJsonCount(0, 'rows');
         $this->getJson('/portal/records/invoices?month=2026-08')->assertJsonPath('rows.0.payment_status', 'paid');
