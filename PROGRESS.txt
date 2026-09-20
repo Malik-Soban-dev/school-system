@@ -1,3 +1,6 @@
+- 2026-09-19 SUPERADMIN FEATURE-CONFIRMATION UPDATE:
+  - Added explicit confirmation before changing a school feature override, clearly stating the enable/disable/inherit action and its audit consequence.
+  - Verification passed: Vite production build and git diff check; existing full suite remains green at 118 tests and 752 assertions.
 - 2026-09-19 SUPERADMIN INITIAL-BRANCH RESOLUTION HARDENING UPDATE:
   - ResolveSchool now applies the branch entitlement before establishing the tenant context, preventing second-branch-only accounts from bypassing the context-switch guard on their first request.
   - Unauthorized users are redirected only to an entitled default branch when they have one; otherwise access is denied, while Superadmin behavior remains unrestricted.

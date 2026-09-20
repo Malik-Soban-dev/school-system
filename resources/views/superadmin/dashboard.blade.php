@@ -240,6 +240,9 @@
         featurePanel.querySelectorAll('.feature-override-form').forEach(form => form.addEventListener('submit', async event => {
             event.preventDefault();
             const value = new FormData(event.currentTarget).get('enabled');
+            const label = featureLabels[event.currentTarget.dataset.feature];
+            const state = value === '' ? 'inherit the selected plan' : (value === 'true' ? 'enable' : 'disable');
+            if (!window.confirm(`Are you sure you want to ${state} ${label} for this school? This change will be audited.`)) return;
             try { await request(`/superadmin/schools/${schoolId}/features`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({feature: event.currentTarget.dataset.feature, enabled: value === '' ? null : value === 'true'})}); await showSchoolDetail(schoolId); } catch (error) { window.alert(error.message); }
         }));
         document.querySelector('#school-export-create').addEventListener('click', async event => {
