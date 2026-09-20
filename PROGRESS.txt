@@ -1,3 +1,6 @@
+- 2026-09-19 SUPERADMIN BRANCH-DETAIL USAGE UPDATE:
+  - School detail branch records now include active member and open platform-invoice counts alongside students, staff, teachers and classes; the dashboard displays the expanded branch usage summary.
+  - Verification passed: focused branch-control regression (1 test, 9 assertions), full PHPUnit suite (122 tests, 775 assertions), Pint, diff check, and Vite production build.
 - 2026-09-19 SUPERADMIN BRANCH-FILTERED USER VISIBILITY UPDATE:
   - The branch-filtered user explorer now requires an actual school_user_branches grant for the selected branch, while preserving visibility of suspended grants for Superadmin operations.
   - Verification passed: focused regression (1 test, 3 assertions), full PHPUnit suite (122 tests, 772 assertions), Pint, and diff check.

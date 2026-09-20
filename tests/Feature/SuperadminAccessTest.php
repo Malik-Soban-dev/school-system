@@ -649,6 +649,9 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $admin->id, 'action' => 'branch_access_updated']);
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'branch', 'entity_id' => $branch['id'], 'action' => 'branch_created']);
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $admin->id, 'action' => 'branch_access_updated']);
+        $branchDetail = collect($this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->json('branches'))->firstWhere('id', $branch['id']);
+        $this->assertSame(1, $branchDetail['members']);
+        $this->assertSame(0, $branchDetail['open_invoices']);
     }
 
     public function test_superadmin_can_attach_an_existing_account_to_a_school_branch(): void
