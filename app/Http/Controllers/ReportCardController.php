@@ -47,7 +47,7 @@ class ReportCardController extends Controller
         $attendanceTotal = $attendance->sum();
         $attendancePresent = ($attendance->get('present', 0) + $attendance->get('late', 0));
 
-        return view('reports.report-card', ['exam' => $examRecord, 'student' => $studentRecord, 'rows' => $rows, 'complete' => $complete,
+        return view('reports.report-card', ['language' => $user->preferred_language ?? 'en', 'exam' => $examRecord, 'student' => $studentRecord, 'rows' => $rows, 'complete' => $complete,
             'planned' => $planned, 'percentage' => $percentage, 'gpa' => $gpa, 'overallBand' => $overallBand['name'] ?? null,
             'attendance' => ['total' => $attendanceTotal, 'present' => $attendancePresent, 'late' => $attendance->get('late', 0), 'absent' => $attendance->get('absent', 0), 'excused' => $attendance->get('excused', 0), 'percentage' => $attendanceTotal > 0 ? round($attendancePresent / $attendanceTotal * 100, 2) : null],
             'school' => $tenant->table('school_settings')->where('key', 'school_name')->value('value') ?: 'School System',

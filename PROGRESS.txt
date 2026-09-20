@@ -1,3 +1,7 @@
+- 2026-09-20 URDU REPORT CARD UPDATE:
+  - Report cards now respect the signed-in user's English/Urdu preference, render Urdu labels, set RTL direction and keep print/PDF controls usable.
+  - Verification passed: Blade view cache and ReportCard focused suite (2 tests, 23 assertions).
+
 - 2026-09-20 STUDENT 360 UI UPDATE:
   - Added a visible View 360 profile action to student records with a responsive dashboard modal for class, guardians, attendance, fees, results, assignments and authorized welfare notes.
   - Verification passed: Vite production build; existing StudentProfile focused test remains passing (1 test, 8 assertions).
