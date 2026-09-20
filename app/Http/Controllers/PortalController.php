@@ -83,6 +83,29 @@ class PortalController extends Controller
         return response()->json(['id' => $id, 'message' => 'Record saved.']);
     }
 
+    public function studentProfile(Request $request, int $student): JsonResponse
+    {
+        $tenant = app(TenantContext::class);
+        $record = $this->portal->query('students', $request->user())->where('school_students.id', $student)->first(['school_students.id', 'school_students.name', 'school_students.admission_number', 'school_students.date_of_birth', 'school_students.status', 'school_students.class_id']);
+        abort_unless($record, 404);
+        $class = $tenant->table('school_classes')->leftJoin('school_academic_years as year', 'year.id', '=', 'school_classes.year_id')->where('school_classes.id', $record->class_id)->first(['school_classes.name as class_name', 'year.name as academic_year']);
+        $record->class_name = $class?->class_name;
+        $record->academic_year = $class?->academic_year;
+        $guardians = $tenant->table('school_guardian_links')->join('users', 'users.id', '=', 'school_guardian_links.user_id')->where('school_guardian_links.student_id', $student)->where('school_guardian_links.status', 'active')->get(['users.name', 'users.email', 'school_guardian_links.relationship']);
+        $attendance = $tenant->table('school_attendance')->where('student_id', $student)->selectRaw('count(*) as recorded, sum(case when status in (\'present\', \'late\') then 1 else 0 end) as attended, sum(case when status = \'absent\' then 1 else 0 end) as absent, sum(case when status = \'excused\' then 1 else 0 end) as excused')->first();
+        $invoices = $tenant->table('school_invoices')->where('student_id', $student)->get(['id', 'reference', 'billing_month', 'amount', 'status', 'due_on']);
+        $paid = $tenant->table('school_payments')->whereIn('invoice_id', $invoices->pluck('id'))->select('invoice_id')->selectRaw('sum(amount) as total')->groupBy('invoice_id')->pluck('total', 'invoice_id');
+        $fees = $invoices->map(fn ($invoice): array => [...(array) $invoice, 'paid' => (int) ($paid[$invoice->id] ?? 0), 'balance' => max(0, (int) $invoice->amount - (int) ($paid[$invoice->id] ?? 0))]);
+        $grades = $this->portal->query('grades', $request->user())->where('student_id', $student)->join('school_exams as exam', 'exam.id', '=', 'school_grades.exam_id')->join('school_subjects as subject', 'subject.id', '=', 'school_grades.subject_id')->get(['exam.name as exam', 'exam.date', 'subject.name as subject', 'school_grades.marks', 'school_grades.maximum', 'school_grades.remarks'])->map(fn ($grade): array => [...(array) $grade, 'percentage' => (float) $grade->maximum > 0 ? round((float) $grade->marks / (float) $grade->maximum * 100, 2) : null]);
+        $assignments = $this->portal->query('assignments', $request->user())->where('class_id', $record->class_id ?? 0)->get(['id', 'title', 'due_on', 'status']);
+        $profile = ['student' => $record, 'guardians' => $guardians, 'attendance' => $attendance, 'fees' => $fees, 'grades' => $grades, 'assignments' => $assignments];
+        if ($this->portal->admin($request->user())) {
+            $profile['welfare'] = $tenant->table('school_student_welfare')->where('student_id', $student)->orderByDesc('record_date')->get(['record_type', 'record_date', 'details', 'follow_up']);
+        }
+
+        return response()->json($profile);
+    }
+
     public function attendanceBatch(Request $request): JsonResponse
     {
         abort_unless($this->portal->can($request->user(), ['owner', 'admin', 'teacher']), 403);

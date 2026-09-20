@@ -1,3 +1,8 @@
+- 2026-09-20 STUDENT 360 PROFILE UPDATE:
+  - Added a tenant-scoped Student 360 JSON profile combining identity/class, guardians, attendance totals, fee balances, published academic results and assignments.
+  - Private welfare records are included only for owner/admin users; parents, students and teachers receive only the records allowed by their existing portal relationships. Added regression coverage for linked-parent access and cross-student denial.
+  - Verification: focused StudentProfile test passed (1 test, 8 assertions). Full suite and production build are running.
+
 - 2026-09-20 STAFF ATTENDANCE UPDATE:
   - Added daily staff attendance with present, late, absent and leave statuses, optional check-in time and notes.
   - Staff can view and record only their own history; owners/admins manage the register. Added indexed tenant-safe storage, Superadmin explorer/census visibility and duplicate-per-day protection.

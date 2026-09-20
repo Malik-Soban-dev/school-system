@@ -102,6 +102,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, Resolve
     Route::put('/portal/tutorial', [PortalController::class, 'tutorial']);
     Route::put('/portal/attendance/batch', [PortalController::class, 'attendanceBatch']);
     Route::get('/portal/attendance/roster', [PortalController::class, 'attendanceRoster']);
+    Route::get('/portal/students/{student}/360', [PortalController::class, 'studentProfile'])->whereNumber('student');
     Route::post('/portal/promotions', [PortalController::class, 'promoteStudents']);
     Route::post('/portal/invoices/batch', [PortalController::class, 'createBatchInvoices']);
     Route::get('/portal/payments/reconciliation', [PortalController::class, 'reconciliation']);
