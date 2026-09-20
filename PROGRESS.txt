@@ -1,3 +1,7 @@
+- 2026-09-19 PORTAL EFFECTIVE-ROLE UI UPDATE:
+  - Portal navigation, role controls, and role-dependent report actions now use effective_roles for the selected branch, with the legacy roles payload retained as a compatibility fallback.
+  - Verification passed: focused branch-role coverage (6 tests, 69 assertions), full PHPUnit (132 tests, 839 assertions), frontend production build, Pint, and diff check.
+
 - 2026-09-19 SUPERADMIN AVAILABLE-ACCOUNT ROSTER UPDATE:
   - Removed the 100-account cap from school-detail available-user discovery, so Superadmin can grant branch access to every eligible existing account; member rosters remain complete as well.
   - Verification passed: focused roster coverage (2 tests, 4 assertions), full PHPUnit (132 tests, 839 assertions), Pint, and diff check.
