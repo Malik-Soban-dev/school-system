@@ -1,3 +1,6 @@
+- 2026-09-19 SUPERADMIN BILLING-TOTALS ACCURACY UPDATE:
+  - Corrected school billing totals to aggregate the complete platform invoice ledger; the dashboard still limits the displayed payment-history rows to the latest 50 for responsiveness.
+  - Verification passed: focused Superadmin suite (57 tests, 397 assertions), full PHPUnit suite (118 tests, 756 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN SCHOOL-BILLING DRILL-DOWN UPDATE:
   - Added paid totals, outstanding totals, renewal context and the latest platform invoice/payment history to each Superadmin school detail response and dashboard.
   - Billing history remains read-only in the drill-down while existing invoice controls and audit trails remain the mutation path.
