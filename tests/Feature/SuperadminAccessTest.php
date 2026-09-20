@@ -662,6 +662,14 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('schools', ['id' => $other, 'slug' => 'other-profile-school']);
     }
 
+    public function test_superadmin_school_detail_exposes_complete_operational_census(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Census School', 'slug' => 'census-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->assertJsonPath('counts.members', 0)->assertJsonPath('counts.students', 0)->assertJsonPath('counts.teachers', 0)->assertJsonPath('counts.guardians', 0)->assertJsonPath('counts.enrollments', 0)->assertJsonPath('counts.payroll_payments', 0)->assertJsonPath('counts.notifications', 0)->assertJsonStructure(['counts' => ['members', 'students', 'staff', 'teachers', 'guardians', 'classes', 'enrollments', 'invoices', 'payments', 'payroll_payments', 'notifications', 'audit']]);
+    }
+
     public function test_school_users_cannot_open_platform_dashboard(): void
     {
         $user = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);

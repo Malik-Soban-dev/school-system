@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN SCHOOL CENSUS UPDATE:
+  - School detail now exposes active members, distinct active teachers and guardians, students, staff, classes, enrollments, invoices, payments, payroll disbursements, notifications and audit totals alongside the existing branch drill-down and record explorer.
+  - Verification passed: focused school-detail coverage (4 tests, 29 assertions), full PHPUnit (133 tests, 860 assertions), Pint, and diff check.
+
 - 2026-09-19 SUPERADMIN SESSION-DRIVER HARDENING UPDATE:
   - Superadmin profile edits and client password-reset issuance now revoke database sessions only when the sessions table exists, so these controls work with both database and non-database session drivers without weakening revocation where supported.
   - Verification passed: focused Superadmin suite (67 tests, 467 assertions), full PHPUnit (132 tests, 839 assertions), Pint, and diff check.
