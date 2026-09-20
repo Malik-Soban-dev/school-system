@@ -828,6 +828,19 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseMissing('school_user', ['school_id' => $school, 'user_id' => $client->id]);
     }
 
+    public function test_superadmin_cannot_grant_active_access_under_a_suspended_school(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Suspended School Grant', 'slug' => 'suspended-school-grant', 'status' => 'suspended', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Active Legacy Branch', 'code' => 'legacy', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/superadmin/users/'.$client->id.'/branch-access', ['school_id' => $school, 'branch_id' => $branch, 'roles' => ['admin'], 'status' => 'active'])->assertUnprocessable();
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/members/'.$client->id.'/branch-access', ['branch_id' => $branch, 'roles' => ['admin'], 'status' => 'active'])->assertUnprocessable();
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/members/'.$client->id.'/branch-access/bulk', ['branch_ids' => [$branch], 'roles' => ['admin'], 'status' => 'active'])->assertUnprocessable();
+        $this->assertDatabaseMissing('school_user', ['school_id' => $school, 'user_id' => $client->id]);
+    }
+
     public function test_superadmin_can_override_the_assigned_plan_branch_limit(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Branch Limit School', 'slug' => 'branch-limit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

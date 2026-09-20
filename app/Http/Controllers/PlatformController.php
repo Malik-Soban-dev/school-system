@@ -403,6 +403,9 @@ class PlatformController extends Controller
             $userRecord = DB::table('users')->where('id', $user)->lockForUpdate()->first(['id', 'roles']);
             abort_unless($userRecord, 404);
             abort_if(in_array('superadmin', json_decode((string) $userRecord->roles, true) ?: [], true), 422, 'Platform Superadmin access is managed separately.');
+            $school = DB::table('schools')->where('id', $data['school_id'])->lockForUpdate()->first(['status']);
+            abort_unless($school, 404);
+            abort_if($data['status'] === 'active' && $school->status !== 'active', 422, 'Activate the school before granting active access.');
             $branch = DB::table('school_branches')->where('school_id', $data['school_id'])->where('id', $data['branch_id'])->lockForUpdate()->first(['status']);
             abort_unless($branch, 404);
             abort_if($data['status'] === 'active' && $branch->status !== 'active', 422, 'Activate the branch before granting active access.');
@@ -938,6 +941,9 @@ class PlatformController extends Controller
             $userRecord = DB::table('users')->where('id', $user)->lockForUpdate()->first(['id', 'roles']);
             abort_unless($userRecord, 404);
             abort_if(in_array('superadmin', json_decode((string) $userRecord->roles, true) ?: [], true), 422, 'Platform Superadmin access is managed separately.');
+            $schoolRecord = DB::table('schools')->where('id', $school)->lockForUpdate()->first(['status']);
+            abort_unless($schoolRecord, 404);
+            abort_if($data['status'] === 'active' && $schoolRecord->status !== 'active', 422, 'Activate the school before granting active access.');
             $branch = DB::table('school_branches')->where('school_id', $school)->where('id', $data['branch_id'])->lockForUpdate()->first(['status']);
             abort_unless($branch, 404);
             abort_if($data['status'] === 'active' && $branch->status !== 'active', 422, 'Activate the branch before granting active access.');
@@ -978,6 +984,9 @@ class PlatformController extends Controller
             $userRecord = DB::table('users')->where('id', $user)->lockForUpdate()->first(['id', 'roles']);
             abort_unless($userRecord, 404);
             abort_if(in_array('superadmin', json_decode((string) $userRecord->roles, true) ?: [], true), 422, 'Platform Superadmin access is managed separately.');
+            $schoolRecord = DB::table('schools')->where('id', $school)->lockForUpdate()->first(['status']);
+            abort_unless($schoolRecord, 404);
+            abort_if($data['status'] === 'active' && $schoolRecord->status !== 'active', 422, 'Activate the school before granting active access.');
             $branches = DB::table('school_branches')->where('school_id', $school)->whereIn('id', $data['branch_ids'])->lockForUpdate()->pluck('status', 'id');
             abort_if($branches->count() !== count($data['branch_ids']), 404);
             abort_if($data['status'] === 'active' && $branches->contains(fn (string $status): bool => $status !== 'active'), 422, 'Activate all branches before granting active access.');

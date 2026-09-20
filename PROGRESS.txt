@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN SUSPENDED-SCHOOL GRANT SAFETY UPDATE:
+  - Global, school-detail and bulk branch-access mutations now lock and verify parent school lifecycle state before writing; active grants cannot be assigned under suspended schools, while suspended access remains available for restoration workflows.
+  - Verification passed: focused school/branch grant coverage (3 tests, 18 assertions); Blade view cache; full PHPUnit (138 tests, 939 assertions); Pint; diff check.
 - 2026-09-20 SUPERADMIN SCHOOL-LIFECYCLE VISIBILITY UPDATE:
   - Global user access rows, branch-access explorer records and queued user exports now expose school_status separately from membership status, and the global registry supports active/suspended school filtering for restoration and support workflows.
   - Verification passed: focused registry/export coverage (3 tests, 50 assertions); Blade view cache; full PHPUnit (137 tests, 935 assertions); Pint; diff check.
