@@ -187,12 +187,16 @@ class PortalController extends Controller
         }
         abort_unless($sameBranch, 404);
         abort_if($user->id === $request->user()->id, 403, 'You cannot change your own access.');
+        $isSuperadmin = $request->user()->hasRole('superadmin');
         $currentRoles = json_decode((string) DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $tenant->branchId())->where('user_id', $user->id)->value('roles'), true) ?: [];
-        abort_if(in_array('owner', $currentRoles, true), 403, 'Owner access must be managed privately.');
-        abort_if(in_array('admin', $currentRoles, true) && ! $tenant->hasRole($request->user(), 'owner'), 403);
+        abort_if(in_array('owner', $currentRoles, true) && ! $isSuperadmin, 403, 'Owner access must be managed privately.');
+        abort_if(in_array('admin', $currentRoles, true) && ! $isSuperadmin && ! $tenant->hasRole($request->user(), 'owner'), 403);
         $allowed = ['teacher', 'parent', 'student', 'accountant'];
-        if ($tenant->hasRole($request->user(), 'owner')) {
+        if ($isSuperadmin || $tenant->hasRole($request->user(), 'owner')) {
             $allowed[] = 'admin';
+        }
+        if ($isSuperadmin) {
+            $allowed[] = 'owner';
         }
         $data = $request->validate(['roles' => ['required', 'array', 'min:1'], 'roles.*' => [Rule::in($allowed), 'distinct'], 'is_active' => ['required', 'boolean']]);
         DB::transaction(function () use ($user, $data, $request): void {

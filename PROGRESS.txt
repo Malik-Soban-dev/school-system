@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN WORKSPACE AUTHORITY UPDATE:
+  - Superadmin branch workspaces can now manage existing owner grants and assign the owner role through People & access, while ordinary administrators retain the private owner-protection rule and platform Superadmin identities remain protected.
+  - Verification passed: full PHPUnit suite (101 tests, 616 assertions), focused Superadmin suite (42 tests, 262 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN SECURITY NAVIGATION UPDATE:
   - Added a direct Account security link to the Superadmin dashboard so MFA enrollment, recovery-code management and password controls are discoverable from the platform control center.
   - Verification passed: focused Superadmin suite (41 tests, 259 assertions), PHP Pint and git diff check.

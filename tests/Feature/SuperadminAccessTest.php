@@ -60,6 +60,20 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_notices', ['school_id' => $school, 'branch_id' => $branch, 'title' => 'Platform notice']);
     }
 
+    public function test_superadmin_can_manage_an_owner_access_grant_inside_the_selected_workspace(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Workspace Authority School', 'slug' => 'workspace-authority-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Main', 'code' => 'main', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $owner->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $owner->id, 'roles' => json_encode(['owner']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/portal/context', ['school_id' => $school, 'branch_id' => $branch])->assertOk();
+        $this->actingAs($superadmin)->putJson('/portal/users/'.$owner->id, ['roles' => ['admin'], 'is_active' => true])->assertOk();
+        $this->assertDatabaseHas('school_user_branches', ['school_id' => $school, 'branch_id' => $branch, 'user_id' => $owner->id, 'roles' => json_encode(['admin'])]);
+    }
+
     public function test_superadmin_can_review_a_paginated_cross_school_branch_registry(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Branch Registry School', 'slug' => 'branch-registry-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
