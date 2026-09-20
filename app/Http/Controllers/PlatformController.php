@@ -32,8 +32,10 @@ class PlatformController extends Controller
             ->leftJoinSub(DB::table('school_teacher_assignments')->select('school_id')->where('status', 'active')->selectRaw('count(distinct user_id) as total')->groupBy('school_id'), 'teachers', 'teachers.school_id', '=', 's.id')
             ->leftJoinSub(DB::table('school_branches')->select('school_id')->selectRaw('count(*) as total')->groupBy('school_id'), 'branches', 'branches.school_id', '=', 's.id')
             ->leftJoinSub(DB::table('school_invoices')->select('school_id')->selectRaw('count(*) as total')->whereIn('status', ['issued', 'partial', 'overdue'])->groupBy('school_id'), 'invoices', 'invoices.school_id', '=', 's.id')
+            ->leftJoin('school_subscriptions as subscription', 'subscription.school_id', '=', 's.id')
+            ->leftJoin('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')
             ->orderBy('s.name')
-            ->get(['s.id', 's.name', 's.slug', 's.status', 's.created_at', DB::raw('coalesce(members.total, 0) as members'), DB::raw('coalesce(students.total, 0) as students'), DB::raw('coalesce(staff.total, 0) as staff'), DB::raw('coalesce(teachers.total, 0) as teachers'), DB::raw('coalesce(branches.total, 0) as branches'), DB::raw('coalesce(invoices.total, 0) as open_invoices')]);
+            ->get(['s.id', 's.name', 's.slug', 's.status', 's.created_at', DB::raw('coalesce(members.total, 0) as members'), DB::raw('coalesce(students.total, 0) as students'), DB::raw('coalesce(staff.total, 0) as staff'), DB::raw('coalesce(teachers.total, 0) as teachers'), DB::raw('coalesce(branches.total, 0) as branches'), DB::raw('coalesce(invoices.total, 0) as open_invoices'), 'plan.code as plan_code', 'plan.name as plan_name', 'plan.max_branches', 'plan.max_students', 'subscription.status as subscription_status']);
         $branchOptions = DB::table('school_branches')->whereIn('school_id', $schools->pluck('id'))->orderBy('name')->get(['id', 'school_id', 'name', 'code', 'status'])->groupBy('school_id');
         $schools = $schools->map(function (object $school) use ($branchOptions): object {
             $school->branch_options = $branchOptions->get($school->id, collect())->values();

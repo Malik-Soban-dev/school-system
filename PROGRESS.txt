@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN PLAN-USAGE VISIBILITY UPDATE:
+  - Added plan and subscription metadata plus branch/student usage against configured limits to the global Superadmin school registry, making entitlement pressure visible before client operations hit limits.
+  - Added dashboard rendering and regression coverage for plan status and usage-limit values.
+  - Verification passed: full PHPUnit suite (112 tests, 689 assertions), focused Superadmin suite (53 tests, 335 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN ONBOARDING INVITATION UPDATE:
   - School onboarding now optionally creates a 48-hour initial owner/admin invitation for the default branch in the same transaction as the school, branch and subscription.
   - The private invitation link is returned once to Superadmin, while school and platform audit records capture the issued access without storing the plaintext token.

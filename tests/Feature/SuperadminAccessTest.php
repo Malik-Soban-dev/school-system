@@ -366,6 +366,28 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->assertJsonPath('billing.mrr_cents', (int) $plan->monthly_price_cents)->assertJsonPath('billing.subscriptions.active', 1)->assertJsonFragment(['code' => 'starter', 'name' => 'Starter', 'total' => 1]);
     }
 
+    public function test_platform_registry_reports_school_usage_against_plan_limits(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Usage School', 'slug' => 'usage-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Usage Branch', 'code' => 'usage', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $plan = DB::table('platform_plans')->where('code', 'starter')->first(['id', 'name', 'max_branches', 'max_students']);
+        DB::table('school_subscriptions')->insert(['school_id' => $school, 'plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $year = DB::table('school_academic_years')->insertGetId(['school_id' => $school, 'branch_id' => $branch, 'name' => 'Usage Year', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31', 'created_at' => now(), 'updated_at' => now()]);
+        $class = DB::table('school_classes')->insertGetId(['school_id' => $school, 'branch_id' => $branch, 'name' => 'Usage Class', 'year_id' => $year, 'capacity' => 30, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_students')->insert(['school_id' => $school, 'branch_id' => $branch, 'name' => 'Usage Student', 'admission_number' => 'USAGE-1', 'class_id' => $class, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $schools = $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->json('schools');
+        $record = collect($schools)->firstWhere('id', $school);
+        $this->assertNotNull($record);
+        $this->assertSame($plan->name, $record['plan_name']);
+        $this->assertSame('active', $record['subscription_status']);
+        $this->assertSame(1, (int) $record['branches']);
+        $this->assertSame(1, (int) $record['students']);
+        $this->assertSame((int) $plan->max_branches, (int) $record['max_branches']);
+        $this->assertSame((int) $plan->max_students, (int) $record['max_students']);
+    }
+
     public function test_superadmin_can_issue_and_reconcile_a_platform_invoice(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Invoice School', 'slug' => 'invoice-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
