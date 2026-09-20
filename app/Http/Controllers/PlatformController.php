@@ -357,12 +357,14 @@ class PlatformController extends Controller
             ->orderBy('u.name')
             ->paginate((int) ($data['per_page'] ?? 50), ['u.id', 'u.name', 'u.username', 'u.email', 'u.roles', 'u.is_active']);
         $userIds = collect($users->items())->pluck('id');
-        $access = DB::table('school_user_branches as a')->join('schools as s', 's.id', '=', 'a.school_id')->join('school_branches as b', 'b.id', '=', 'a.branch_id')->whereIn('a.user_id', $userIds)->get(['a.user_id', 's.id as school_id', 's.name as school_name', 'b.id as branch_id', 'b.name as branch_name', 'a.roles', 'a.status'])->groupBy('user_id');
+        $access = DB::table('school_user_branches as a')->join('schools as s', 's.id', '=', 'a.school_id')->join('school_branches as b', 'b.id', '=', 'a.branch_id')->leftJoin('school_user as membership', function ($join): void {
+            $join->on('membership.user_id', '=', 'a.user_id')->on('membership.school_id', '=', 'a.school_id');
+        })->whereIn('a.user_id', $userIds)->get(['a.user_id', 's.id as school_id', 's.name as school_name', 'b.id as branch_id', 'b.name as branch_name', 'a.roles', 'a.status', 'membership.status as membership_status'])->groupBy('user_id');
 
         return response()->json(['users' => $users->through(function (object $user) use ($access): array {
             $roles = json_decode((string) $user->roles, true) ?: [];
 
-            return ['id' => $user->id, 'name' => $user->name, 'username' => $user->username, 'email' => $user->email, 'roles' => $roles, 'is_active' => (bool) $user->is_active, 'is_superadmin' => in_array('superadmin', $roles, true), 'access' => $access->get($user->id, collect())->map(fn (object $row): array => ['school_id' => $row->school_id, 'school_name' => $row->school_name, 'branch_id' => $row->branch_id, 'branch_name' => $row->branch_name, 'roles' => json_decode((string) $row->roles, true) ?: [], 'status' => $row->status])->values()->all()];
+            return ['id' => $user->id, 'name' => $user->name, 'username' => $user->username, 'email' => $user->email, 'roles' => $roles, 'is_active' => (bool) $user->is_active, 'is_superadmin' => in_array('superadmin', $roles, true), 'access' => $access->get($user->id, collect())->map(fn (object $row): array => ['school_id' => $row->school_id, 'school_name' => $row->school_name, 'branch_id' => $row->branch_id, 'branch_name' => $row->branch_name, 'roles' => json_decode((string) $row->roles, true) ?: [], 'status' => $row->status, 'membership_status' => $row->membership_status])->values()->all()];
         })]);
     }
 
