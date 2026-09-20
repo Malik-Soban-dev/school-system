@@ -23,8 +23,7 @@ class SuperadminSetupTest extends TestCase
 
         $this->post('/superadmin/setup?token='.$token, [
             'name' => 'Platform Owner',
-            'username' => 'platform.owner',
-            'email' => 'platform.owner@example.test',
+            'username' => 'Platform.Owner',
             'password' => 'platform-owner-pass-123',
             'password_confirmation' => 'platform-owner-pass-123',
         ])->assertRedirect(route('login'));

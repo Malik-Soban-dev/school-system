@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN SETUP REGISTRATION FIX:
+  - Normalized setup usernames/emails before validation so platform-owner usernames such as Platform.Owner register as platform.owner; preserved separate-account uniqueness and optional email behavior.
+  - Verification passed: focused setup coverage (1 test, 9 assertions); full PHPUnit (142 tests, 1030 assertions); Pint; diff check.
 - 2026-09-20 RENDER SQLITE UNKNOWN RECOVERY UPDATE:
   - Made the branch-integrity migration resumable after Render showed SQLITE_UNKNOWN for an already-created school_branches_school_id_id_unique index. Existing indexes and foreign keys are now detected; Turso uses trigger-backed branch integrity without another remote table rebuild.
   - Verification passed: full PHPUnit (142 tests, 1030 assertions); migration syntax; Pint.

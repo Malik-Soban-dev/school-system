@@ -23,6 +23,10 @@ class SuperadminSetupController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $this->authorizeSetup($request);
+        $request->merge([
+            'username' => is_string($request->input('username')) ? strtolower(trim($request->input('username'))) : $request->input('username'),
+            'email' => is_string($request->input('email')) && trim($request->input('email')) !== '' ? strtolower(trim($request->input('email'))) : null,
+        ]);
 
         $data = $request->validate([
             'username' => ['required', 'regex:/^[a-z0-9._-]{3,80}$/', Rule::unique('users', 'username')],
