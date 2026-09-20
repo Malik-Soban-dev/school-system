@@ -160,7 +160,7 @@ class SuperadminAccessTest extends TestCase
         DB::table('school_user_branches')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $client->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
-        $this->actingAs($superadmin)->getJson('/superadmin/users?search=paginated-client&per_page=1')->assertOk()->assertJsonPath('users.total', 2)->assertJsonPath('users.last_page', 2)->assertJsonPath('users.data.0.access.0.branch_name', 'User Branch')->assertJsonPath('users.data.0.access.0.roles.0', 'admin')->assertJsonPath('users.data.0.access.0.membership_status', 'active');
+        $this->actingAs($superadmin)->getJson('/superadmin/users?search=paginated-client&per_page=1')->assertOk()->assertJsonPath('users.total', 2)->assertJsonPath('users.last_page', 2)->assertJsonPath('users.data.0.access.0.branch_name', 'User Branch')->assertJsonPath('users.data.0.access.0.branch_status', 'active')->assertJsonPath('users.data.0.access.0.roles.0', 'admin')->assertJsonPath('users.data.0.access.0.membership_status', 'active');
         $this->actingAs($superadmin)->getJson('/superadmin/users?search=paginated-client&per_page=1&page=2')->assertOk()->assertJsonPath('users.current_page', 2)->assertJsonPath('users.data.0.email', 'paginated-client-b@example.test');
         $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_id='.$branch.'&status=active')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.email', 'paginated-client-a@example.test');
         $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_id='.$branch.'&role=admin')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.email', 'paginated-client-a@example.test');
@@ -277,6 +277,7 @@ class SuperadminAccessTest extends TestCase
             $csv = file_get_contents($path);
             $this->assertStringContainsString('Export Client', $csv);
             $this->assertStringContainsString('school_membership_status', $csv);
+            $this->assertStringContainsString('branch_status', $csv);
             $this->assertStringContainsString('"Export School",active,"Export Branch"', $csv);
             $this->assertStringNotContainsString('password', strtolower($csv));
             $this->assertDatabaseHas('platform_audit', ['entity_type' => 'export', 'entity_id' => $exportId, 'action' => 'user_export_completed']);

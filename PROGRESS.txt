@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN BRANCH-LIFECYCLE VISIBILITY UPDATE:
+  - Global user access rows, branch-access explorer records and queued user exports now expose branch_status separately from branch grant status, preventing suspended branches from being presented as usable access.
+  - Verification passed: focused registry/export/lifecycle tests (3 tests, 31 assertions); Blade view cache; full PHPUnit (135 tests, 914 assertions); Pint; diff check.
 - 2026-09-20 SUPERADMIN SUSPENDED-BRANCH GRANT SAFETY UPDATE:
   - Global, school-detail and bulk branch-access mutations now lock and verify branch lifecycle state before writing; active grants cannot be assigned to suspended branches, while explicit suspended grants remain available for restoration workflows.
   - Verification passed: focused branch-grant coverage (2 tests, 14 assertions); Blade view cache; full PHPUnit (135 tests, 912 assertions); Pint; diff check.
