@@ -68,6 +68,23 @@ class PlatformController extends Controller
         $platformNotices = DB::table('school_notices')->count();
         $platformNotifications = DB::table('school_notifications')->count();
         $platformNotificationDeliveries = DB::table('school_notification_deliveries')->count();
+        $platformCensus = [];
+        foreach ([
+            'school_settings' => 'settings',
+            'school_academic_years' => 'academic_years',
+            'school_teacher_assignments' => 'teacher_assignments',
+            'school_guardian_links' => 'guardian_links',
+            'school_timetables' => 'timetables',
+            'school_exam_subjects' => 'exam_subjects',
+            'school_grade_bands' => 'grade_bands',
+            'school_invitations' => 'invitations',
+            'school_notification_events' => 'notification_events',
+            'school_notification_preferences' => 'notification_preferences',
+            'school_user_branches' => 'branch_access',
+            'school_audit' => 'audit',
+        ] as $table => $key) {
+            $platformCensus[$key] = DB::table($table)->count();
+        }
         $entitlementAlerts = $schools->flatMap(function (object $school): array {
             $alerts = [];
             if (! $school->subscription_status) {
@@ -86,7 +103,7 @@ class PlatformController extends Controller
         })->values();
 
         return response()->json([
-            'summary' => ['schools' => $schools->count(), 'active_schools' => $schools->where('status', 'active')->count(), 'branches' => (int) $schools->sum('branches'), 'members' => (int) $schools->sum('members'), 'accounts' => $platformAccounts, 'students' => (int) $schools->sum('students'), 'staff' => (int) $schools->sum('staff'), 'teachers' => (int) $schools->sum('teachers'), 'classes' => $platformClasses, 'subjects' => $platformSubjects, 'guardians' => $platformGuardians, 'enrollments' => $platformEnrollments, 'attendance' => $platformAttendance, 'exams' => $platformExams, 'grades' => $platformGrades, 'invoices' => $platformInvoices, 'open_invoices' => (int) $schools->sum('open_invoices'), 'payments' => $platformPayments, 'expenses' => $platformExpenses, 'leave_requests' => $platformLeaveRequests, 'payroll' => $platformPayroll, 'payroll_payments' => $platformPayrollPayments, 'notices' => $platformNotices, 'notifications' => $platformNotifications, 'notification_deliveries' => $platformNotificationDeliveries, 'entitlement_alerts' => $entitlementAlerts->count()],
+            'summary' => array_merge(['schools' => $schools->count(), 'active_schools' => $schools->where('status', 'active')->count(), 'branches' => (int) $schools->sum('branches'), 'members' => (int) $schools->sum('members'), 'accounts' => $platformAccounts, 'students' => (int) $schools->sum('students'), 'staff' => (int) $schools->sum('staff'), 'teachers' => (int) $schools->sum('teachers'), 'classes' => $platformClasses, 'subjects' => $platformSubjects, 'guardians' => $platformGuardians, 'enrollments' => $platformEnrollments, 'attendance' => $platformAttendance, 'exams' => $platformExams, 'grades' => $platformGrades, 'invoices' => $platformInvoices, 'open_invoices' => (int) $schools->sum('open_invoices'), 'payments' => $platformPayments, 'expenses' => $platformExpenses, 'leave_requests' => $platformLeaveRequests, 'payroll' => $platformPayroll, 'payroll_payments' => $platformPayrollPayments, 'notices' => $platformNotices, 'notifications' => $platformNotifications, 'notification_deliveries' => $platformNotificationDeliveries, 'entitlement_alerts' => $entitlementAlerts->count()], $platformCensus),
             'billing' => ['mrr_cents' => $mrrCents, 'subscriptions' => ['active' => (int) ($subscriptionCounts['active'] ?? 0), 'trialing' => (int) ($subscriptionCounts['trialing'] ?? 0), 'past_due' => (int) ($subscriptionCounts['past_due'] ?? 0), 'canceled' => (int) ($subscriptionCounts['canceled'] ?? 0)], 'plan_distribution' => $planDistribution],
             'schools' => $schools, 'plans' => $plans, 'audit' => $recentAudit, 'entitlement_alerts' => $entitlementAlerts,
         ]);

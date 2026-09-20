@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN PLATFORM CENSUS COMPLETENESS UPDATE:
+  - Aligned the top-level Superadmin summary and dashboard cards with the complete tenant inventory: settings, academic years, teaching assignments, guardian links, timetables, exam subjects, grading bands, invitations, notification events/preferences, branch-access grants and audit events are now counted platform-wide alongside existing operational totals.
+  - Verification passed: focused platform-census coverage (1 test, 39 assertions); full PHPUnit (138 tests, 999 assertions); Blade view cache; Pint; diff check.
 - 2026-09-20 SUPERADMIN BRANCH CENSUS UPDATE:
   - Extended the global branch registry and school-detail branch rows with tenant-bounded counts for academic years, subjects, attendance, timetables, exams, exam subjects, grading scales, grades, enrollments, payments, expenses, leave requests, payroll, payroll payments, notices, invitations, notifications, notification events, delivery records and preferences; the dashboard now surfaces the operational branch totals alongside access and billing status.
   - Verification passed: focused branch/school census coverage (2 tests, 77 assertions); full PHPUnit (138 tests, 987 assertions); Blade view cache; Pint; diff check.
