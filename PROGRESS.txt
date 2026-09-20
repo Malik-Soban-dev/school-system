@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN DATA-EXPLORER SECRET-REDACTION UPDATE:
+  - Hardened the school settings explorer with an explicit allowlist for display-safe values; unknown/future settings are now represented as [redacted setting], and logo data remains redacted.
+  - Added regression coverage proving token-like settings never reach the Superadmin response.
+  - Verification passed: full PHPUnit suite (108 tests, 662 assertions), focused Superadmin suite (49 tests, 308 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN TENANT-EXPORT UPDATE:
   - Added a queued, audited seven-day private NDJSON export for an entire school tenant, including branch structure, memberships, students, staff, academic, finance, notification and audit records plus related safe user profiles.
   - Authentication credentials and private secrets are excluded; the school detail dashboard can queue the export and Platform health lists/downloads it beside user-registry exports.
