@@ -33,6 +33,15 @@
         <div class="platform-content">
     <section class="platform-overview" data-platform-tab="overview" aria-labelledby="overview-title">
         <div class="platform-overview-hero"><div><p class="eyebrow">PLATFORM OVERVIEW</p><h2 id="overview-title">Your entire school network, at a glance.</h2><p>Monitor growth, operational health, capacity, billing, and client access from the platform owner workspace.</p></div><div class="overview-actions"><button class="platform-primary-action" id="overview-refresh" type="button">Refresh overview</button><a href="#platform-health">View operations</a></div></div>
+        <section class="platform-workflow" aria-labelledby="workflow-title">
+            <div class="workflow-heading"><div><p class="eyebrow">START HERE</p><h3 id="workflow-title">Set up a school in three steps</h3><p>Follow this order whenever you onboard a new school or open a new branch.</p></div><span class="workflow-note">You are the platform owner</span></div>
+            <div class="workflow-steps">
+                <button type="button" class="workflow-step" data-platform-go="schools"><span>1</span><strong>Create the school</strong><small>Register the school, choose its plan, and add the first owner.</small><em>Open Schools →</em></button>
+                <button type="button" class="workflow-step" data-platform-go="branches"><span>2</span><strong>Add its branches</strong><small>Create each campus and keep its records separate.</small><em>Open Branches →</em></button>
+                <button type="button" class="workflow-step" data-platform-go="users"><span>3</span><strong>Grant access</strong><small>Give an owner or admin access to the correct branch.</small><em>Open Users & access →</em></button>
+            </div>
+            <p class="workflow-result"><strong>Result:</strong> the school admin works in the normal school dashboard, while you can still see and control the entire platform.</p>
+        </section>
         <div class="platform-primary-kpis" id="platform-primary-kpis" aria-live="polite"><article><span class="overview-kpi-label">Schools</span><strong>—</strong><small>Loading platform census</small></article><article><span class="overview-kpi-label">Branches</span><strong>—</strong><small>Loading platform census</small></article><article><span class="overview-kpi-label">Students</span><strong>—</strong><small>Loading platform census</small></article><article><span class="overview-kpi-label">Accounts</span><strong>—</strong><small>Loading platform census</small></article><article><span class="overview-kpi-label">Projected MRR</span><strong>—</strong><small>Loading billing</small></article></div>
         <div class="platform-chart-grid"><article class="platform-chart-card"><div class="chart-heading"><div><p class="eyebrow">NETWORK HEALTH</p><h3>Schools and branches</h3></div><span class="chart-caption">Live status</span></div><div class="status-bars" id="school-health-chart"><p>Loading chart…</p></div></article><article class="platform-chart-card"><div class="chart-heading"><div><p class="eyebrow">PLATFORM COMPOSITION</p><h3>People and activity</h3></div><span class="chart-caption">Total records</span></div><div class="metric-bars" id="platform-composition-chart"><p>Loading chart…</p></div></article></div>
         <article class="platform-inventory-card"><div class="chart-heading"><div><p class="eyebrow">FULL CENSUS</p><h3>Platform inventory</h3></div><button class="platform-subtle-action" type="button" id="inventory-toggle">Show all metrics</button></div><div class="platform-inventory" id="platform-inventory" hidden></div></article>
@@ -102,6 +111,7 @@
         if (window.location.hash !== '#' + selected) history.replaceState(null, '', '#' + selected);
     };
     platformTabButtons.forEach(button => button.addEventListener('click', () => activatePlatformTab(button.dataset.platformTabButton)));
+    document.querySelectorAll('[data-platform-go]').forEach(button => button.addEventListener('click', () => activatePlatformTab(button.dataset.platformGo)));
     activatePlatformTab(window.location.hash.slice(1) || 'overview');
     const summary = document.querySelector('#platform-summary');
     const schoolRegistryFilter = document.querySelector('#school-registry-filter');
