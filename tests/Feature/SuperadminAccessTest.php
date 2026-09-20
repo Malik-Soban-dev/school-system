@@ -191,6 +191,34 @@ class SuperadminAccessTest extends TestCase
         }
     }
 
+    public function test_expired_platform_exports_are_pruned_with_audit_trail(): void
+    {
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+        $relativePath = 'exports/users-999999.csv';
+        $path = storage_path('app/private/'.$relativePath);
+        File::ensureDirectoryExists(dirname($path));
+        File::put($path, "expired export\n");
+        $exportId = DB::table('platform_exports')->insertGetId([
+            'requested_by' => $superadmin->id,
+            'type' => 'users',
+            'status' => 'completed',
+            'file_path' => $relativePath,
+            'row_count' => 3,
+            'expires_at' => now()->subMinute(),
+            'created_at' => now()->subDays(8),
+            'updated_at' => now()->subDays(8),
+        ]);
+
+        try {
+            $this->artisan('platform:prune-exports')->assertExitCode(0);
+            $this->assertDatabaseMissing('platform_exports', ['id' => $exportId]);
+            $this->assertFileDoesNotExist($path);
+            $this->assertDatabaseHas('platform_audit', ['entity_type' => 'export', 'entity_id' => $exportId, 'action' => 'export_pruned']);
+        } finally {
+            File::delete($path);
+        }
+    }
+
     public function test_superadmin_can_search_paginated_cross_school_audit_without_leaking_other_school_events_when_filtered(): void
     {
         $schoolTwo = DB::table('schools')->insertGetId(['name' => 'Audit School', 'slug' => 'audit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

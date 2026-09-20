@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN EXPORT RETENTION UPDATE:
+  - Added a scheduled platform:prune-exports command that safely removes expired private export files and metadata, records export_pruned audit events, and runs daily at 01:10 without overlap.
+  - Verification passed: full PHPUnit suite (106 tests, 641 assertions), focused Superadmin suite (47 tests, 287 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN BACKUP DOWNLOAD UPDATE:
   - Added secure download links for encrypted backups, restricted to validated backup filenames, with a platform audit event for every download; the dashboard now supports off-device backup retrieval alongside creation and verification.
   - Verification passed: full PHPUnit suite (105 tests, 637 assertions), focused Superadmin suite (46 tests, 283 assertions), Vite production build, PHP Pint and git diff check.
