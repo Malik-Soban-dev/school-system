@@ -330,7 +330,7 @@ class PlatformController extends Controller
             ->when(isset($data['school_id']), fn ($query) => $query->whereExists(fn ($membership) => $membership->selectRaw('1')->from('school_user as membership')->whereColumn('membership.user_id', 'u.id')->where('membership.school_id', $data['school_id'])))
             ->when(isset($data['branch_id']), fn ($query) => $query->whereExists(fn ($access) => $access->selectRaw('1')->from('school_user_branches as access')->whereColumn('access.user_id', 'u.id')->where('access.branch_id', $data['branch_id'])->where('access.status', 'active')))
             ->when(isset($data['role']), fn ($query) => $query->where(function ($roleQuery) use ($data): void {
-                if ($data['role'] === 'superadmin' || ! isset($data['branch_id'])) {
+                if ($data['role'] === 'superadmin' || (! isset($data['school_id']) && ! isset($data['branch_id']))) {
                     $roleQuery->whereJsonContains('u.roles', $data['role']);
                 }
                 $roleQuery->orWhereExists(function ($access) use ($data): void {

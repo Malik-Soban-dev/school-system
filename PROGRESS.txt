@@ -1,3 +1,6 @@
+- 2026-09-19 SUPERADMIN SCHOOL-ROLE FILTER UPDATE:
+  - School-scoped user-registry role filters now require a matching grant within that school; unfiltered searches retain global role behavior and Superadmin filtering.
+  - Verification passed: focused role-filter regression (1 test, 10 assertions), full PHPUnit suite (123 tests, 785 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN BRANCH-ROLE FILTER UPDATE:
   - Global user-registry role filters now use the selected branch grant instead of a user’s unrelated global role JSON, while Superadmin role filtering remains available platform-wide.
   - Verification passed: focused role-filter coverage (2 tests, 19 assertions), full PHPUnit suite (123 tests, 780 assertions), Pint, and diff check.

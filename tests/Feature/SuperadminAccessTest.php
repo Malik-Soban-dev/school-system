@@ -167,6 +167,8 @@ class SuperadminAccessTest extends TestCase
 
         $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_id='.$branch.'&role=admin')->assertOk()->assertJsonPath('users.total', 0);
         $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_id='.$branch.'&role=teacher')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.email', 'role-filter-client@example.test');
+        $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&role=admin')->assertOk()->assertJsonPath('users.total', 0);
+        $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&role=teacher')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.email', 'role-filter-client@example.test');
     }
 
     public function test_superadmin_can_review_platform_health_without_backup_contents(): void
