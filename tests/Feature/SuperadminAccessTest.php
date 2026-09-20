@@ -364,6 +364,15 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/audit?branch_id='.$branchOne)->assertOk()->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.action', 'north_event')->assertJsonPath('records.data.0.branch_id', $branchOne)->assertJsonMissing(['action' => 'south_event']);
     }
 
+    public function test_platform_audit_events_remain_visible_when_filtered_to_their_school(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Filtered Audit School', 'slug' => 'filtered-audit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('platform_audit')->insert(['user_id' => null, 'entity_type' => 'subscription', 'entity_id' => $school, 'action' => 'subscription_updated', 'changes' => json_encode(['school_id' => $school, 'status' => 'active']), 'created_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/audit?school_id='.$school)->assertOk()->assertJsonPath('audit.total', 1)->assertJsonPath('audit.data.0.action', 'subscription_updated')->assertJsonPath('audit.data.0.source', 'platform');
+    }
+
     public function test_superadmin_data_explorer_covers_grading_bands_and_exam_subjects(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Assessment Explorer School', 'slug' => 'assessment-explorer-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

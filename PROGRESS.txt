@@ -1,3 +1,6 @@
+- 2026-09-19 SUPERADMIN FILTERED PLATFORM-AUDIT VISIBILITY UPDATE:
+  - School/branch-filtered Superadmin audit results now retain platform-level events attributed through structured JSON school/branch identifiers or supported entity identities, instead of suppressing the entire platform audit stream.
+  - Verification passed: focused audit regression (1 test, 4 assertions), full PHPUnit suite (124 tests, 794 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN SUBSCRIPTION-AUDIT UPDATE:
   - Subscription plan/status transitions now write complete platform-level before/after audit events, including renewal and cancellation timestamps; cancellation and restoration lifecycle behavior is covered.
   - Verification passed: focused subscription coverage (1 test, 12 assertions), full PHPUnit suite (123 tests, 790 assertions), Pint, and diff check.

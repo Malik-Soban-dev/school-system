@@ -309,7 +309,18 @@ class PlatformController extends Controller
         }
         $search = trim((string) ($data['search'] ?? ''));
         $schoolAudit = DB::table('school_audit as a')->join('schools as s', 's.id', '=', 'a.school_id')->leftJoin('school_branches as b', 'b.id', '=', 'a.branch_id')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->when(isset($data['school_id']), fn ($query) => $query->where('a.school_id', $data['school_id']))->when(isset($data['branch_id']), fn ($query) => $query->where('a.branch_id', $data['branch_id']))->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('a.module', 'like', '%'.$search.'%')->orWhere('a.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')->orWhere('s.name', 'like', '%'.$search.'%')->orWhere('b.name', 'like', '%'.$search.'%')))->select(['a.id', 'a.school_id', 'a.branch_id', 's.name as school_name', 'b.name as branch_name', 'a.module', 'a.action', 'a.changes', 'a.created_at', 'u.name as actor'])->selectRaw("'school' as source");
-        $platformAudit = DB::table('platform_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->when(isset($data['school_id']) || isset($data['branch_id']), fn ($query) => $query->whereRaw('1 = 0'))->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('a.entity_type', 'like', '%'.$search.'%')->orWhere('a.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')))->select(['a.id', DB::raw('null as school_id'), DB::raw('null as branch_id'), DB::raw("'Platform' as school_name"), DB::raw('null as branch_name'), DB::raw("'platform' as module"), 'a.action', 'a.changes', 'a.created_at', 'u.name as actor'])->selectRaw("'platform' as source");
+        $platformAudit = DB::table('platform_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')
+            ->when(isset($data['school_id']), fn ($query) => $query->where(function ($scope) use ($data): void {
+                $scope->whereJsonContains('a.changes->school_id', $data['school_id'])
+                    ->orWhereJsonContains('a.changes->school_ids', $data['school_id'])
+                    ->orWhere(fn ($entity) => $entity->whereIn('a.entity_type', ['school', 'subscription', 'school_feature'])->where('a.entity_id', $data['school_id']));
+            }))
+            ->when(isset($data['branch_id']), fn ($query) => $query->where(function ($scope) use ($data): void {
+                $scope->whereJsonContains('a.changes->branch_id', $data['branch_id'])
+                    ->orWhereJsonContains('a.changes->branch_ids', $data['branch_id'])
+                    ->orWhere(fn ($entity) => $entity->whereIn('a.entity_type', ['branch', 'workspace'])->where('a.entity_id', $data['branch_id']));
+            }))
+            ->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('a.entity_type', 'like', '%'.$search.'%')->orWhere('a.action', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')))->select(['a.id', DB::raw('null as school_id'), DB::raw('null as branch_id'), DB::raw("'Platform' as school_name"), DB::raw('null as branch_name'), DB::raw("'platform' as module"), 'a.action', 'a.changes', 'a.created_at', 'u.name as actor'])->selectRaw("'platform' as source");
         $events = DB::query()->fromSub($schoolAudit->unionAll($platformAudit), 'events')->orderByDesc('created_at')->orderByDesc('id')->paginate((int) ($data['per_page'] ?? 50));
 
         return response()->json(['audit' => $events]);
