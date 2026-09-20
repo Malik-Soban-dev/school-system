@@ -30,6 +30,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, EnsureS
     Route::post('/superadmin/operations/backups', [PlatformController::class, 'createBackup']);
     Route::post('/superadmin/operations/backups/verify', [PlatformController::class, 'verifyBackup']);
     Route::get('/superadmin/operations/failed-jobs', [PlatformController::class, 'failedJobs']);
+    Route::post('/superadmin/operations/failed-jobs/{job}/retry', [PlatformController::class, 'retryFailedJob'])->whereNumber('job');
     Route::delete('/superadmin/operations/failed-jobs/{job}', [PlatformController::class, 'forgetFailedJob'])->whereNumber('job');
     Route::get('/superadmin/audit', [PlatformController::class, 'audit']);
     Route::get('/superadmin/users', [PlatformController::class, 'users']);

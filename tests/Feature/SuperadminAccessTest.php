@@ -152,6 +152,17 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'failed_job', 'entity_id' => $job, 'action' => 'failed_job_forgotten']);
     }
 
+    public function test_superadmin_can_requeue_a_failed_job_with_auditing_without_payload_exposure(): void
+    {
+        $job = DB::table('failed_jobs')->insertGetId(['uuid' => 'retry-job-test-uuid', 'connection' => 'database', 'queue' => 'default', 'payload' => 'retry-payload', 'exception' => 'retry-exception', 'failed_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->postJson('/superadmin/operations/failed-jobs/'.$job.'/retry')->assertOk()->assertJsonPath('message', 'Failed job requeued for processing.');
+        $this->assertDatabaseMissing('failed_jobs', ['id' => $job]);
+        $this->assertDatabaseHas('jobs', ['queue' => 'default']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'failed_job', 'entity_id' => $job, 'action' => 'failed_job_retried']);
+    }
+
     public function test_superadmin_can_search_paginated_cross_school_audit_without_leaking_other_school_events_when_filtered(): void
     {
         $schoolTwo = DB::table('schools')->insertGetId(['name' => 'Audit School', 'slug' => 'audit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

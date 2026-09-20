@@ -176,6 +176,18 @@ class PlatformController extends Controller
         return response()->json(['message' => 'Failed job record removed.']);
     }
 
+    public function retryFailedJob(Request $request, int $job): JsonResponse
+    {
+        abort_unless(Schema::hasTable('failed_jobs'), 404);
+        $failedJob = DB::table('failed_jobs')->where('id', $job)->first(['id', 'uuid', 'connection', 'queue', 'failed_at']);
+        abort_unless($failedJob, 404);
+        $exitCode = Artisan::call('queue:retry', ['id' => [$failedJob->uuid], '--no-interaction' => true, '--silent' => true]);
+        abort_if($exitCode !== 0, 422, 'The failed job could not be requeued. It may already have been handled.');
+        DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'failed_job', 'entity_id' => $job, 'action' => 'failed_job_retried', 'changes' => json_encode(['uuid' => $failedJob->uuid, 'connection' => $failedJob->connection, 'queue' => $failedJob->queue, 'failed_at' => $failedJob->failed_at]), 'created_at' => now()]);
+
+        return response()->json(['message' => 'Failed job requeued for processing.']);
+    }
+
     public function audit(Request $request): JsonResponse
     {
         $data = $request->validate(['school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'branch_id' => ['nullable', 'integer'], 'search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);

@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN FAILED-JOB RETRY UPDATE:
+  - Added a dashboard retry operation for failed queue jobs; the failed payload remains hidden, the job is requeued through Laravel's queue command, and the operation is recorded in platform_audit.
+  - Added regression coverage for requeue behavior and preserved the existing forget-record control.
+  - Verification passed: full PHPUnit suite (104 tests, 624 assertions), focused Superadmin suite (45 tests, 270 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 BRANCH TENANT-INTEGRITY UPDATE:
   - Added composite school/branch integrity enforcement for branch-scoped memberships, audit and operational records; database foreign keys protect supported engines and SQLite triggers provide equivalent insert/update enforcement.
   - Added regression coverage proving a branch grant cannot reference a branch owned by another school.
