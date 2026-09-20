@@ -588,7 +588,7 @@ class PlatformController extends Controller
             'max_branches' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'max_students' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'features' => ['required', 'array'],
-            'features.*' => [Rule::in(['*', 'attendance', 'grades', 'invoices', 'payroll', 'notifications']), 'distinct'],
+            'features.*' => [Rule::in(['*', ...SchoolEntitlements::FEATURES]), 'distinct'],
         ]);
         $plan = DB::transaction(function () use ($request, $data): object {
             $planId = DB::table('platform_plans')->insertGetId([...$data, 'features' => json_encode($data['features']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
@@ -608,7 +608,7 @@ class PlatformController extends Controller
             'max_branches' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'max_students' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'features' => ['required', 'array'],
-            'features.*' => [Rule::in(['*', 'attendance', 'grades', 'invoices', 'payroll', 'notifications']), 'distinct'],
+            'features.*' => [Rule::in(['*', ...SchoolEntitlements::FEATURES]), 'distinct'],
             'status' => ['required', Rule::in(['active', 'archived'])],
         ]);
         DB::transaction(function () use ($request, $plan, $data): void {

@@ -514,7 +514,7 @@ class SuperadminAccessTest extends TestCase
     {
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
-        $plan = $this->actingAs($superadmin)->postJson('/superadmin/plans', ['code' => 'pro-plus', 'name' => 'Pro Plus', 'monthly_price_cents' => 24900, 'max_branches' => 10, 'max_students' => 5000, 'features' => ['attendance', 'grades', 'payroll']])->assertCreated()->json('plan');
+        $plan = $this->actingAs($superadmin)->postJson('/superadmin/plans', ['code' => 'pro-plus', 'name' => 'Pro Plus', 'monthly_price_cents' => 24900, 'max_branches' => 10, 'max_students' => 5000, 'features' => ['attendance', 'grades', 'payroll', 'branches']])->assertCreated()->json('plan');
 
         $this->assertSame('pro-plus', $plan['code']);
         $this->assertDatabaseHas('platform_plans', ['id' => $plan['id'], 'code' => 'pro-plus', 'monthly_price_cents' => 24900, 'status' => 'active']);
