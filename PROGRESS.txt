@@ -1,3 +1,6 @@
+- 2026-09-19 SUPERADMIN BILLING-HISTORY REGRESSION UPDATE:
+  - Added coverage proving school paid totals include invoices beyond the 50-row detail display window while the response remains bounded to the latest 50 history rows.
+  - Verification passed: focused Superadmin suite (58 tests, 400 assertions), full PHPUnit suite (119 tests, 759 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN BILLING-TOTALS ACCURACY UPDATE:
   - Corrected school billing totals to aggregate the complete platform invoice ledger; the dashboard still limits the displayed payment-history rows to the latest 50 for responsiveness.
   - Verification passed: focused Superadmin suite (57 tests, 397 assertions), full PHPUnit suite (118 tests, 756 assertions), Pint, and diff check.

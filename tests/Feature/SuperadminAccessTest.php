@@ -395,6 +395,15 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->assertJsonPath('billing.paid_cents', 4900)->assertJsonPath('billing.outstanding_cents', 14900)->assertJsonPath('billing.invoices.0.invoice_number', 'PLAT-BILLING-OPEN');
     }
 
+    public function test_school_billing_totals_include_history_beyond_the_display_window(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Long Billing School', 'slug' => 'long-billing-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('platform_billing_invoices')->insert(collect(range(1, 51))->map(fn (int $number): array => ['school_id' => $school, 'invoice_number' => 'PLAT-LONG-'.str_pad((string) $number, 3, '0', STR_PAD_LEFT), 'amount_cents' => 100, 'currency' => 'USD', 'period_start' => '2026-01-01', 'period_end' => '2026-01-31', 'due_on' => '2026-02-01', 'status' => 'paid', 'paid_at' => now(), 'payment_reference' => 'history-'.$number, 'created_at' => now(), 'updated_at' => now()])->all());
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->assertJsonPath('billing.paid_cents', 5100)->assertJsonCount(50, 'billing.invoices');
+    }
+
     public function test_superadmin_can_override_a_school_feature_and_clear_it_back_to_the_plan(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Feature Override School', 'slug' => 'feature-override-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
