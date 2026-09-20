@@ -156,6 +156,19 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_id='.$branch.'&role=admin')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.email', 'paginated-client-a@example.test');
     }
 
+    public function test_branch_role_filter_uses_the_selected_branch_grant(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Role Filter School', 'slug' => 'role-filter-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Role Branch', 'code' => 'role', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['email' => 'role-filter-client@example.test', 'roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $client->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $client->id, 'roles' => json_encode(['teacher']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_id='.$branch.'&role=admin')->assertOk()->assertJsonPath('users.total', 0);
+        $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_id='.$branch.'&role=teacher')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.email', 'role-filter-client@example.test');
+    }
+
     public function test_superadmin_can_review_platform_health_without_backup_contents(): void
     {
         $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
