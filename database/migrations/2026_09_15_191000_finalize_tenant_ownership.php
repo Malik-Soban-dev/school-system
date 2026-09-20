@@ -23,6 +23,7 @@ return new class extends Migration
         if (! $schoolId) {
             return;
         }
+        $isTurso = DB::connection()->getDriverName() === 'turso';
 
         foreach ($this->tables as $tableName) {
             if (! Schema::hasTable($tableName) || ! Schema::hasColumn($tableName, 'school_id')) {
@@ -32,8 +33,12 @@ return new class extends Migration
             if (app()->environment('testing')) {
                 continue;
             }
-            // Turso/SQLite may leave a temporary rebuild table after an interrupted deploy. Clean only this migration's known temp table before retrying.
+            // Turso uses SQLite's grammar, but remote libSQL cannot safely rebuild these
+            // foreign-key-heavy tables for a nullable-to-not-null change.
             Schema::dropIfExists('__temp__'.$tableName);
+            if ($isTurso) {
+                continue;
+            }
             Schema::table($tableName, function (Blueprint $table): void {
                 $table->unsignedBigInteger('school_id')->nullable(false)->change();
             });

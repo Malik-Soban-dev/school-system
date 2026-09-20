@@ -1,3 +1,6 @@
+- 2026-09-20 RENDER SQLITE MISMATCH FIX UPDATE:
+  - Updated the tenant ownership migration for the Turso driver: it now backfills missing school_id values and removes stale rebuild artifacts, but skips Laravel's unsupported remote SQLite nullable-to-not-null table rebuild. This prevents sqlite_mismatch during Render startup migrations.
+  - Verification passed: full PHPUnit (142 tests, 1030 assertions); migration syntax; Pint.
 - 2026-09-20 RENDER TURSO MIGRATION RECOVERY UPDATE:
   - Fixed the tenant ownership migration to remove only stale __temp__<table> rebuild artifacts left by an interrupted SQLite/Turso migration before retrying the column change. This addresses Render's SQL_INPUT_ERROR for __temp__school_academic_years.
   - Verification passed: full PHPUnit (142 tests, 1030 assertions); Pint; diff check.
