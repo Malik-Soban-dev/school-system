@@ -1,3 +1,8 @@
+- 2026-09-20 PRIVATE STUDENT WELFARE UPDATE:
+  - Added an admin/owner-only Student welfare module for private medical and behavior records with follow-up notes.
+  - Added tenant/branch-scoped storage, audit entries, parent access protection, Superadmin data explorer visibility and platform school exports.
+  - Verification passed: full PHPUnit (150 tests, 1088 assertions); StudentWelfare focused tests (2 tests, 8 assertions); Vite production build; diff check.
+
 - 2026-09-20 SCHEDULED MONTHLY INVOICING UPDATE:
   - Added owner-configurable monthly fee amount, due day and description in School settings.
   - Added the daily school:monthly-invoices command; it creates one repeat-safe invoice per active student, excludes withdrawn/graduated students, queues invoice notification events and records an audit entry.

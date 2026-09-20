@@ -141,6 +141,37 @@ return [
             'choices' => ['active', 'withdrawn', 'graduated'],
         ]],
     ],
+    'student_welfare' => [
+        'label' => 'Student welfare',
+        'singular' => 'welfare record',
+        'help' => 'Keep private medical and behavior notes for authorized school leadership. These records are never shown to parents, students or teachers.',
+        'read' => ['owner', 'admin'],
+        'write' => ['owner', 'admin'],
+        'fields' => [[
+            'name' => 'student_id',
+            'label' => 'Student',
+            'type' => 'relation',
+            'relation' => 'students',
+        ], [
+            'name' => 'record_type',
+            'label' => 'Record type',
+            'type' => 'select',
+            'choices' => ['medical', 'behavior'],
+        ], [
+            'name' => 'record_date',
+            'label' => 'Record date',
+            'type' => 'date',
+        ], [
+            'name' => 'details',
+            'label' => 'Details',
+            'type' => 'textarea',
+        ], [
+            'name' => 'follow_up',
+            'label' => 'Follow-up action',
+            'type' => 'textarea',
+            'optional' => true,
+        ]],
+    ],
     'guardian_links' => [
         'label' => 'Guardian links',
         'singular' => 'guardian link',
