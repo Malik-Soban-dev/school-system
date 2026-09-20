@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN BRANCH CENSUS UPDATE:
+  - Extended the global branch registry and school-detail branch rows with tenant-bounded counts for academic years, subjects, attendance, timetables, exams, exam subjects, grading scales, grades, enrollments, payments, expenses, leave requests, payroll, payroll payments, notices, invitations, notifications, notification events, delivery records and preferences; the dashboard now surfaces the operational branch totals alongside access and billing status.
+  - Verification passed: focused branch/school census coverage (2 tests, 77 assertions); full PHPUnit (138 tests, 987 assertions); Blade view cache; Pint; diff check.
 - 2026-09-20 SUPERADMIN SCHOOL-DETAIL CENSUS UPDATE:
   - Expanded the Superadmin school detail response with school-bounded counts for academic years, subjects, guardians, teacher assignments, attendance, timetables, exams, exam subjects, grading scales, grades, invoices, payments, expenses, leave requests, payroll, notices, invitations, notifications, delivery events, preferences, settings and audit records; added open-invoice totals for operational support.
   - Verification passed: focused census coverage (1 test, 41 assertions); full PHPUnit (138 tests, 959 assertions); Blade view cache; Pint; diff check.

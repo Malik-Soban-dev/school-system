@@ -96,7 +96,7 @@ class PlatformController extends Controller
     {
         $data = $request->validate(['school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'status' => ['nullable', Rule::in(['active', 'suspended'])], 'search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
         $search = trim((string) ($data['search'] ?? ''));
-        $branches = DB::table('school_branches as b')
+        $query = DB::table('school_branches as b')
             ->join('schools as s', 's.id', '=', 'b.school_id')
             ->leftJoinSub(DB::table('school_students')->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id'), 'students', 'students.branch_id', '=', 'b.id')
             ->leftJoinSub(DB::table('school_staff')->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id'), 'staff', 'staff.branch_id', '=', 'b.id')
@@ -108,8 +108,37 @@ class PlatformController extends Controller
             ->when(isset($data['school_id']), fn ($query) => $query->where('b.school_id', $data['school_id']))
             ->when(isset($data['status']), fn ($query) => $query->where('b.status', $data['status']))
             ->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('b.name', 'like', '%'.$search.'%')->orWhere('b.code', 'like', '%'.$search.'%')->orWhere('s.name', 'like', '%'.$search.'%')))
-            ->orderBy('s.name')->orderBy('b.name')
-            ->paginate((int) ($data['per_page'] ?? 50), ['b.id', 'b.school_id', 's.name as school_name', 'b.name', 'b.code', 'b.status', 'b.is_default', 'b.created_at', DB::raw('coalesce(members.total, 0) as members'), DB::raw('coalesce(students.total, 0) as students'), DB::raw('coalesce(staff.total, 0) as staff'), DB::raw('coalesce(teachers.total, 0) as teachers'), DB::raw('coalesce(guardians.total, 0) as guardians'), DB::raw('coalesce(classes.total, 0) as classes'), DB::raw('coalesce(open_invoices.total, 0) as open_invoices')]);
+            ->orderBy('s.name')->orderBy('b.name');
+        $branchMetrics = [
+            'school_academic_years' => 'academic_years',
+            'school_subjects' => 'subjects',
+            'school_attendance' => 'attendance',
+            'school_timetables' => 'timetables',
+            'school_exams' => 'exams',
+            'school_exam_subjects' => 'exam_subjects',
+            'school_grade_bands' => 'grade_bands',
+            'school_grades' => 'grades',
+            'school_enrollments' => 'enrollments',
+            'school_payments' => 'payments',
+            'school_expenses' => 'expenses',
+            'school_leave_requests' => 'leave_requests',
+            'school_payroll' => 'payroll',
+            'school_payroll_payments' => 'payroll_payments',
+            'school_notices' => 'notices',
+            'school_invitations' => 'invitations',
+            'school_notifications' => 'notifications',
+            'school_notification_events' => 'notification_events',
+            'school_notification_deliveries' => 'notification_deliveries',
+            'school_notification_preferences' => 'notification_preferences',
+        ];
+        foreach ($branchMetrics as $table => $key) {
+            $query->leftJoinSub(DB::table($table)->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id'), $key, $key.'.branch_id', '=', 'b.id');
+        }
+        $columns = ['b.id', 'b.school_id', 's.name as school_name', 'b.name', 'b.code', 'b.status', 'b.is_default', 'b.created_at'];
+        foreach (array_merge(['members', 'students', 'staff', 'teachers', 'guardians', 'classes', 'open_invoices'], array_values($branchMetrics)) as $key) {
+            $columns[] = DB::raw('coalesce('.$key.'.total, 0) as '.$key);
+        }
+        $branches = $query->paginate((int) ($data['per_page'] ?? 50), $columns);
 
         return response()->json(['branches' => $branches]);
     }
@@ -786,6 +815,35 @@ class PlatformController extends Controller
         $branches = DB::table('school_branches')->where('school_id', $school)->orderBy('name')->get(['id', 'name', 'code', 'status', 'is_default']);
         foreach (['school_students' => 'students', 'school_staff' => 'staff', 'school_classes' => 'classes', 'school_teacher_assignments' => 'teachers', 'school_user_branches' => 'members', 'school_invoices' => 'open_invoices'] as $table => $key) {
             $countsByBranch = DB::table($table)->where('school_id', $school)->whereNotNull('branch_id')->when(in_array($key, ['members', 'teachers'], true), fn ($query) => $query->where('status', 'active'))->when($key === 'open_invoices', fn ($query) => $query->whereIn('status', ['issued', 'partial', 'overdue']))->select('branch_id')->selectRaw(in_array($key, ['teachers', 'members'], true) ? 'count(distinct user_id) as total' : 'count(*) as total')->groupBy('branch_id')->pluck('total', 'branch_id');
+            $branches = $branches->map(function (object $branch) use ($countsByBranch, $key): object {
+                $branch->{$key} = (int) ($countsByBranch[$branch->id] ?? 0);
+
+                return $branch;
+            });
+        }
+        foreach ([
+            'school_academic_years' => 'academic_years',
+            'school_subjects' => 'subjects',
+            'school_attendance' => 'attendance',
+            'school_timetables' => 'timetables',
+            'school_exams' => 'exams',
+            'school_exam_subjects' => 'exam_subjects',
+            'school_grade_bands' => 'grade_bands',
+            'school_grades' => 'grades',
+            'school_enrollments' => 'enrollments',
+            'school_payments' => 'payments',
+            'school_expenses' => 'expenses',
+            'school_leave_requests' => 'leave_requests',
+            'school_payroll' => 'payroll',
+            'school_payroll_payments' => 'payroll_payments',
+            'school_notices' => 'notices',
+            'school_invitations' => 'invitations',
+            'school_notifications' => 'notifications',
+            'school_notification_events' => 'notification_events',
+            'school_notification_deliveries' => 'notification_deliveries',
+            'school_notification_preferences' => 'notification_preferences',
+        ] as $table => $key) {
+            $countsByBranch = DB::table($table)->where('school_id', $school)->whereNotNull('branch_id')->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id')->pluck('total', 'branch_id');
             $branches = $branches->map(function (object $branch) use ($countsByBranch, $key): object {
                 $branch->{$key} = (int) ($countsByBranch[$branch->id] ?? 0);
 
