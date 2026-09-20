@@ -88,11 +88,14 @@ class PlatformController extends Controller
             ->leftJoinSub(DB::table('school_staff')->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id'), 'staff', 'staff.branch_id', '=', 'b.id')
             ->leftJoinSub(DB::table('school_teacher_assignments')->select('branch_id')->where('status', 'active')->selectRaw('count(distinct user_id) as total')->groupBy('branch_id'), 'teachers', 'teachers.branch_id', '=', 'b.id')
             ->leftJoinSub(DB::table('school_user_branches')->select('branch_id')->where('status', 'active')->selectRaw('count(distinct user_id) as total')->groupBy('branch_id'), 'members', 'members.branch_id', '=', 'b.id')
+            ->leftJoinSub(DB::table('school_guardian_links')->select('branch_id')->where('status', 'active')->selectRaw('count(distinct user_id) as total')->groupBy('branch_id'), 'guardians', 'guardians.branch_id', '=', 'b.id')
+            ->leftJoinSub(DB::table('school_classes')->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id'), 'classes', 'classes.branch_id', '=', 'b.id')
+            ->leftJoinSub(DB::table('school_invoices')->select('branch_id')->whereIn('status', ['issued', 'partial', 'overdue'])->selectRaw('count(*) as total')->groupBy('branch_id'), 'open_invoices', 'open_invoices.branch_id', '=', 'b.id')
             ->when(isset($data['school_id']), fn ($query) => $query->where('b.school_id', $data['school_id']))
             ->when(isset($data['status']), fn ($query) => $query->where('b.status', $data['status']))
             ->when($search !== '', fn ($query) => $query->where(fn ($searchQuery) => $searchQuery->where('b.name', 'like', '%'.$search.'%')->orWhere('b.code', 'like', '%'.$search.'%')->orWhere('s.name', 'like', '%'.$search.'%')))
             ->orderBy('s.name')->orderBy('b.name')
-            ->paginate((int) ($data['per_page'] ?? 50), ['b.id', 'b.school_id', 's.name as school_name', 'b.name', 'b.code', 'b.status', 'b.is_default', 'b.created_at', DB::raw('coalesce(members.total, 0) as members'), DB::raw('coalesce(students.total, 0) as students'), DB::raw('coalesce(staff.total, 0) as staff'), DB::raw('coalesce(teachers.total, 0) as teachers')]);
+            ->paginate((int) ($data['per_page'] ?? 50), ['b.id', 'b.school_id', 's.name as school_name', 'b.name', 'b.code', 'b.status', 'b.is_default', 'b.created_at', DB::raw('coalesce(members.total, 0) as members'), DB::raw('coalesce(students.total, 0) as students'), DB::raw('coalesce(staff.total, 0) as staff'), DB::raw('coalesce(teachers.total, 0) as teachers'), DB::raw('coalesce(guardians.total, 0) as guardians'), DB::raw('coalesce(classes.total, 0) as classes'), DB::raw('coalesce(open_invoices.total, 0) as open_invoices')]);
 
         return response()->json(['branches' => $branches]);
     }

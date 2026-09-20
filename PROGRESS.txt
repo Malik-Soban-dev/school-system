@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN BRANCH-REGISTRY CENSUS UPDATE:
+  - Global branch registry rows now include active guardian accounts, classes and open school invoices alongside members, students, staff and teachers, keeping cross-school branch operations visible without opening each school detail.
+  - Verification passed: focused branch-registry coverage (2 tests, 14 assertions), Blade view cache, full PHPUnit (133 tests, 863 assertions), Pint, and diff check.
+
 - 2026-09-19 SUPERADMIN MULTI-ROLE ACCESS UPDATE:
   - Superadmin branch grants, bulk grants, invitations and member-access controls now accept combined roles from the dashboard, including owner, admin, teacher, student, parent and accountant; server-side role validation and audit behavior remain unchanged.
   - Verification passed: focused Superadmin coverage (10 tests, 66 assertions), Blade view cache, full PHPUnit (133 tests, 860 assertions), Pint, and diff check.
