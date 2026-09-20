@@ -348,7 +348,7 @@ class PlatformController extends Controller
 
     public function users(Request $request): JsonResponse
     {
-        $data = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'branch_id' => ['nullable', 'integer'], 'status' => ['nullable', Rule::in(['active', 'suspended'])], 'membership_status' => ['nullable', Rule::in(['active', 'suspended'])], 'role' => ['nullable', Rule::in(['superadmin', 'owner', 'admin', 'teacher', 'student', 'parent', 'accountant'])], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        $data = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'branch_id' => ['nullable', 'integer'], 'branch_status' => ['nullable', Rule::in(['active', 'suspended'])], 'status' => ['nullable', Rule::in(['active', 'suspended'])], 'membership_status' => ['nullable', Rule::in(['active', 'suspended'])], 'role' => ['nullable', Rule::in(['superadmin', 'owner', 'admin', 'teacher', 'student', 'parent', 'accountant'])], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
         if (isset($data['branch_id'])) {
             abort_unless(DB::table('school_branches')->where('id', $data['branch_id'])->when(isset($data['school_id']), fn ($query) => $query->where('school_id', $data['school_id']))->exists(), 404);
         }
@@ -360,6 +360,9 @@ class PlatformController extends Controller
             ->when(isset($data['status']), fn ($query) => $query->where('u.is_active', $data['status'] === 'active'))
             ->when(isset($data['school_id']), fn ($query) => $query->whereExists(fn ($membership) => $membership->selectRaw('1')->from('school_user as membership')->whereColumn('membership.user_id', 'u.id')->where('membership.school_id', $data['school_id'])))
             ->when(isset($data['branch_id']), fn ($query) => $query->whereExists(fn ($access) => $access->selectRaw('1')->from('school_user_branches as access')->whereColumn('access.user_id', 'u.id')->where('access.branch_id', $data['branch_id'])))
+            ->when(isset($data['branch_status']), fn ($query) => $query->whereExists(function ($access) use ($data): void {
+                $access->selectRaw('1')->from('school_user_branches as branch_access')->join('school_branches as branch', 'branch.id', '=', 'branch_access.branch_id')->whereColumn('branch_access.user_id', 'u.id')->where('branch.status', $data['branch_status'])->when(isset($data['school_id']), fn ($nested) => $nested->where('branch_access.school_id', $data['school_id']))->when(isset($data['branch_id']), fn ($nested) => $nested->where('branch_access.branch_id', $data['branch_id']));
+            }))
             ->when(isset($data['membership_status']), fn ($query) => $query->whereExists(fn ($membership) => $membership->selectRaw('1')->from('school_user as membership')->whereColumn('membership.user_id', 'u.id')->where('membership.status', $data['membership_status'])->when(isset($data['school_id']), fn ($nested) => $nested->where('membership.school_id', $data['school_id']))->when(isset($data['branch_id']), fn ($nested) => $nested->whereIn('membership.school_id', DB::table('school_branches')->where('id', $data['branch_id'])->select('school_id')))))
             ->when(isset($data['role']), fn ($query) => $query->where(function ($roleQuery) use ($data): void {
                 if ($data['role'] === 'superadmin' || (! isset($data['school_id']) && ! isset($data['branch_id']))) {

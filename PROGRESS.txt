@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN BRANCH-STATUS FILTER UPDATE:
+  - Added active/suspended branch lifecycle filtering to the global user registry API and dashboard, so Superadmin can target users attached to suspended branches for restoration while excluding them from active-branch operations.
+  - Verification passed: focused registry coverage (2 tests, 33 assertions); Blade view cache; full PHPUnit (135 tests, 920 assertions); Pint; diff check.
 - 2026-09-20 SUPERADMIN BRANCH-LIFECYCLE VISIBILITY UPDATE:
   - Global user access rows, branch-access explorer records and queued user exports now expose branch_status separately from branch grant status, preventing suspended branches from being presented as usable access.
   - Verification passed: focused registry/export/lifecycle tests (3 tests, 31 assertions); Blade view cache; full PHPUnit (135 tests, 914 assertions); Pint; diff check.
