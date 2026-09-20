@@ -1,3 +1,6 @@
+- 2026-09-19 SUPERADMIN EXPLORER BRANCH-JOIN ISOLATION UPDATE:
+  - Branch-filtered Superadmin record explorers now constrain joined classes, academic years, subjects, exams, students, staff, invoices, payroll and notification rows to the selected branch, preventing foreign branch labels from appearing through inconsistent legacy relationships.
+  - Verification passed: branch explorer regression (1 test, 12 assertions), full PHPUnit suite (121 tests, 769 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN PLATFORM-AUDIT COVERAGE UPDATE:
   - Added platform-level audit records for branch creation, metadata/default/status changes, branch invitations, branch access, membership status and school status mutations, while retaining branch-scoped school audit records.
   - Verification passed: focused Superadmin suite (59 tests, 408 assertions), full PHPUnit suite (121 tests, 768 assertions), Pint, and diff check.
