@@ -87,9 +87,9 @@ class InvitationController extends Controller
     private function find(string $token): object
     {
         abort_unless(strlen($token) === 64, 404);
-        $invitation = DB::table('school_invitations as invitation')->join('school_branches as branch', function ($join): void {
+        $invitation = DB::table('school_invitations as invitation')->join('schools as school', 'school.id', '=', 'invitation.school_id')->join('school_branches as branch', function ($join): void {
             $join->on('branch.id', '=', 'invitation.branch_id')->on('branch.school_id', '=', 'invitation.school_id');
-        })->where('invitation.token_hash', hash('sha256', $token))->whereNull('invitation.accepted_at')->where('invitation.expires_at', '>', now())->where('branch.status', 'active')->select('invitation.*')->first();
+        })->where('invitation.token_hash', hash('sha256', $token))->whereNull('invitation.accepted_at')->where('invitation.expires_at', '>', now())->where('school.status', 'active')->where('branch.status', 'active')->select('invitation.*')->first();
         abort_unless($invitation, 404, 'This invitation has expired or has already been used.');
         $creator = User::find($invitation->created_by);
         $roles = json_decode($invitation->roles, true);
@@ -109,6 +109,8 @@ class InvitationController extends Controller
             'password' => ['required', 'string', 'min:10', 'max:72', 'confirmed']]);
         DB::transaction(function () use ($token, $data): void {
             $invitation = $this->find($token);
+            $school = DB::table('schools')->where('id', $invitation->school_id)->lockForUpdate()->first(['status']);
+            abort_unless($school?->status === 'active', 404, 'This invitation is unavailable while the school is suspended.');
             $branch = DB::table('school_branches')->where('school_id', $invitation->school_id)->where('id', $invitation->branch_id)->lockForUpdate()->first(['status']);
             abort_unless($branch?->status === 'active', 404, 'This invitation is unavailable while the branch is suspended.');
             abort_if(User::where('email', $invitation->email)->exists(), 409, 'This email already has an account. Ask your administrator to update its access.');

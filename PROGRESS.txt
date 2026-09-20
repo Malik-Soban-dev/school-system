@@ -1,3 +1,6 @@
+- 2026-09-20 SUSPENDED-SCHOOL INVITATION SAFETY UPDATE:
+  - Invitation lookup, acceptance and Superadmin branch-invitation issuance now require an active parent school as well as an active branch; acceptance locks the school and branch lifecycle rows before creating the account.
+  - Verification passed: focused school/branch invitation coverage (3 tests, 19 assertions); Blade view cache; full PHPUnit (137 tests, 929 assertions); Pint; diff check.
 - 2026-09-20 SUSPENDED-BRANCH INVITATION SAFETY UPDATE:
   - Invitation lookup and acceptance now require an active branch; acceptance locks the branch lifecycle row inside its transaction, preventing invitations issued before suspension from creating new accounts or racing a branch status change.
   - Verification passed: focused invitation-security coverage (3 tests, 11 assertions); Blade view cache; full PHPUnit (136 tests, 924 assertions); Pint; diff check.

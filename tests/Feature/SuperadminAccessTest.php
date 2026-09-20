@@ -969,6 +969,8 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->deleteJson('/superadmin/schools/'.$school.'/invitations/'.$invitation->id)->assertOk();
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $invitation->id, 'action' => 'invitation_revoked']);
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'invitation', 'entity_id' => $invitation->id, 'action' => 'invitation_revoked']);
+        DB::table('schools')->where('id', $school)->update(['status' => 'suspended']);
+        $this->actingAs($superadmin)->postJson('/superadmin/schools/'.$school.'/branches/'.$branch.'/invitations', ['name' => 'Blocked School Admin', 'email' => 'blocked-school-admin@example.test', 'roles' => ['admin']])->assertNotFound();
     }
 
     public function test_superadmin_can_search_and_suspend_a_client_account_with_auditing(): void

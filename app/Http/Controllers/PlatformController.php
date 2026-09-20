@@ -892,6 +892,9 @@ class PlatformController extends Controller
         abort_unless(DB::table('school_branches')->where('school_id', $school)->where('id', $branch)->where('status', 'active')->exists(), 404);
         $token = Str::random(64);
         DB::transaction(function () use ($request, $school, $branch, $data, $token): void {
+            $schoolRecord = DB::table('schools')->where('id', $school)->lockForUpdate()->first(['status']);
+            $branchRecord = DB::table('school_branches')->where('school_id', $school)->where('id', $branch)->lockForUpdate()->first(['status']);
+            abort_unless($schoolRecord?->status === 'active' && $branchRecord?->status === 'active', 404);
             DB::table('school_invitations')->updateOrInsert(['school_id' => $school, 'branch_id' => $branch, 'email' => $data['email']], [
                 'name' => $data['name'], 'roles' => json_encode($data['roles']), 'token_hash' => hash('sha256', $token),
                 'expires_at' => now()->addHours(48), 'accepted_at' => null, 'created_by' => $request->user()->id, 'created_at' => now(), 'updated_at' => now(),
