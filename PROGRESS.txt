@@ -1,3 +1,6 @@
+- 2026-09-19 SUPERADMIN CONTROL-CONFIRMATION UPDATE:
+  - Added explicit confirmation before saving platform plan catalog changes or changing a school subscription/renewal, matching the existing confirmations for status, access, backup and export controls.
+  - Verification passed: Vite production build and git diff check; existing full suite remains green at 119 tests and 759 assertions.
 - 2026-09-19 SUPERADMIN BILLING-HISTORY REGRESSION UPDATE:
   - Added coverage proving school paid totals include invoices beyond the 50-row detail display window while the response remains bounded to the latest 50 history rows.
   - Verification passed: focused Superadmin suite (58 tests, 400 assertions), full PHPUnit suite (119 tests, 759 assertions), Pint, and diff check.

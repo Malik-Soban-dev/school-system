@@ -199,6 +199,7 @@
         planRows.innerHTML = platformPlans.map(plan => `<tr><td><input class="plan-name" value="${esc(plan.name)}" aria-label="Plan name"><small>${esc(plan.code)}</small></td><td><input class="plan-price" type="number" min="0" value="${esc(plan.monthly_price_cents)}" aria-label="Monthly price for ${esc(plan.name)}"></td><td><input class="plan-branches" type="number" min="1" value="${esc(plan.max_branches ?? '')}" aria-label="Maximum branches for ${esc(plan.name)}"></td><td><input class="plan-students" type="number" min="1" value="${esc(plan.max_students ?? '')}" aria-label="Maximum students for ${esc(plan.name)}"></td><td><input class="plan-features" value="${esc((JSON.parse(plan.features || '[]')).join(', '))}" aria-label="Features for ${esc(plan.name)}"><small>attendance, grades, invoices, payroll, notifications, *</small></td><td><select class="plan-status" aria-label="Status for ${esc(plan.name)}"><option value="active" ${plan.status === 'active' ? 'selected' : ''}>Active</option><option value="archived" ${plan.status === 'archived' ? 'selected' : ''}>Archived</option></select></td><td><button class="plan-save" data-id="${esc(plan.id)}" type="button">Save</button></td></tr>`).join('') || '<tr><td colspan="7">No plans registered.</td></tr>';
         document.querySelectorAll('.plan-save').forEach(button => button.addEventListener('click', async event => {
             const row = event.currentTarget.closest('tr');
+            if (!window.confirm(`Save changes to the ${row.querySelector('.plan-name').value} plan? Existing school subscriptions will use the updated catalog settings.`)) return;
             try {
                 await request(`/superadmin/plans/${event.currentTarget.dataset.id}`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({name: row.querySelector('.plan-name').value, monthly_price_cents: Number(row.querySelector('.plan-price').value), max_branches: row.querySelector('.plan-branches').value || null, max_students: row.querySelector('.plan-students').value || null, features: row.querySelector('.plan-features').value.split(',').map(value => value.trim()).filter(Boolean), status: row.querySelector('.plan-status').value})});
                 window.alert('Plan updated and audited.');
@@ -312,6 +313,7 @@
         document.querySelector('#subscription-form').addEventListener('submit', async event => {
             event.preventDefault();
             const formData = new FormData(event.currentTarget);
+            if (!window.confirm('Save this school subscription and renewal change? The action will be audited.')) return;
             try {
                 await request(`/superadmin/schools/${schoolId}/subscription`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({plan_id: Number(formData.get('plan_id')), status: formData.get('status'), renews_at: formData.get('renews_at') || null})});
                 window.alert('Subscription updated and audited.');
