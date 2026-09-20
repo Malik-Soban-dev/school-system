@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN PLATFORM CENSUS UPDATE:
+  - Expanded the global dashboard census with distinct client accounts, classes, and active guardians alongside schools, branches, students, staff, teachers and invoices.
+  - Added regression coverage for cross-tenant class totals while retaining the existing detailed data explorer and school/branch filters.
+  - Verification passed: focused Superadmin suite (55 tests, 351 assertions), full PHPUnit suite (114 tests, 705 assertions), Pint, Vite build, and diff check.
 - 2026-09-19 SUPERADMIN ACCESS-SUSPENSION HARDENING UPDATE:
   - Global branch-access suspension now immediately revokes all database sessions for the affected client and records the revoked-session count in the before/after audit event.
   - Added regression coverage for session invalidation while preserving idempotent role/status updates.

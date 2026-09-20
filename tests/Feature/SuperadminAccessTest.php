@@ -386,6 +386,7 @@ class SuperadminAccessTest extends TestCase
         $this->assertSame('active', $record['subscription_status']);
         $this->assertSame(1, (int) $record['branches']);
         $this->assertSame(1, (int) $record['students']);
+        $this->assertSame(1, (int) $payload['summary']['classes']);
         $this->assertSame((int) $plan->max_branches, (int) $record['max_branches']);
         $this->assertSame((int) $plan->max_students, (int) $record['max_students']);
         $this->assertCount(1, collect($payload['entitlement_alerts'])->where('school_id', $school));
