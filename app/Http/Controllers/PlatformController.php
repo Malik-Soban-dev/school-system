@@ -525,7 +525,14 @@ class PlatformController extends Controller
             }
 
             DB::table('school_branches')->where('id', $branch)->update(['status' => $data['status'], 'updated_at' => now()]);
-            DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_status_updated', 'changes' => json_encode(['before' => ['status' => $branchRecord->status], 'after' => ['status' => $data['status']]]), 'created_at' => now()]);
+            $revokedSessions = 0;
+            if ($data['status'] === 'suspended' && Schema::hasTable('sessions')) {
+                $userIds = DB::table('school_user_branches')->where('school_id', $school)->where('branch_id', $branch)->pluck('user_id');
+                if ($userIds->isNotEmpty()) {
+                    $revokedSessions = DB::table('sessions')->whereIn('user_id', $userIds)->delete();
+                }
+            }
+            DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $branch, 'action' => 'branch_status_updated', 'changes' => json_encode(['before' => ['status' => $branchRecord->status], 'after' => ['status' => $data['status']], 'revoked_sessions' => $revokedSessions]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'Branch status updated.']);
@@ -635,7 +642,14 @@ class PlatformController extends Controller
             }
 
             DB::table('schools')->where('id', $school)->update(['status' => $data['status'], 'updated_at' => now()]);
-            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $school, 'action' => 'school_status_updated', 'changes' => json_encode(['before' => ['status' => $schoolRecord->status], 'after' => ['status' => $data['status']]]), 'created_at' => now()]);
+            $revokedSessions = 0;
+            if ($data['status'] === 'suspended' && Schema::hasTable('sessions')) {
+                $userIds = DB::table('school_user')->where('school_id', $school)->pluck('user_id');
+                if ($userIds->isNotEmpty()) {
+                    $revokedSessions = DB::table('sessions')->whereIn('user_id', $userIds)->delete();
+                }
+            }
+            DB::table('school_audit')->insert(['school_id' => $school, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $school, 'action' => 'school_status_updated', 'changes' => json_encode(['before' => ['status' => $schoolRecord->status], 'after' => ['status' => $data['status']], 'revoked_sessions' => $revokedSessions]), 'created_at' => now()]);
         });
 
         return response()->json(['message' => 'School status updated.']);

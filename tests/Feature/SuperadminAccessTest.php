@@ -331,12 +331,17 @@ class SuperadminAccessTest extends TestCase
     public function test_superadmin_can_review_and_suspend_a_school_with_audited_status_change(): void
     {
         $schoolTwo = DB::table('schools')->insertGetId(['name' => 'Managed School', 'slug' => 'managed-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $schoolTwo, 'user_id' => $client->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('sessions')->insert(['id' => 'managed-school-session', 'user_id' => $client->id, 'payload' => '', 'last_activity' => time()]);
         $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
         $this->actingAs($user)->getJson('/superadmin/data')->assertOk()->assertJsonPath('summary.schools', 2)->assertJsonFragment(['slug' => 'managed-school']);
         $this->actingAs($user)->putJson('/superadmin/schools/'.$schoolTwo.'/status', ['status' => 'suspended'])->assertOk();
         $this->assertDatabaseHas('schools', ['id' => $schoolTwo, 'status' => 'suspended']);
-        $this->assertDatabaseHas('school_audit', ['school_id' => $schoolTwo, 'module' => 'platform', 'action' => 'school_status_updated', 'changes' => json_encode(['before' => ['status' => 'active'], 'after' => ['status' => 'suspended']])]);
+        $this->assertDatabaseMissing('sessions', ['id' => 'managed-school-session']);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $schoolTwo, 'module' => 'platform', 'action' => 'school_status_updated']);
+        $this->assertStringContainsString('"revoked_sessions":1', (string) DB::table('school_audit')->where('school_id', $schoolTwo)->where('action', 'school_status_updated')->value('changes'));
     }
 
     public function test_superadmin_can_update_school_profile_with_unique_slug_validation(): void
@@ -488,6 +493,7 @@ class SuperadminAccessTest extends TestCase
         $admin = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
         DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $admin->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         DB::table('school_user_branches')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $admin->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('sessions')->insert(['id' => 'branch-status-session', 'user_id' => $admin->id, 'payload' => '', 'last_activity' => time()]);
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
         $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/members/'.$admin->id.'/status', ['status' => 'suspended'])->assertOk();
@@ -531,6 +537,7 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/branches/'.$branch.'/status', ['status' => 'suspended'])->assertOk();
 
         $this->assertDatabaseHas('school_branches', ['id' => $branch, 'status' => 'suspended']);
+        $this->assertDatabaseMissing('sessions', ['id' => 'branch-status-session']);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $branch, 'action' => 'branch_status_updated']);
         $this->withSession(['school_id' => $school, 'branch_id' => $branch])->actingAs($admin)->getJson('/portal/meta')->assertForbidden();
     }
