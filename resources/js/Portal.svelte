@@ -32,6 +32,12 @@
     async function api(path, method = 'GET', body) {
         const response = await fetch(path, {method, credentials: 'same-origin', headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': csrf, ...(body instanceof FormData ? {} : {'Content-Type': 'application/json'})}, ...(body ? {body: body instanceof FormData ? body : JSON.stringify(body)} : {})});
         if ([401, 419].includes(response.status)) { location.assign('/login'); throw new Error('Your session ended. Please sign in again.'); }
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) {
+            const e = new Error(`The server returned an unexpected response (${response.status}). Please refresh and try again.`);
+            e.status = response.status;
+            throw e;
+        }
         const data = await response.json();
         if (!response.ok) { const e = new Error(data.message ?? 'Unable to complete this action. Please try again.'); e.errors = data.errors ?? {}; throw e; }
         return data;

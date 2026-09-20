@@ -185,6 +185,11 @@
     const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
     const request = async (url, options = {}) => {
         const response = await fetch(url, {credentials: 'same-origin', headers: {Accept: 'application/json', ...options.headers}, ...options});
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            if ([401, 419].includes(response.status)) location.assign('/login');
+            throw new Error(`The server returned an unexpected response (${response.status}). Please refresh and try again.`);
+        }
         if (!response.ok) {
             throw new Error((await response.json().catch(() => ({}))).message || 'The platform request failed.');
         }
@@ -479,9 +484,7 @@
         auditBranch.innerHTML = '<option value="">All branches</option>' + (school?.branch_options || []).map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)}</option>`).join('');
     };
     const load = async () => {
-        const response = await fetch('/superadmin/data', {headers: {Accept: 'application/json'}, credentials: 'same-origin'});
-        if (!response.ok) throw new Error('Unable to load platform data.');
-        const data = await response.json();
+        const data = await request('/superadmin/data');
         platformSchools = data.schools;
         platformPlans = data.plans || [];
         const entitlementAlerts = data.entitlement_alerts || [];

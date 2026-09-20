@@ -1,3 +1,6 @@
+- 2026-09-20 ADMIN SIDEBAR AND API ERROR HANDLING UPDATE:
+  - Made the school-admin sidebar sticky on desktop while preserving the fixed mobile menu. Hardened login, school portal, and Superadmin requests so HTML redirects/errors are not parsed as JSON; users now receive a clear response instead of Unexpected token '<'.
+  - Verification passed: Vite production build; diff check.
 - 2026-09-20 RESTORE SEPARATE ADMIN AND SUPERADMIN DASHBOARDS:
   - Restored strict dashboard separation after the temporary revert: school owner/admin accounts render /dashboard, while Superadmin accounts are redirected to /superadmin. Added regression coverage for the Superadmin redirect.
   - Verification passed: Authentication feature suite (16 tests, 54 assertions); diff check.

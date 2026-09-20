@@ -17,6 +17,14 @@ if (form) form.addEventListener('submit', async event => {
     form.setAttribute('aria-busy', 'true'); button.disabled = true; progress.hidden = false; error.hidden = true;
     try {
         const response = await fetch(form.action, { method: 'POST', body: new FormData(form), credentials: 'same-origin', headers: { Accept: 'application/json' } });
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            if (response.ok && response.url) {
+                location.assign(response.url);
+                return;
+            }
+            throw new Error(`The server returned an unexpected response (${response.status}). Please try again.`);
+        }
         const data = await response.json();
         if (!response.ok) throw new Error(Object.values(data.errors || {}).flat()[0] || data.message || 'Unable to sign in. Please try again.');
         const destination = new URL(data.redirect || '/dashboard', location.origin);
