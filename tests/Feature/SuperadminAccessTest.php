@@ -135,7 +135,7 @@ class SuperadminAccessTest extends TestCase
     {
         $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
-        $this->actingAs($user)->getJson('/superadmin/health')->assertOk()->assertJsonPath('database', 'ok')->assertJsonStructure(['status', 'queue' => ['pending', 'failed'], 'schools' => ['active', 'suspended'], 'backups']);
+        $this->actingAs($user)->getJson('/superadmin/health')->assertOk()->assertJsonPath('database', 'ok')->assertJsonPath('storage.available', true)->assertJsonStructure(['status', 'queue' => ['pending', 'failed'], 'schools' => ['active', 'suspended'], 'storage' => ['available', 'bytes', 'files'], 'backups']);
     }
 
     public function test_superadmin_can_create_an_encrypted_backup_without_receiving_contents(): void

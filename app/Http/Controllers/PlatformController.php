@@ -144,13 +144,23 @@ class PlatformController extends Controller
         $pendingJobs = Schema::hasTable('jobs') ? DB::table('jobs')->count() : 0;
         $failedJobs = Schema::hasTable('failed_jobs') ? DB::table('failed_jobs')->count() : 0;
         $sessions = Schema::hasTable('sessions') ? DB::table('sessions')->count() : null;
+        $storage = ['available' => false, 'bytes' => null, 'files' => null];
+        $privateStorage = storage_path('app/private');
+        if (File::isDirectory($privateStorage)) {
+            try {
+                $files = File::allFiles($privateStorage);
+                $storage = ['available' => true, 'bytes' => collect($files)->sum(fn ($file): int => $file->getSize()), 'files' => count($files)];
+            } catch (Throwable) {
+                // Keep storage visibility explicit when the deployment blocks directory inspection.
+            }
+        }
         $backups = collect();
         $backupDirectory = storage_path('app/private/backups');
         if (File::isDirectory($backupDirectory)) {
             $backups = collect(File::files($backupDirectory))->sortByDesc(fn ($file): int => $file->getMTime())->take(10)->values()->map(fn ($file): array => ['name' => $file->getFilename(), 'bytes' => $file->getSize(), 'modified_at' => date(DATE_ATOM, $file->getMTime()), 'download_url' => route('superadmin.backup.download', ['name' => $file->getFilename()])]);
         }
 
-        return response()->json(['status' => $database === 'ok' && $failedJobs === 0 ? 'ok' : 'attention', 'database' => $database, 'queue' => ['pending' => $pendingJobs, 'failed' => $failedJobs], 'sessions' => $sessions, 'schools' => ['active' => DB::table('schools')->where('status', 'active')->count(), 'suspended' => DB::table('schools')->where('status', 'suspended')->count()], 'last_audit_at' => DB::table('school_audit')->max('created_at'), 'backups' => $backups]);
+        return response()->json(['status' => $database === 'ok' && $failedJobs === 0 ? 'ok' : 'attention', 'database' => $database, 'queue' => ['pending' => $pendingJobs, 'failed' => $failedJobs], 'sessions' => $sessions, 'storage' => $storage, 'schools' => ['active' => DB::table('schools')->where('status', 'active')->count(), 'suspended' => DB::table('schools')->where('status', 'suspended')->count()], 'last_audit_at' => DB::table('school_audit')->max('created_at'), 'backups' => $backups]);
     }
 
     public function createBackup(Request $request): JsonResponse

@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN STORAGE-HEALTH UPDATE:
+  - Added private-storage operational metrics to the protected health endpoint and dashboard: verified availability, file count, and aggregate byte usage; inaccessible storage is reported as unavailable rather than healthy.
+  - Storage contents remain private and backup controls continue to expose metadata only.
+  - Verification passed: focused Superadmin suite (55 tests, 357 assertions), full PHPUnit suite (114 tests, 711 assertions), Pint, Vite build, and diff check.
 - 2026-09-19 SUPERADMIN SCHOOL-REGISTRY FILTER UPDATE:
   - Added school-name/slug search and active/suspended status filters to the Superadmin school registry while retaining school switching, drill-down and status controls.
   - Filter controls operate on the loaded platform registry without changing the all-school aggregate census or tenant authorization paths.
