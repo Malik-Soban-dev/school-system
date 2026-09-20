@@ -253,6 +253,14 @@ class PortalController extends Controller
 
     private function availableContexts(User $user): Collection
     {
+        if ($user->hasRole('superadmin')) {
+            return DB::table('school_branches as branch')->join('schools', 'schools.id', '=', 'branch.school_id')->orderBy('schools.name')->orderBy('branch.name')->get(['branch.school_id', 'schools.name as school_name', 'branch.id as branch_id', 'branch.name as branch_name', 'branch.is_default', 'branch.status as branch_status', 'schools.status as school_status'])->map(function (object $context): object {
+                $context->roles = ['superadmin'];
+
+                return $context;
+            });
+        }
+
         $contexts = DB::table('school_user_branches as access')->join('school_user as membership', function ($join): void {
             $join->on('membership.school_id', '=', 'access.school_id')->on('membership.user_id', '=', 'access.user_id');
         })->join('schools', 'schools.id', '=', 'access.school_id')->join('school_branches as branch', 'branch.id', '=', 'access.branch_id')->where('access.user_id', $user->id)->where('access.status', 'active')->where('membership.status', 'active')->where('schools.status', 'active')->where('branch.status', 'active')->orderBy('schools.name')->orderBy('branch.name')->get(['access.school_id', 'schools.name as school_name', 'access.branch_id', 'branch.name as branch_name', 'branch.is_default', 'access.roles'])->map(function (object $context): object {

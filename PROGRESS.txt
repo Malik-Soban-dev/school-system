@@ -1,3 +1,6 @@
+- 2026-09-19 SUPERADMIN WORKSPACE-CONTEXT VISIBILITY UPDATE:
+  - Superadmin portal context listings now expose every school branch, including suspended schools and branches, with explicit superadmin authority metadata; client listings remain limited to active membership grants and branch entitlements.
+  - Verification passed: focused workspace-context regression (1 test, 15 assertions), full PHPUnit suite (124 tests, 802 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN STRUCTURED AUDIT-SCOPE UPDATE:
   - Platform audit rows now have indexed school_id and branch_id attribution with a legacy JSON/entity backfill; Superadmin filtered audit results show the real school and branch names, and new controller, portal-context, export, and scheduled billing events populate structured scope columns.
   - Verification passed: focused scope coverage (3 tests, 25 assertions), full PHPUnit suite (124 tests, 796 assertions), Pint, and diff check.
