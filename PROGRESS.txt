@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN SCHEDULER-HEALTH UPDATE:
+  - Added a durable platform_scheduler_runs history for recurring notification, invoice, overdue-invoice and export-pruning commands, with success/running/failed status, exit code and bounded error type metadata.
+  - Command lifecycle listeners record runs in production without storing command output or secrets; Superadmin health displays the latest 20 runs and retains explicit operational visibility.
+  - Verification passed: focused Superadmin suite (55 tests, 360 assertions), full PHPUnit suite (114 tests, 714 assertions), Pint, Vite build, and diff check.
 - 2026-09-19 SUPERADMIN STORAGE-HEALTH UPDATE:
   - Added private-storage operational metrics to the protected health endpoint and dashboard: verified availability, file count, and aggregate byte usage; inaccessible storage is reported as unavailable rather than healthy.
   - Storage contents remain private and backup controls continue to expose metadata only.

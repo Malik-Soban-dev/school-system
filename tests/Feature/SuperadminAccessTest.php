@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\BuildPlatformSchoolExport;
 use App\Jobs\BuildPlatformUserExport;
 use App\Models\User;
+use App\Support\PlatformSchedulerRuns;
 use App\Support\TenantContext;
 use App\Support\Totp;
 use Illuminate\Database\QueryException;
@@ -134,8 +135,11 @@ class SuperadminAccessTest extends TestCase
     public function test_superadmin_can_review_platform_health_without_backup_contents(): void
     {
         $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+        $schedulerRuns = app(PlatformSchedulerRuns::class);
+        $schedulerRuns->start('platform:mark-overdue-invoices');
+        $schedulerRuns->finish('platform:mark-overdue-invoices', 0);
 
-        $this->actingAs($user)->getJson('/superadmin/health')->assertOk()->assertJsonPath('database', 'ok')->assertJsonPath('storage.available', true)->assertJsonStructure(['status', 'queue' => ['pending', 'failed'], 'schools' => ['active', 'suspended'], 'storage' => ['available', 'bytes', 'files'], 'backups']);
+        $this->actingAs($user)->getJson('/superadmin/health')->assertOk()->assertJsonPath('database', 'ok')->assertJsonPath('storage.available', true)->assertJsonPath('scheduled_runs.0.command', 'platform:mark-overdue-invoices')->assertJsonPath('scheduled_runs.0.status', 'success')->assertJsonStructure(['status', 'queue' => ['pending', 'failed'], 'schools' => ['active', 'suspended'], 'storage' => ['available', 'bytes', 'files'], 'scheduled_runs', 'backups']);
     }
 
     public function test_superadmin_can_create_an_encrypted_backup_without_receiving_contents(): void
