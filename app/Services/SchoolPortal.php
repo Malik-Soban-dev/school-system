@@ -98,7 +98,7 @@ class SchoolPortal
             return $query;
         }
         if ($module === 'notices') {
-            return $query->where('status', 'published')->whereIn('audience', ['all', ...($user->roles ?? [])]);
+            return $query->where('status', 'published')->whereIn('audience', ['all', ...$this->tenant->roles($user)]);
         }
         if ($module === 'subjects' || $module === 'grade_bands') {
             return $query;
@@ -224,7 +224,7 @@ class SchoolPortal
             $options[$module] = $this->query($module, $user)->select('id', $label)->orderBy($label)->limit(1000)->get()
                 ->map(fn ($row) => ['value' => $row->id, 'name' => $row->$label])->all();
         }
-        $users = User::query()->where('is_active', true)->when(! $this->admin($user), fn ($q) => $q->where('id', $user->id));
+        $users = User::query()->where('users.is_active', true)->when(! $this->admin($user), fn ($q) => $q->where('users.id', $user->id));
         if (DB::table('schools')->count() > 1) {
             $users->join('school_user_branches', 'school_user_branches.user_id', '=', 'users.id')->where('school_user_branches.school_id', $this->tenant->id())->where('school_user_branches.branch_id', $this->tenant->branchId())->where('school_user_branches.status', 'active');
         }

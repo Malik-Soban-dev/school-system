@@ -54,16 +54,26 @@ final class TenantContext
 
     public function hasRole(User $user, string $role): bool
     {
-        if (! $user->is_active) {
-            return false;
-        }
-
-        if ($user->hasRole('superadmin')) {
+        if ($user->is_active && $user->hasRole('superadmin')) {
             return true;
         }
 
+        return in_array($role, $this->roles($user), true);
+    }
+
+    /** @return list<string> */
+    public function roles(User $user): array
+    {
+        if (! $user->is_active) {
+            return [];
+        }
+
+        if ($user->hasRole('superadmin')) {
+            return ['superadmin'];
+        }
+
         if ($this->branchId === null) {
-            return $user->hasRole($role);
+            return $user->roles ?? [];
         }
 
         $roles = \DB::table('school_user_branches')
@@ -74,10 +84,10 @@ final class TenantContext
             ->value('roles');
 
         if ($roles === null && app()->environment('testing') && ! \DB::table('school_user_branches')->where('school_id', $this->id())->where('user_id', $user->id)->where('status', 'active')->exists()) {
-            return $user->hasRole($role);
+            return $user->roles ?? [];
         }
 
-        return in_array($role, json_decode((string) $roles, true) ?: [], true);
+        return json_decode((string) $roles, true) ?: [];
     }
 
     /** @return list<string> */

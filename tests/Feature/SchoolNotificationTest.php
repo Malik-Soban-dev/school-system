@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Services\SchoolPortal;
+use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -33,6 +34,21 @@ class SchoolNotificationTest extends TestCase
         $this->actingAs($people[2])->getJson('/portal/notifications')->assertJsonPath('rows.total', 0);
         auth()->logout();
         $this->getJson('/portal/notifications')->assertUnauthorized();
+    }
+
+    public function test_notice_audience_uses_the_selected_branch_grant_roles(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $portal = app(SchoolPortal::class);
+        $this->actingAs($owner)->getJson('/portal/meta')->assertOk();
+        $tenant = app(TenantContext::class);
+        $branchUser = User::factory()->create(['roles' => ['teacher'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $tenant->id(), 'user_id' => $branchUser->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $branchUser->id, 'roles' => json_encode(['parent']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $portal->save('notices', $owner, ['title' => 'Teacher notice', 'body' => 'Teacher audience', 'audience' => 'teacher', 'status' => 'published']);
+        $portal->save('notices', $owner, ['title' => 'Parent notice', 'body' => 'Parent audience', 'audience' => 'parent', 'status' => 'published']);
+
+        $this->actingAs($branchUser)->getJson('/portal/records/notices')->assertOk()->assertJsonCount(1, 'rows')->assertJsonPath('rows.0.title', 'Parent notice');
     }
 
     public function test_announced_exam_reminders_do_not_publish_marks_and_guardian_revocation_hides_messages(): void
