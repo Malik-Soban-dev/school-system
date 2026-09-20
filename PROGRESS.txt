@@ -1,3 +1,6 @@
+- 2026-09-20 SUSPENDED-BRANCH INVITATION SAFETY UPDATE:
+  - Invitation lookup and acceptance now require an active branch; acceptance locks the branch lifecycle row inside its transaction, preventing invitations issued before suspension from creating new accounts or racing a branch status change.
+  - Verification passed: focused invitation-security coverage (3 tests, 11 assertions); Blade view cache; full PHPUnit (136 tests, 924 assertions); Pint; diff check.
 - 2026-09-20 SUPERADMIN BRANCH-STATUS FILTER UPDATE:
   - Added active/suspended branch lifecycle filtering to the global user registry API and dashboard, so Superadmin can target users attached to suspended branches for restoration while excluding them from active-branch operations.
   - Verification passed: focused registry coverage (2 tests, 33 assertions); Blade view cache; full PHPUnit (135 tests, 920 assertions); Pint; diff check.
