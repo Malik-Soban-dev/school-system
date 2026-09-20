@@ -1,3 +1,7 @@
+- 2026-09-19 ACTIVE-BRANCH ENTITLEMENT METRIC UPDATE:
+  - Superadmin school registry responses now expose total branches and active_branches separately; branch capacity alerts and dashboard limit displays use active branch usage, matching transactional branch-creation enforcement while retaining suspended branches for visibility.
+  - Verification passed: focused entitlement coverage (1 test, 12 assertions), full PHPUnit (131 tests, 837 assertions), Pint, and diff check.
+
 - 2026-09-19 SUPERADMIN BRANCH-TEACHER METRIC CONSISTENCY UPDATE:
   - School-detail branch teacher counts now include only active teacher assignments, matching the global school and branch registries; suspended assignments remain visible in record explorers without inflating active usage metrics.
   - Verification passed: focused branch-control coverage (1 test, 10 assertions), full PHPUnit (131 tests, 836 assertions), Pint, and diff check.

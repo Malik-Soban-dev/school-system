@@ -497,6 +497,7 @@ class SuperadminAccessTest extends TestCase
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Usage School', 'slug' => 'usage-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Usage Branch', 'code' => 'usage', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_branches')->insert(['school_id' => $school, 'name' => 'Retired Branch', 'code' => 'retired', 'status' => 'suspended', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
         $plan = DB::table('platform_plans')->where('code', 'starter')->first(['id', 'name', 'max_branches', 'max_students']);
         DB::table('school_subscriptions')->insert(['school_id' => $school, 'plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
         $year = DB::table('school_academic_years')->insertGetId(['school_id' => $school, 'branch_id' => $branch, 'name' => 'Usage Year', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31', 'created_at' => now(), 'updated_at' => now()]);
@@ -510,7 +511,8 @@ class SuperadminAccessTest extends TestCase
         $this->assertNotNull($record);
         $this->assertSame($plan->name, $record['plan_name']);
         $this->assertSame('active', $record['subscription_status']);
-        $this->assertSame(1, (int) $record['branches']);
+        $this->assertSame(2, (int) $record['branches']);
+        $this->assertSame(1, (int) $record['active_branches']);
         $this->assertSame(1, (int) $record['students']);
         $this->assertSame(1, (int) $payload['summary']['classes']);
         $this->assertSame((int) $plan->max_branches, (int) $record['max_branches']);

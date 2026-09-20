@@ -32,11 +32,12 @@ class PlatformController extends Controller
             ->leftJoinSub(DB::table('school_staff')->select('school_id')->selectRaw('count(*) as total')->groupBy('school_id'), 'staff', 'staff.school_id', '=', 's.id')
             ->leftJoinSub(DB::table('school_teacher_assignments')->select('school_id')->where('status', 'active')->selectRaw('count(distinct user_id) as total')->groupBy('school_id'), 'teachers', 'teachers.school_id', '=', 's.id')
             ->leftJoinSub(DB::table('school_branches')->select('school_id')->selectRaw('count(*) as total')->groupBy('school_id'), 'branches', 'branches.school_id', '=', 's.id')
+            ->leftJoinSub(DB::table('school_branches')->select('school_id')->where('status', 'active')->selectRaw('count(*) as total')->groupBy('school_id'), 'active_branches', 'active_branches.school_id', '=', 's.id')
             ->leftJoinSub(DB::table('school_invoices')->select('school_id')->selectRaw('count(*) as total')->whereIn('status', ['issued', 'partial', 'overdue'])->groupBy('school_id'), 'invoices', 'invoices.school_id', '=', 's.id')
             ->leftJoin('school_subscriptions as subscription', 'subscription.school_id', '=', 's.id')
             ->leftJoin('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')
             ->orderBy('s.name')
-            ->get(['s.id', 's.name', 's.slug', 's.status', 's.created_at', DB::raw('coalesce(members.total, 0) as members'), DB::raw('coalesce(students.total, 0) as students'), DB::raw('coalesce(staff.total, 0) as staff'), DB::raw('coalesce(teachers.total, 0) as teachers'), DB::raw('coalesce(branches.total, 0) as branches'), DB::raw('coalesce(invoices.total, 0) as open_invoices'), 'plan.code as plan_code', 'plan.name as plan_name', 'plan.max_branches', 'plan.max_students', 'subscription.status as subscription_status']);
+            ->get(['s.id', 's.name', 's.slug', 's.status', 's.created_at', DB::raw('coalesce(members.total, 0) as members'), DB::raw('coalesce(students.total, 0) as students'), DB::raw('coalesce(staff.total, 0) as staff'), DB::raw('coalesce(teachers.total, 0) as teachers'), DB::raw('coalesce(branches.total, 0) as branches'), DB::raw('coalesce(active_branches.total, 0) as active_branches'), DB::raw('coalesce(invoices.total, 0) as open_invoices'), 'plan.code as plan_code', 'plan.name as plan_name', 'plan.max_branches', 'plan.max_students', 'subscription.status as subscription_status']);
         $branchOptions = DB::table('school_branches')->whereIn('school_id', $schools->pluck('id'))->orderBy('name')->get(['id', 'school_id', 'name', 'code', 'status'])->groupBy('school_id');
         $schools = $schools->map(function (object $school) use ($branchOptions): object {
             $school->branch_options = $branchOptions->get($school->id, collect())->values();
@@ -60,8 +61,8 @@ class PlatformController extends Controller
             } elseif (in_array($school->subscription_status, ['past_due', 'canceled'], true)) {
                 $alerts[] = ['school_id' => $school->id, 'school_name' => $school->name, 'type' => 'subscription_'.$school->subscription_status, 'message' => 'Subscription is '.$school->subscription_status.'.'];
             }
-            if ($school->max_branches !== null && (int) $school->branches >= (int) $school->max_branches) {
-                $alerts[] = ['school_id' => $school->id, 'school_name' => $school->name, 'type' => 'branch_limit', 'message' => 'Branch usage is at the plan limit.', 'usage' => (int) $school->branches, 'limit' => (int) $school->max_branches];
+            if ($school->max_branches !== null && (int) $school->active_branches >= (int) $school->max_branches) {
+                $alerts[] = ['school_id' => $school->id, 'school_name' => $school->name, 'type' => 'branch_limit', 'message' => 'Active branch usage is at the plan limit.', 'usage' => (int) $school->active_branches, 'limit' => (int) $school->max_branches];
             }
             if ($school->max_students !== null && (int) $school->students >= (int) $school->max_students) {
                 $alerts[] = ['school_id' => $school->id, 'school_name' => $school->name, 'type' => 'student_limit', 'message' => 'Student usage is at the plan limit.', 'usage' => (int) $school->students, 'limit' => (int) $school->max_students];
