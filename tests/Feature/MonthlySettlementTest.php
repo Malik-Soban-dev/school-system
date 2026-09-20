@@ -112,4 +112,25 @@ class MonthlySettlementTest extends TestCase
         $this->artisan('school:late-fees', ['--until' => today()->toDateString()])->assertSuccessful();
         $this->assertDatabaseMissing('school_invoices', ['reference' => 'LATE-'.$paid.'-'.today()->format('Ym')]);
     }
+
+    public function test_school_monthly_invoice_command_creates_repeat_safe_active_student_fees(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $portal = app(SchoolPortal::class);
+        $year = $portal->save('academic_years', $owner, ['name' => '2026', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
+        $class = $portal->save('classes', $owner, ['name' => 'Grade 9', 'year_id' => $year, 'capacity' => 30]);
+        $active = $portal->save('students', $owner, ['name' => 'Monthly Active', 'admission_number' => 'MONTH-1', 'class_id' => $class, 'status' => 'active']);
+        $portal->save('students', $owner, ['name' => 'Monthly Withdrawn', 'admission_number' => 'MONTH-2', 'class_id' => $class, 'status' => 'withdrawn']);
+        DB::table('school_settings')->upsert([
+            ['school_id' => app(TenantContext::class)->id(), 'key' => 'monthly_fee_amount', 'value' => '25000'],
+            ['school_id' => app(TenantContext::class)->id(), 'key' => 'monthly_fee_due_day', 'value' => '12'],
+            ['school_id' => app(TenantContext::class)->id(), 'key' => 'monthly_fee_description', 'value' => 'October tuition'],
+        ], ['school_id', 'key'], ['value']);
+
+        $this->artisan('school:monthly-invoices', ['--month' => '2026-10'])->assertSuccessful();
+        $this->artisan('school:monthly-invoices', ['--month' => '2026-10'])->assertSuccessful();
+        $this->assertDatabaseCount('school_invoices', 1);
+        $this->assertDatabaseHas('school_invoices', ['student_id' => $active, 'reference' => 'FEE-2026-10-'.$active, 'amount' => 25000, 'due_on' => '2026-10-12']);
+        $this->assertDatabaseHas('school_notification_events', ['module' => 'invoices', 'record_id' => DB::table('school_invoices')->value('id')]);
+    }
 }

@@ -1,3 +1,8 @@
+- 2026-09-20 SCHEDULED MONTHLY INVOICING UPDATE:
+  - Added owner-configurable monthly fee amount, due day and description in School settings.
+  - Added the daily school:monthly-invoices command; it creates one repeat-safe invoice per active student, excludes withdrawn/graduated students, queues invoice notification events and records an audit entry.
+  - Verification passed: MonthlySettlement feature suite (6 tests, 68 assertions); Vite production build; command registration; diff check.
+
 - 2026-09-20 PAYMENT RECONCILIATION UPDATE:
   - Added a protected Payments reconciliation panel for owners, admins and accountants with billed, collected, outstanding and receipt totals by month and payment method.
   - Verification passed: MonthlySettlement feature suite (5 tests, 63 assertions); Vite production build; diff check.

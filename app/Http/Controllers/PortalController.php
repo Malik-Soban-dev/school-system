@@ -20,7 +20,7 @@ class PortalController extends Controller
     public function meta(Request $request): JsonResponse
     {
         $tenant = app(TenantContext::class);
-        $settingsQuery = DB::table('school_settings')->where('school_id', $tenant->id())->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family', 'late_fee_amount', 'late_fee_grace_days']);
+        $settingsQuery = DB::table('school_settings')->where('school_id', $tenant->id())->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family', 'late_fee_amount', 'late_fee_grace_days', 'monthly_fee_amount', 'monthly_fee_due_day', 'monthly_fee_description']);
         if (DB::table('schools')->count() === 1) {
             $settingsQuery->orWhere(function ($query): void {
                 $query->whereNull('school_id')->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family']);
@@ -235,6 +235,9 @@ class PortalController extends Controller
             'timezone' => ['required', 'timezone:all'],
             'late_fee_amount' => ['nullable', 'regex:/^\d{1,9}(\.\d{1,2})?$/'],
             'late_fee_grace_days' => ['nullable', 'integer', 'min:0', 'max:90'],
+            'monthly_fee_amount' => ['nullable', 'regex:/^\d{1,9}(\.\d{1,2})?$/'],
+            'monthly_fee_due_day' => ['nullable', 'integer', 'min:1', 'max:28'],
+            'monthly_fee_description' => ['nullable', 'string', 'max:255'],
             'color_primary' => ['sometimes', 'required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'color_secondary' => ['sometimes', 'required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'font_family' => ['sometimes', 'required', Rule::in(['Instrument Sans', 'Inter', 'Poppins', 'Nunito', 'DM Sans', 'Manrope', 'Lato', 'Merriweather', 'Noto Nastaliq Urdu', 'system-ui'])],
@@ -245,9 +248,11 @@ class PortalController extends Controller
             $data['logo_data'] = 'data:'.$file->getMimeType().';base64,'.base64_encode(file_get_contents($file->getRealPath()));
         }
         unset($data['logo']);
-        if (array_key_exists('late_fee_amount', $data)) {
-            $parts = explode('.', (string) ($data['late_fee_amount'] ?? '0'));
-            $data['late_fee_amount'] = (string) ((int) $parts[0] * 100 + (int) str_pad(substr($parts[1] ?? '', 0, 2), 2, '0'));
+        foreach (['late_fee_amount', 'monthly_fee_amount'] as $moneySetting) {
+            if (array_key_exists($moneySetting, $data)) {
+                $parts = explode('.', (string) ($data[$moneySetting] ?? '0'));
+                $data[$moneySetting] = (string) ((int) $parts[0] * 100 + (int) str_pad(substr($parts[1] ?? '', 0, 2), 2, '0'));
+            }
         }
         DB::transaction(function () use ($data, $request): void {
             foreach ($data as $key => $value) {
