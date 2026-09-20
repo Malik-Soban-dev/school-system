@@ -253,12 +253,16 @@ class PortalController extends Controller
 
     private function availableContexts(User $user): Collection
     {
-        return DB::table('school_user_branches as access')->join('school_user as membership', function ($join): void {
+        $contexts = DB::table('school_user_branches as access')->join('school_user as membership', function ($join): void {
             $join->on('membership.school_id', '=', 'access.school_id')->on('membership.user_id', '=', 'access.user_id');
-        })->join('schools', 'schools.id', '=', 'access.school_id')->join('school_branches as branch', 'branch.id', '=', 'access.branch_id')->where('access.user_id', $user->id)->where('access.status', 'active')->where('membership.status', 'active')->where('schools.status', 'active')->where('branch.status', 'active')->orderBy('schools.name')->orderBy('branch.name')->get(['access.school_id', 'schools.name as school_name', 'access.branch_id', 'branch.name as branch_name', 'access.roles'])->map(function (object $context): object {
+        })->join('schools', 'schools.id', '=', 'access.school_id')->join('school_branches as branch', 'branch.id', '=', 'access.branch_id')->where('access.user_id', $user->id)->where('access.status', 'active')->where('membership.status', 'active')->where('schools.status', 'active')->where('branch.status', 'active')->orderBy('schools.name')->orderBy('branch.name')->get(['access.school_id', 'schools.name as school_name', 'access.branch_id', 'branch.name as branch_name', 'branch.is_default', 'access.roles'])->map(function (object $context): object {
             $context->roles = json_decode((string) $context->roles, true) ?: [];
 
             return $context;
         });
+
+        $entitlements = app(SchoolEntitlements::class);
+
+        return $contexts->filter(fn (object $context): bool => (bool) $context->is_default || $entitlements->allowsForSchool((int) $context->school_id, 'branches'))->values();
     }
 }

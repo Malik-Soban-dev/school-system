@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN BRANCH-CONTEXT VISIBILITY UPDATE:
+  - Client context lists now hide non-default branches when the school lacks branch entitlement, while the server-side context switch denial remains in place as the authorization boundary.
+  - Enabling branch access through Superadmin immediately makes the granted branch visible and selectable; regression coverage verifies both states.
+  - Verification passed: focused Superadmin suite (57 tests, 392 assertions), full PHPUnit suite (118 tests, 751 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN PLAN-CATALOG CONSISTENCY UPDATE:
   - Unified plan create/update validation with the entitlement feature catalog so the new branches feature can be configured from the Superadmin plan editor without being rejected by stale hard-coded rules.
   - Added regression coverage for creating a plan that includes branch access.
