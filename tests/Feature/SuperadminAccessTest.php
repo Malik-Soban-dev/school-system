@@ -276,6 +276,8 @@ class SuperadminAccessTest extends TestCase
             $this->actingAs($superadmin)->get('/superadmin/operations/exports/'.$exportId.'/download')->assertDownload('school-system-users-'.$exportId.'.csv');
             $csv = file_get_contents($path);
             $this->assertStringContainsString('Export Client', $csv);
+            $this->assertStringContainsString('school_membership_status', $csv);
+            $this->assertStringContainsString('"Export School",active,"Export Branch"', $csv);
             $this->assertStringNotContainsString('password', strtolower($csv));
             $this->assertDatabaseHas('platform_audit', ['entity_type' => 'export', 'entity_id' => $exportId, 'action' => 'user_export_completed']);
             $this->assertDatabaseHas('platform_audit', ['entity_type' => 'export', 'entity_id' => $exportId, 'action' => 'user_export_downloaded']);

@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN USER-EXPORT MEMBERSHIP VISIBILITY UPDATE:
+  - Extended the queued global user registry export with school_membership_status so downloadable branch grants distinguish active and suspended parent-school memberships, matching dashboard access lifecycle visibility.
+  - Verification passed: focused export coverage (1 test, 10 assertions); Blade view cache; full PHPUnit (134 tests, 908 assertions); Pint; diff check.
 - 2026-09-20 SUPERADMIN INVITATION ROLE-CONTRACT FIX:
   - Corrected the school-detail branch invitation form to submit the server-required roles[] array, exposing all supported client roles and adding explicit confirmation before the audited 48-hour invitation is issued.
   - Verification passed: focused dashboard/access/invitation tests (7 tests, 60 assertions); Blade view cache; full PHPUnit (134 tests, 906 assertions); Pint; diff check.
