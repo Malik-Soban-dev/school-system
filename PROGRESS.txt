@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN ENTITLEMENT-ALERT UPDATE:
+  - Added a global alert feed for missing, past-due or canceled subscriptions and schools at branch/student plan limits; alerts appear in the dashboard with usage details where applicable.
+  - Added regression coverage for capacity alert generation while preserving unrestricted Superadmin visibility.
+  - Verification passed: full PHPUnit suite (112 tests, 691 assertions), focused Superadmin suite (53 tests, 337 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN PLAN-USAGE VISIBILITY UPDATE:
   - Added plan and subscription metadata plus branch/student usage against configured limits to the global Superadmin school registry, making entitlement pressure visible before client operations hit limits.
   - Added dashboard rendering and regression coverage for plan status and usage-limit values.

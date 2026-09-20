@@ -377,7 +377,8 @@ class SuperadminAccessTest extends TestCase
         DB::table('school_students')->insert(['school_id' => $school, 'branch_id' => $branch, 'name' => 'Usage Student', 'admission_number' => 'USAGE-1', 'class_id' => $class, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
-        $schools = $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->json('schools');
+        $payload = $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->json();
+        $schools = $payload['schools'];
         $record = collect($schools)->firstWhere('id', $school);
         $this->assertNotNull($record);
         $this->assertSame($plan->name, $record['plan_name']);
@@ -386,6 +387,8 @@ class SuperadminAccessTest extends TestCase
         $this->assertSame(1, (int) $record['students']);
         $this->assertSame((int) $plan->max_branches, (int) $record['max_branches']);
         $this->assertSame((int) $plan->max_students, (int) $record['max_students']);
+        $this->assertCount(1, collect($payload['entitlement_alerts'])->where('school_id', $school));
+        $this->assertSame('branch_limit', collect($payload['entitlement_alerts'])->where('school_id', $school)->first()['type']);
     }
 
     public function test_superadmin_can_issue_and_reconcile_a_platform_invoice(): void

@@ -49,11 +49,27 @@ class PlatformController extends Controller
         $subscriptionCounts = DB::table('school_subscriptions')->select('status')->selectRaw('count(*) as total')->groupBy('status')->pluck('total', 'status');
         $mrrCents = (int) DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->where('subscription.status', 'active')->sum('plan.monthly_price_cents');
         $planDistribution = DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->select('plan.code', 'plan.name')->selectRaw('count(*) as total')->groupBy('plan.id', 'plan.code', 'plan.name')->orderBy('plan.name')->get();
+        $entitlementAlerts = $schools->flatMap(function (object $school): array {
+            $alerts = [];
+            if (! $school->subscription_status) {
+                $alerts[] = ['school_id' => $school->id, 'school_name' => $school->name, 'type' => 'subscription_missing', 'message' => 'No subscription is assigned.'];
+            } elseif (in_array($school->subscription_status, ['past_due', 'canceled'], true)) {
+                $alerts[] = ['school_id' => $school->id, 'school_name' => $school->name, 'type' => 'subscription_'.$school->subscription_status, 'message' => 'Subscription is '.$school->subscription_status.'.'];
+            }
+            if ($school->max_branches !== null && (int) $school->branches >= (int) $school->max_branches) {
+                $alerts[] = ['school_id' => $school->id, 'school_name' => $school->name, 'type' => 'branch_limit', 'message' => 'Branch usage is at the plan limit.', 'usage' => (int) $school->branches, 'limit' => (int) $school->max_branches];
+            }
+            if ($school->max_students !== null && (int) $school->students >= (int) $school->max_students) {
+                $alerts[] = ['school_id' => $school->id, 'school_name' => $school->name, 'type' => 'student_limit', 'message' => 'Student usage is at the plan limit.', 'usage' => (int) $school->students, 'limit' => (int) $school->max_students];
+            }
+
+            return $alerts;
+        })->values();
 
         return response()->json([
-            'summary' => ['schools' => $schools->count(), 'active_schools' => $schools->where('status', 'active')->count(), 'branches' => (int) $schools->sum('branches'), 'members' => (int) $schools->sum('members'), 'students' => (int) $schools->sum('students'), 'staff' => (int) $schools->sum('staff'), 'teachers' => (int) $schools->sum('teachers'), 'open_invoices' => (int) $schools->sum('open_invoices')],
+            'summary' => ['schools' => $schools->count(), 'active_schools' => $schools->where('status', 'active')->count(), 'branches' => (int) $schools->sum('branches'), 'members' => (int) $schools->sum('members'), 'students' => (int) $schools->sum('students'), 'staff' => (int) $schools->sum('staff'), 'teachers' => (int) $schools->sum('teachers'), 'open_invoices' => (int) $schools->sum('open_invoices'), 'entitlement_alerts' => $entitlementAlerts->count()],
             'billing' => ['mrr_cents' => $mrrCents, 'subscriptions' => ['active' => (int) ($subscriptionCounts['active'] ?? 0), 'trialing' => (int) ($subscriptionCounts['trialing'] ?? 0), 'past_due' => (int) ($subscriptionCounts['past_due'] ?? 0), 'canceled' => (int) ($subscriptionCounts['canceled'] ?? 0)], 'plan_distribution' => $planDistribution],
-            'schools' => $schools, 'plans' => $plans, 'audit' => $recentAudit,
+            'schools' => $schools, 'plans' => $plans, 'audit' => $recentAudit, 'entitlement_alerts' => $entitlementAlerts,
         ]);
     }
 

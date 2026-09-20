@@ -18,6 +18,7 @@
     <section class="platform-grid" id="platform-summary" aria-live="polite">
         <article><strong>Loading…</strong><span>Schools</span></article><article><strong>Loading…</strong><span>Branches</span></article><article><strong>Loading…</strong><span>Members</span></article><article><strong>Loading…</strong><span>Students</span></article><article><strong>Loading…</strong><span>Open invoices</span></article>
     </section>
+    <section class="platform-panel" id="platform-entitlement-alerts" aria-live="polite"><div class="platform-panel-heading"><div><p class="eyebrow">ENTITLEMENTS</p><h2>Capacity and subscription alerts</h2></div></div><div id="entitlement-alert-content">Loading entitlement alerts…</div></section>
     <section class="platform-panel" id="platform-health">
         <div class="platform-panel-heading"><div><p class="eyebrow">OPERATIONS</p><h2>Platform health</h2></div><div><button class="platform-refresh" id="backup-create" type="button">Create encrypted backup</button> <button class="platform-refresh" id="user-export-create" type="button">Export user registry</button> <button class="platform-refresh" id="health-refresh" type="button">Refresh health</button></div></div>
         <div id="health-content">Loading operational health…</div><div id="failed-job-content">Loading failed jobs…</div><div id="export-content">Loading exports…</div>
@@ -63,6 +64,7 @@
 (() => {
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const summary = document.querySelector('#platform-summary');
+    const entitlementAlertContent = document.querySelector('#entitlement-alert-content');
     const healthContent = document.querySelector('#health-content');
     const failedJobContent = document.querySelector('#failed-job-content');
     const exportContent = document.querySelector('#export-content');
@@ -384,6 +386,8 @@
         const data = await response.json();
         platformSchools = data.schools;
         platformPlans = data.plans || [];
+        const entitlementAlerts = data.entitlement_alerts || [];
+        entitlementAlertContent.innerHTML = entitlementAlerts.length ? `<div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Type</th><th>Message</th><th>Usage</th></tr></thead><tbody>${entitlementAlerts.map(alert => `<tr><td>${esc(alert.school_name)}</td><td><span class="platform-status suspended">${esc(alert.type.replaceAll('_', ' '))}</span></td><td>${esc(alert.message)}</td><td>${alert.usage !== undefined ? `${esc(alert.usage)} / ${esc(alert.limit)}` : '—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="platform-status active">No capacity or subscription alerts.</p>';
         document.querySelector('#onboard-plan').innerHTML = '<option value="">Starter trial</option>' + platformPlans.filter(plan => plan.status === 'active').map(plan => `<option value="${esc(plan.id)}">${esc(plan.name)} trial</option>`).join('');
         platformInvoiceSchool.innerHTML = platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
         auditSchool.innerHTML = '<option value="">All schools and platform events</option>' + platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
@@ -399,7 +403,7 @@
         updateExplorerBranches();
         loadExplorer().catch(error => { explorerRows.innerHTML = `<tr><td>${esc(error.message)}</td></tr>`; });
         const mrr = Number(data.billing?.mrr_cents || 0) / 100;
-        summary.innerHTML = [['schools','Schools'],['branches','Branches'],['members','Members'],['students','Students'],['teachers','Teachers'],['open_invoices','Open invoices'],['mrr','Projected MRR'],['past_due','Past due']].map(([key,label]) => { const value = key === 'mrr' ? `$${mrr.toFixed(2)}` : key === 'past_due' ? (data.billing?.subscriptions?.past_due || 0) : data.summary[key]; return `<article><strong>${esc(value)}</strong><span>${label}</span></article>`; }).join('');
+        summary.innerHTML = [['schools','Schools'],['branches','Branches'],['members','Members'],['students','Students'],['teachers','Teachers'],['open_invoices','Open invoices'],['mrr','Projected MRR'],['past_due','Past due'],['entitlement_alerts','Alerts']].map(([key,label]) => { const value = key === 'mrr' ? `$${mrr.toFixed(2)}` : key === 'past_due' ? (data.billing?.subscriptions?.past_due || 0) : data.summary[key]; return `<article><strong>${esc(value)}</strong><span>${label}</span></article>`; }).join('');
         schools.innerHTML = data.schools.map(school => { const defaultBranch = school.branch_options.find(branch => branch.is_default) || school.branch_options[0]; const branchLimit = school.max_branches ? `${esc(school.branches)} / ${esc(school.max_branches)}` : `${esc(school.branches)} / unlimited`; const studentLimit = school.max_students ? `${esc(school.students)} / ${esc(school.max_students)}` : `${esc(school.students)} / unlimited`; return `<tr><td><button class="platform-school-detail" data-id="${school.id}" type="button"><strong>${esc(school.name)}</strong></button><small>${esc(school.slug)}</small></td><td><span class="platform-status ${esc(school.status)}">${esc(school.status)}</span></td><td>${esc(school.plan_name || 'No plan')}<small>${esc(school.subscription_status || 'unassigned')}</small></td><td>${branchLimit}</td><td>${esc(school.members)}</td><td>${studentLimit}</td><td>${esc(school.staff)}</td><td>${esc(school.teachers)}</td><td>${esc(school.open_invoices)}</td><td>${defaultBranch ? `<button class="platform-workspace" data-school="${esc(school.id)}" data-branch="${esc(defaultBranch.id)}">Open workspace</button>` : ''} <button class="platform-action" data-id="${school.id}" data-status="${school.status === 'active' ? 'suspended' : 'active'}">${school.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`; }).join('') || '<tr><td colspan="10">No schools registered.</td></tr>';
         loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="5">${esc(error.message)}</td></tr>`; });
         loadPlatformInvoices().catch(error => { platformInvoiceRows.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; });
