@@ -1,3 +1,6 @@
+- 2026-09-19 SUPERADMIN PLATFORM-AUDIT COVERAGE UPDATE:
+  - Added platform-level audit records for branch creation, metadata/default/status changes, branch invitations, branch access, membership status and school status mutations, while retaining branch-scoped school audit records.
+  - Verification passed: focused Superadmin suite (59 tests, 408 assertions), full PHPUnit suite (121 tests, 768 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN DEFAULT-BRANCH SAFETY UPDATE:
   - Superadmin must select another active default branch before suspending the current default, preventing normal client users from losing their canonical workspace.
   - Verification passed: focused Superadmin suite (59 tests, 402 assertions), full PHPUnit suite (121 tests, 762 assertions), Pint, and diff check.

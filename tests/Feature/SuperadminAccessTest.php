@@ -647,6 +647,8 @@ class SuperadminAccessTest extends TestCase
 
         $this->assertDatabaseHas('school_user_branches', ['school_id' => $school, 'branch_id' => $branch['id'], 'user_id' => $admin->id, 'roles' => json_encode(['admin'])]);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $admin->id, 'action' => 'branch_access_updated']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'branch', 'entity_id' => $branch['id'], 'action' => 'branch_created']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $admin->id, 'action' => 'branch_access_updated']);
     }
 
     public function test_superadmin_can_attach_an_existing_account_to_a_school_branch(): void
@@ -716,6 +718,7 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/branches/'.$branch, ['name' => 'North Campus', 'code' => 'north'])->assertOk();
         $this->assertDatabaseHas('school_branches', ['id' => $branch, 'name' => 'North Campus', 'code' => 'north']);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'branch_id' => $branch, 'action' => 'branch_updated']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'branch', 'entity_id' => $branch, 'action' => 'branch_updated']);
         $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/branches/'.$branch, ['name' => 'Duplicate', 'code' => 'other'])->assertUnprocessable();
     }
 
@@ -731,6 +734,7 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_branches', ['id' => $first, 'is_default' => false]);
         $this->assertDatabaseHas('school_branches', ['id' => $second, 'is_default' => true]);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'branch_id' => $second, 'action' => 'branch_default_updated']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'branch', 'entity_id' => $second, 'action' => 'branch_default_updated']);
     }
 
     public function test_superadmin_can_suspend_a_school_membership_and_all_branch_access(): void
@@ -801,6 +805,7 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_branches', ['id' => $branch, 'status' => 'suspended']);
         $this->assertDatabaseMissing('sessions', ['id' => 'branch-status-session']);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $branch, 'action' => 'branch_status_updated']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'branch', 'entity_id' => $branch, 'action' => 'branch_status_updated']);
         $this->withSession(['school_id' => $school, 'branch_id' => $branch])->actingAs($admin)->getJson('/portal/meta')->assertForbidden();
     }
 
@@ -829,6 +834,7 @@ class SuperadminAccessTest extends TestCase
         $this->assertNotNull($invitation);
         $this->assertDatabaseHas('school_invitations', ['school_id' => $school, 'branch_id' => $branch, 'email' => 'new-branch-admin@example.test', 'accepted_at' => null]);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $branch, 'action' => 'branch_invitation_issued']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'invitation', 'action' => 'branch_invitation_issued']);
         $this->actingAs($superadmin)->deleteJson('/superadmin/schools/'.$school.'/invitations/'.$invitation->id)->assertOk();
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $invitation->id, 'action' => 'invitation_revoked']);
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'invitation', 'entity_id' => $invitation->id, 'action' => 'invitation_revoked']);
