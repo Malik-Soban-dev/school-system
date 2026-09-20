@@ -130,6 +130,7 @@ class PlatformController extends Controller
             'school_academic_years' => 'academic_years',
             'school_subjects' => 'subjects',
             'school_attendance' => 'attendance',
+            'school_staff_attendance' => 'staff_attendance',
             'school_timetables' => 'timetables',
             'school_exams' => 'exams',
             'school_exam_subjects' => 'exam_subjects',
@@ -512,6 +513,7 @@ class PlatformController extends Controller
             })->join('school_subjects as s', function ($join) use ($branchId): void {
                 $join->on('s.id', '=', 'r.subject_id')->when($branchId !== null, fn ($q) => $q->where('s.branch_id', $branchId));
             })->join('users as u', 'u.id', '=', 'r.teacher_id')->where('r.school_id', $school)->when($branchId !== null, fn ($q) => $q->where('r.branch_id', $branchId))->when($search !== '', fn ($q) => $q->where(fn ($x) => $x->where('r.title', 'like', '%'.$search.'%')->orWhere('c.name', 'like', '%'.$search.'%')->orWhere('s.name', 'like', '%'.$search.'%')))->orderByDesc('r.id')->select(['r.id', 'r.title', 'c.name as class_name', 's.name as subject_name', 'u.name as teacher', 'r.resource_url', 'r.status', 'r.created_at']),
+            'staff_attendance' => DB::table('school_staff_attendance as r')->join('users as u', 'u.id', '=', 'r.user_id')->where('r.school_id', $school)->when($branchId !== null, fn ($q) => $q->where('r.branch_id', $branchId))->when($search !== '', fn ($q) => $q->where(fn ($s) => $s->where('u.name', 'like', '%'.$search.'%')->orWhere('r.status', 'like', '%'.$search.'%')))->orderByDesc('r.date')->select(['r.id', 'u.name as staff_member', 'r.date', 'r.status', 'r.check_in', 'r.note', 'r.created_at']),
             'events' => $scoped('school_events as r')->when($search !== '', fn ($q) => $q->where(fn ($s) => $s->where('r.title', 'like', '%'.$search.'%')->orWhere('r.location', 'like', '%'.$search.'%')))->orderByDesc('r.event_date')->select(['r.id', 'r.title', 'r.event_date', 'r.starts_at', 'r.ends_at', 'r.location', 'r.audience', 'r.status', 'r.created_at']),
             'event_rsvps' => DB::table('school_event_rsvps as r')->join('school_events as e', function ($join) use ($branchId): void { $join->on('e.id', '=', 'r.event_id')->when($branchId !== null, fn ($q) => $q->where('e.branch_id', $branchId)); })->join('users as u', 'u.id', '=', 'r.user_id')->where('r.school_id', $school)->when($branchId !== null, fn ($q) => $q->where('r.branch_id', $branchId))->when($search !== '', fn ($q) => $q->where(fn ($s) => $s->where('e.title', 'like', '%'.$search.'%')->orWhere('u.name', 'like', '%'.$search.'%')))->orderByDesc('r.updated_at')->select(['r.id', 'e.title as event', 'u.name as user', 'r.response', 'r.updated_at']),
             'staff' => DB::table('school_staff as r')->where('r.school_id', $school)->when($branchId !== null, fn ($q) => $q->where('r.branch_id', $branchId))->when($search !== '', fn ($q) => $q->where(fn ($s) => $s->where('r.name', 'like', '%'.$search.'%')->orWhere('r.employee_number', 'like', '%'.$search.'%')->orWhere('r.designation', 'like', '%'.$search.'%')))->orderBy('r.name')->select(['r.id', 'r.name', 'r.employee_number', 'r.department', 'r.designation', 'r.status', 'r.created_at']),
@@ -836,6 +838,7 @@ class PlatformController extends Controller
             'school_guardian_links' => 'guardian_links',
             'school_teacher_assignments' => 'teacher_assignments',
             'school_attendance' => 'attendance',
+            'school_staff_attendance' => 'staff_attendance',
             'school_timetables' => 'timetables',
             'school_exams' => 'exams',
             'school_exam_subjects' => 'exam_subjects',
@@ -867,6 +870,7 @@ class PlatformController extends Controller
             'school_academic_years' => 'academic_years',
             'school_subjects' => 'subjects',
             'school_attendance' => 'attendance',
+            'school_staff_attendance' => 'staff_attendance',
             'school_timetables' => 'timetables',
             'school_exams' => 'exams',
             'school_exam_subjects' => 'exam_subjects',

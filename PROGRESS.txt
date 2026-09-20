@@ -1,3 +1,8 @@
+- 2026-09-20 STAFF ATTENDANCE UPDATE:
+  - Added daily staff attendance with present, late, absent and leave statuses, optional check-in time and notes.
+  - Staff can view and record only their own history; owners/admins manage the register. Added indexed tenant-safe storage, Superadmin explorer/census visibility and duplicate-per-day protection.
+  - Verification: focused StaffAttendance test passed (1 test, 8 assertions). Full suite and production build are running.
+
 - 2026-09-20 EVENTS AND RSVP UPDATE:
   - Added school events with draft/published visibility, date/time, location and audience controls.
   - Added role-scoped event responses so students, parents and teachers can confirm attending, not attending or maybe; duplicate responses are prevented and Superadmin can explore the records.

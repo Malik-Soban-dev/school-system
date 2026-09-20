@@ -99,6 +99,11 @@ return [
             'choices' => ['active', 'left'],
         ]],
     ],
+    'staff_attendance' => [
+        'label' => 'Staff attendance', 'singular' => 'staff attendance record', 'help' => 'Record daily staff attendance and late arrivals. Staff can see their own history.',
+        'read' => ['owner', 'admin', 'teacher'], 'write' => ['owner', 'admin', 'teacher'],
+        'fields' => [[ 'name' => 'user_id', 'label' => 'Staff member', 'type' => 'relation', 'relation' => 'users' ], [ 'name' => 'date', 'label' => 'Date', 'type' => 'date' ], [ 'name' => 'status', 'label' => 'Status', 'type' => 'select', 'choices' => ['present', 'late', 'absent', 'leave'] ], [ 'name' => 'check_in', 'label' => 'Check-in time', 'type' => 'time', 'optional' => true ], [ 'name' => 'note', 'label' => 'Note', 'type' => 'textarea', 'optional' => true ]],
+    ],
     'students' => [
         'label' => 'Students',
         'singular' => 'student',

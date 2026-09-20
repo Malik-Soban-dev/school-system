@@ -111,6 +111,9 @@ class SchoolPortal
 
             return $query->whereIn($module === 'payroll' ? 'id' : 'payroll_id', $payroll);
         }
+        if ($module === 'staff_attendance') {
+            return $this->admin($user) ? $query : $query->where('user_id', $user->id);
+        }
         if ($module === 'leave_requests' || $module === 'teacher_assignments') {
             return $query->where('user_id', $user->id);
         }
@@ -162,6 +165,12 @@ class SchoolPortal
         if ($module === 'event_rsvps') {
             if ($this->admin($user)) return $query;
             return $query->where('user_id', $user->id)->whereIn('event_id', $this->query('events', $user)->select('id'));
+        }
+        if ($module === 'staff_attendance') {
+            abort_unless($this->tenant->table('school_staff')->where('user_id', $data['user_id'])->where('status', 'active')->exists(), 422, 'Choose an active staff member.');
+            if ($this->tenant->hasRole($user, 'teacher') && (int) $data['user_id'] !== $user->id) {
+                abort(403, 'Staff can only record their own attendance.');
+            }
         }
         if ($module === 'submissions') {
             $assignments = $this->query('assignments', $user)->select('id');
@@ -655,6 +664,7 @@ class SchoolPortal
             'exam_subjects' => ['exam_id', 'subject_id'],
             'payroll' => ['staff_id', 'month'],
             'event_rsvps' => ['event_id', 'user_id'],
+            'staff_attendance' => ['user_id', 'date'],
             default => [],
         };
         if ($unique !== []) {
