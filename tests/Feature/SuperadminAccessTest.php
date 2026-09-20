@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Support\TenantContext;
 use App\Support\Totp;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Crypt;
@@ -416,6 +417,17 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_user', ['school_id' => $school, 'user_id' => $existing->id, 'status' => 'active']);
         $this->assertDatabaseHas('school_user_branches', ['school_id' => $school, 'branch_id' => $branch, 'user_id' => $existing->id, 'roles' => json_encode(['admin'])]);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $existing->id, 'action' => 'school_membership_created']);
+    }
+
+    public function test_database_rejects_a_branch_grant_whose_branch_belongs_to_another_school(): void
+    {
+        $schoolOne = DB::table('schools')->insertGetId(['name' => 'Integrity One', 'slug' => 'integrity-one', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $schoolTwo = DB::table('schools')->insertGetId(['name' => 'Integrity Two', 'slug' => 'integrity-two', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $schoolTwo, 'name' => 'Two Main', 'code' => 'main', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $user = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+
+        $this->expectException(QueryException::class);
+        DB::table('school_user_branches')->insert(['school_id' => $schoolOne, 'branch_id' => $branch, 'user_id' => $user->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
     }
 
     public function test_superadmin_can_override_the_assigned_plan_branch_limit(): void

@@ -1,3 +1,8 @@
+- 2026-09-19 BRANCH TENANT-INTEGRITY UPDATE:
+  - Added composite school/branch integrity enforcement for branch-scoped memberships, audit and operational records; database foreign keys protect supported engines and SQLite triggers provide equivalent insert/update enforcement.
+  - Added regression coverage proving a branch grant cannot reference a branch owned by another school.
+  - Verification passed: full PHPUnit suite (103 tests, 619 assertions), focused Superadmin suite (44 tests, 265 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 BRANCH ADMIN AUTO-ATTACH HARDENING UPDATE:
   - Removed the unsafe legacy path that let an ordinary branch administrator auto-attach arbitrary accounts by calling a direct user URL; explicit branch access is now required.
   - Preserved intentional owner and Superadmin grant authority, including legacy owner compatibility, with regression coverage for cross-school and unassigned-account boundaries.
