@@ -73,4 +73,16 @@ class MonthlySettlementTest extends TestCase
         $this->assertDatabaseHas('school_invoices', ['student_id' => $second, 'reference' => 'FEE-2026-10-'.$second]);
         $this->assertDatabaseHas('school_audit', ['module' => 'invoices', 'action' => 'batch_created']);
     }
+
+    public function test_invoice_listing_marks_past_due_unpaid_balances_as_overdue(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $portal = app(SchoolPortal::class);
+        $year = $portal->save('academic_years', $owner, ['name' => '2026', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
+        $class = $portal->save('classes', $owner, ['name' => 'Grade 7', 'year_id' => $year, 'capacity' => 30]);
+        $student = $portal->save('students', $owner, ['name' => 'Past Due Student', 'admission_number' => 'OVERDUE-1', 'class_id' => $class, 'status' => 'active']);
+        $invoice = $portal->save('invoices', $owner, ['student_id' => $student, 'reference' => 'OVERDUE-1', 'description' => 'Past due tuition', 'amount' => '100.00', 'due_on' => today()->subDay()->toDateString(), 'billing_month' => '2026-09']);
+
+        $this->actingAs($owner)->getJson('/portal/records/invoices')->assertOk()->assertJsonPath('rows.0.id', $invoice)->assertJsonPath('rows.0.payment_status', 'overdue');
+    }
 }

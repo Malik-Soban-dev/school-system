@@ -195,7 +195,7 @@ class SchoolPortal
             if ($module === 'invoices') {
                 $data['paid'] = (int) $this->tenant->table('school_payments')->where('invoice_id', $row->id)->sum('amount');
                 $data['balance'] = (int) $row->amount - $data['paid'];
-                $data['payment_status'] = $data['balance'] === 0 ? 'paid' : ($data['paid'] > 0 ? 'partially paid' : 'unpaid');
+                $data['payment_status'] = $data['balance'] === 0 ? 'paid' : ((string) $row->due_on < today()->toDateString() ? 'overdue' : ($data['paid'] > 0 ? 'partially paid' : 'unpaid'));
             }
             if ($module === 'payroll') {
                 $data['net'] = (int) $row->basic + (int) $row->allowances - (int) $row->deductions;

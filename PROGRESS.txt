@@ -1,3 +1,7 @@
+- 2026-09-20 OVERDUE FEE VISIBILITY UPDATE:
+  - Invoice listings now label any unpaid balance past its due date as overdue while preserving paid, partially paid and unpaid states.
+  - Verification passed: MonthlySettlement feature suite (4 tests, 42 assertions); diff check.
+
 - 2026-09-20 MONTHLY FEE INVOICING UPDATE:
   - Added a school-admin batch workflow to create monthly invoices for all active students or one class.
   - Existing invoices for the same student and month are skipped safely, with audit logging and exact-cent amounts.
