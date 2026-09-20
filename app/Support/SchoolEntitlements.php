@@ -30,6 +30,15 @@ final class SchoolEntitlements
             return true;
         }
 
+        $plan = \DB::table('school_subscriptions as subscription')
+            ->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')
+            ->where('subscription.school_id', $schoolId)
+            ->first(['plan.features', 'subscription.status as subscription_status']);
+
+        if ($plan?->subscription_status === 'canceled') {
+            return false;
+        }
+
         if (Schema::hasTable('school_feature_overrides')) {
             $override = \DB::table('school_feature_overrides')->where('school_id', $schoolId)->where('feature', $feature)->value('enabled');
             if ($override !== null) {
@@ -37,11 +46,7 @@ final class SchoolEntitlements
             }
         }
 
-        $plan = \DB::table('school_subscriptions as subscription')
-            ->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')
-            ->where('subscription.school_id', $schoolId)
-            ->first(['plan.features', 'subscription.status as subscription_status']);
-        if (! $plan || $plan->subscription_status === 'canceled') {
+        if (! $plan) {
             return $plan === null;
         }
         $features = json_decode((string) $plan->features, true) ?: [];

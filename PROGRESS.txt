@@ -1,3 +1,6 @@
+- 2026-09-19 SUPERADMIN SUBSCRIPTION-PRECEDENCE UPDATE:
+  - A canceled school subscription now disables every client module even when Superadmin has an explicit per-school feature grant, while Superadmin access remains unrestricted.
+  - Verification passed: focused School Operations suite (15 tests, 78 assertions), full PHPUnit suite (120 tests, 760 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN CONTROL-CONFIRMATION UPDATE:
   - Added explicit confirmation before saving platform plan catalog changes or changing a school subscription/renewal, matching the existing confirmations for status, access, backup and export controls.
   - Verification passed: Vite production build and git diff check; existing full suite remains green at 119 tests and 759 assertions.

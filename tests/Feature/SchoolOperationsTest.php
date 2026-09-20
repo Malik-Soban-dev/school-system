@@ -69,6 +69,24 @@ class SchoolOperationsTest extends TestCase
         $this->actingAs($this->person('owner'))->getJson('/portal/meta')->assertOk()->assertJsonFragment(['key' => 'payroll']);
     }
 
+    public function test_canceled_subscription_overrides_a_school_feature_grant(): void
+    {
+        $starter = DB::table('platform_plans')->where('code', 'starter')->value('id');
+        DB::table('school_subscriptions')->where('school_id', 1)->update(['plan_id' => $starter, 'status' => 'active']);
+
+        DB::table('school_feature_overrides')->insert([
+            'school_id' => 1,
+            'feature' => 'payroll',
+            'enabled' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('school_subscriptions')->where('school_id', 1)->update(['status' => 'canceled']);
+
+        $this->actingAs($this->person('owner'))->getJson('/portal/records/payroll')->assertForbidden();
+    }
+
     public function test_superadmin_can_use_entitled_modules_and_exceed_student_limit(): void
     {
         $superadmin = $this->person('superadmin');
