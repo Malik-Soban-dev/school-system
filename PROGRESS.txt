@@ -1,3 +1,6 @@
+- 2026-09-19 SUPERADMIN BRANCH-FILTERED USER VISIBILITY UPDATE:
+  - The branch-filtered user explorer now requires an actual school_user_branches grant for the selected branch, while preserving visibility of suspended grants for Superadmin operations.
+  - Verification passed: focused regression (1 test, 3 assertions), full PHPUnit suite (122 tests, 772 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN EXPLORER BRANCH-JOIN ISOLATION UPDATE:
   - Branch-filtered Superadmin record explorers now constrain joined classes, academic years, subjects, exams, students, staff, invoices, payroll and notification rows to the selected branch, preventing foreign branch labels from appearing through inconsistent legacy relationships.
   - Verification passed: branch explorer regression (1 test, 12 assertions), full PHPUnit suite (121 tests, 769 assertions), Pint, and diff check.

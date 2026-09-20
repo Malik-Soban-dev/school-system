@@ -950,6 +950,26 @@ class SuperadminAccessTest extends TestCase
         $this->assertFalse($tenant->hasRole($admin, 'admin'));
     }
 
+    public function test_branch_filtered_user_explorer_excludes_members_without_that_branch_grant(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'User Explorer School', 'slug' => 'user-explorer-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branchOne = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'One', 'code' => 'one', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $branchTwo = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Two', 'code' => 'two', 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
+        $branchOneUser = User::factory()->create(['email' => 'branch-one-user@example.test', 'roles' => ['admin'], 'is_active' => true]);
+        $branchTwoUser = User::factory()->create(['email' => 'branch-two-user@example.test', 'roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert([
+            ['school_id' => $school, 'user_id' => $branchOneUser->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+            ['school_id' => $school, 'user_id' => $branchTwoUser->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        DB::table('school_user_branches')->insert([
+            ['school_id' => $school, 'branch_id' => $branchOne, 'user_id' => $branchOneUser->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+            ['school_id' => $school, 'branch_id' => $branchTwo, 'user_id' => $branchTwoUser->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/users?branch_id='.$branchOne)->assertOk()->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.email', 'branch-one-user@example.test');
+    }
+
     public function test_branch_admin_can_list_and_switch_only_assigned_contexts(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Context School', 'slug' => 'context-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
