@@ -148,6 +148,21 @@ class SchoolPortal
                 }
             });
         }
+        if ($module === 'events') {
+            $roles = $this->tenant->roles($user);
+            return $query->where('status', 'published')->where(function (Builder $scope) use ($roles): void {
+                $scope->where('audience', 'all');
+                foreach (['students', 'parents', 'teachers'] as $audience) {
+                    if (in_array(rtrim($audience, 's'), $roles, true) || in_array($audience, $roles, true)) {
+                        $scope->orWhere('audience', $audience);
+                    }
+                }
+            });
+        }
+        if ($module === 'event_rsvps') {
+            if ($this->admin($user)) return $query;
+            return $query->where('user_id', $user->id)->whereIn('event_id', $this->query('events', $user)->select('id'));
+        }
         if ($module === 'submissions') {
             $assignments = $this->query('assignments', $user)->select('id');
             if ($this->tenant->hasRole($user, 'teacher')) {
@@ -375,6 +390,10 @@ class SchoolPortal
             $rules[$field['name']] = $rule;
         }
         $data = Validator::make($input, $rules)->validate();
+        if ($module === 'event_rsvps') {
+            abort_unless($this->query('events', $user)->where('id', $data['event_id'])->exists(), 403, 'This event is not available to your account.');
+            $data['user_id'] = $user->id;
+        }
         if ($module === 'submissions') {
             $assignment = $this->tenant->table('school_assignments')->where('id', $data['assignment_id'])->first();
             abort_unless($assignment, 422, 'Choose a valid assignment.');
@@ -635,6 +654,7 @@ class SchoolPortal
             'grades' => ['exam_id', 'student_id', 'subject_id'],
             'exam_subjects' => ['exam_id', 'subject_id'],
             'payroll' => ['staff_id', 'month'],
+            'event_rsvps' => ['event_id', 'user_id'],
             default => [],
         };
         if ($unique !== []) {

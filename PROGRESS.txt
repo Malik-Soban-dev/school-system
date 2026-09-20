@@ -1,3 +1,8 @@
+- 2026-09-20 EVENTS AND RSVP UPDATE:
+  - Added school events with draft/published visibility, date/time, location and audience controls.
+  - Added role-scoped event responses so students, parents and teachers can confirm attending, not attending or maybe; duplicate responses are prevented and Superadmin can explore the records.
+  - Verification passed: Event focused test (1 test, 7 assertions). Full suite and production build are next.
+
 - 2026-09-20 CLASS MATERIALS UPDATE:
   - Added class materials with subject, description, optional resource link and draft/published visibility.
   - Linked students and parents see published class resources; teachers are restricted to their assigned class and subject. Added Superadmin explorer and export support.

@@ -352,6 +352,16 @@ return [
             'choices' => ['draft', 'published'],
         ]],
     ],
+    'events' => [
+        'label' => 'Events', 'singular' => 'event', 'help' => 'Publish school events and let families confirm whether they will attend.',
+        'read' => ['owner', 'admin', 'teacher', 'student', 'parent'], 'write' => ['owner', 'admin'],
+        'fields' => [[ 'name' => 'title', 'label' => 'Title', 'type' => 'text' ], [ 'name' => 'description', 'label' => 'Description', 'type' => 'textarea', 'optional' => true ], [ 'name' => 'event_date', 'label' => 'Date', 'type' => 'date' ], [ 'name' => 'starts_at', 'label' => 'Start time', 'type' => 'time', 'optional' => true ], [ 'name' => 'ends_at', 'label' => 'End time', 'type' => 'time', 'optional' => true ], [ 'name' => 'location', 'label' => 'Location', 'type' => 'text', 'optional' => true ], [ 'name' => 'audience', 'label' => 'Audience', 'type' => 'select', 'choices' => ['all', 'students', 'parents', 'teachers'] ], [ 'name' => 'status', 'label' => 'Visibility', 'type' => 'select', 'choices' => ['draft', 'published'] ]],
+    ],
+    'event_rsvps' => [
+        'label' => 'Event responses', 'singular' => 'response', 'help' => 'Confirm attendance for events shared with your account.',
+        'read' => ['owner', 'admin', 'teacher', 'student', 'parent'], 'write' => ['student', 'parent', 'teacher'],
+        'fields' => [[ 'name' => 'event_id', 'label' => 'Event', 'type' => 'relation', 'relation' => 'events' ], [ 'name' => 'response', 'label' => 'Response', 'type' => 'select', 'choices' => ['attending', 'not_attending', 'maybe'] ]],
+    ],
     'subject_attendance' => [
         'label' => 'Subject attendance',
         'singular' => 'subject attendance record',
