@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN SESSION-DRIVER HARDENING UPDATE:
+  - Superadmin profile edits and client password-reset issuance now revoke database sessions only when the sessions table exists, so these controls work with both database and non-database session drivers without weakening revocation where supported.
+  - Verification passed: focused Superadmin suite (67 tests, 467 assertions), full PHPUnit (132 tests, 839 assertions), Pint, and diff check.
+
 - 2026-09-19 PORTAL EFFECTIVE-ROLE UI UPDATE:
   - Portal navigation, role controls, and role-dependent report actions now use effective_roles for the selected branch, with the legacy roles payload retained as a compatibility fallback.
   - Verification passed: focused branch-role coverage (6 tests, 69 assertions), full PHPUnit (132 tests, 839 assertions), frontend production build, Pint, and diff check.

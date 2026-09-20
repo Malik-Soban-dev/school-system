@@ -507,7 +507,9 @@ class PlatformController extends Controller
             $email = $data['email'] ?? null;
             $username = $data['username'] ?? null;
             DB::table('users')->where('id', $user)->update(['name' => $data['name'], 'email' => $email, 'username' => $username, 'email_verified_at' => $email !== $before->email ? null : DB::raw('email_verified_at'), 'updated_at' => now()]);
-            DB::table('sessions')->where('user_id', $user)->delete();
+            if (Schema::hasTable('sessions')) {
+                DB::table('sessions')->where('user_id', $user)->delete();
+            }
             $memberships = DB::table('school_user')->where('user_id', $user)->pluck('school_id');
             foreach ($memberships as $schoolId) {
                 DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'user_profile_updated', 'changes' => json_encode(['before' => ['name' => $before->name, 'email' => $before->email, 'username' => $before->username], 'after' => ['name' => $data['name'], 'email' => $email, 'username' => $username]]), 'created_at' => now()]);
@@ -526,7 +528,9 @@ class PlatformController extends Controller
             abort_unless($userRecord, 404);
             abort_if(in_array('superadmin', json_decode((string) $userRecord->roles, true) ?: [], true), 422, 'Platform Superadmin accounts are managed separately.');
             DB::table('password_reset_tokens')->updateOrInsert(['email' => $userRecord->email], ['token' => hash('sha256', $token), 'created_at' => now()]);
-            DB::table('sessions')->where('user_id', $user)->delete();
+            if (Schema::hasTable('sessions')) {
+                DB::table('sessions')->where('user_id', $user)->delete();
+            }
             $memberships = DB::table('school_user')->where('user_id', $user)->pluck('school_id');
             foreach ($memberships as $schoolId) {
                 DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'password_reset_issued', 'changes' => json_encode(['expires_at' => now()->addMinutes(60)->toIso8601String()]), 'created_at' => now()]);
