@@ -739,12 +739,14 @@ class PlatformController extends Controller
     {
         $data = $request->validate(['status' => ['required', Rule::in(['active', 'suspended'])]]);
         DB::transaction(function () use ($request, $school, $branch, $data): void {
-            $branchRecord = DB::table('school_branches')->where('school_id', $school)->where('id', $branch)->lockForUpdate()->first(['id', 'status']);
+            $branchRecord = DB::table('school_branches')->where('school_id', $school)->where('id', $branch)->lockForUpdate()->first(['id', 'status', 'is_default']);
             abort_unless($branchRecord, 404);
 
             if ($branchRecord->status === $data['status']) {
                 return;
             }
+
+            abort_if($data['status'] === 'suspended' && (bool) $branchRecord->is_default, 422, 'Set another active default branch before suspending the current default.');
 
             DB::table('school_branches')->where('id', $branch)->update(['status' => $data['status'], 'updated_at' => now()]);
             $revokedSessions = 0;
