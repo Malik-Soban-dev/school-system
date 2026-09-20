@@ -135,6 +135,8 @@ class SuperadminAccessTest extends TestCase
             $response->assertJsonMissing(['contents' => '']);
             $this->actingAs($superadmin)->postJson('/superadmin/operations/backups/verify', ['name' => $backup['name']])->assertOk()->assertJsonPath('name', $backup['name']);
             $this->assertDatabaseHas('platform_audit', ['entity_type' => 'backup', 'entity_id' => 0, 'action' => 'backup_verified']);
+            $this->actingAs($superadmin)->get('/superadmin/operations/backups/'.$backup['name'].'/download')->assertDownload($backup['name']);
+            $this->assertDatabaseHas('platform_audit', ['entity_type' => 'backup', 'entity_id' => 0, 'action' => 'backup_downloaded']);
             $this->actingAs($superadmin)->postJson('/superadmin/operations/backups/verify', ['name' => '../'.$backup['name']])->assertUnprocessable();
         } finally {
             File::deleteDirectory($directory);

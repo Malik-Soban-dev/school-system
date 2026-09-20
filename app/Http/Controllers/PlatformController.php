@@ -125,7 +125,7 @@ class PlatformController extends Controller
         $backups = collect();
         $backupDirectory = storage_path('app/private/backups');
         if (File::isDirectory($backupDirectory)) {
-            $backups = collect(File::files($backupDirectory))->sortByDesc(fn ($file): int => $file->getMTime())->take(10)->values()->map(fn ($file): array => ['name' => $file->getFilename(), 'bytes' => $file->getSize(), 'modified_at' => date(DATE_ATOM, $file->getMTime())]);
+            $backups = collect(File::files($backupDirectory))->sortByDesc(fn ($file): int => $file->getMTime())->take(10)->values()->map(fn ($file): array => ['name' => $file->getFilename(), 'bytes' => $file->getSize(), 'modified_at' => date(DATE_ATOM, $file->getMTime()), 'download_url' => route('superadmin.backup.download', ['name' => $file->getFilename()])]);
         }
 
         return response()->json(['status' => $database === 'ok' && $failedJobs === 0 ? 'ok' : 'attention', 'database' => $database, 'queue' => ['pending' => $pendingJobs, 'failed' => $failedJobs], 'sessions' => $sessions, 'schools' => ['active' => DB::table('schools')->where('status', 'active')->count(), 'suspended' => DB::table('schools')->where('status', 'suspended')->count()], 'last_audit_at' => DB::table('school_audit')->max('created_at'), 'backups' => $backups]);
@@ -155,6 +155,16 @@ class PlatformController extends Controller
         DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'backup', 'entity_id' => 0, 'action' => 'backup_verified', 'changes' => json_encode(['name' => $data['name']]), 'created_at' => now()]);
 
         return response()->json(['message' => 'Backup passed integrity verification.', 'name' => $data['name']]);
+    }
+
+    public function downloadBackup(Request $request, string $name): BinaryFileResponse
+    {
+        abort_unless(preg_match('/^[A-Za-z0-9._-]+\.enc$/', $name) === 1 && basename($name) === $name, 404);
+        $path = storage_path('app/private/backups'.DIRECTORY_SEPARATOR.$name);
+        abort_unless(File::isFile($path), 404, 'Backup not found.');
+        DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'backup', 'entity_id' => 0, 'action' => 'backup_downloaded', 'changes' => json_encode(['name' => $name, 'bytes' => File::size($path)]), 'created_at' => now()]);
+
+        return response()->download($path, $name, ['Content-Type' => 'application/octet-stream']);
     }
 
     public function failedJobs(Request $request): JsonResponse

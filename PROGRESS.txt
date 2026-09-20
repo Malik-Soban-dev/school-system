@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN BACKUP DOWNLOAD UPDATE:
+  - Added secure download links for encrypted backups, restricted to validated backup filenames, with a platform audit event for every download; the dashboard now supports off-device backup retrieval alongside creation and verification.
+  - Verification passed: full PHPUnit suite (105 tests, 637 assertions), focused Superadmin suite (46 tests, 283 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN USER-REGISTRY EXPORT UPDATE:
   - Added a queued, private CSV export of the complete platform user and branch-access registry, excluding passwords, MFA secrets and tokens; exports have tracked status, seven-day expiry, authorized download and request/completion/download audit events.
   - Added dashboard controls for queuing and monitoring exports, with chunked tenant-safe queries suitable for large client rosters.

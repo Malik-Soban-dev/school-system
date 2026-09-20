@@ -29,6 +29,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, EnsureS
     Route::get('/superadmin/health', [PlatformController::class, 'health']);
     Route::post('/superadmin/operations/backups', [PlatformController::class, 'createBackup']);
     Route::post('/superadmin/operations/backups/verify', [PlatformController::class, 'verifyBackup']);
+    Route::get('/superadmin/operations/backups/{name}/download', [PlatformController::class, 'downloadBackup'])->where('name', '[A-Za-z0-9._-]+\.enc')->name('superadmin.backup.download');
     Route::get('/superadmin/operations/failed-jobs', [PlatformController::class, 'failedJobs']);
     Route::post('/superadmin/operations/failed-jobs/{job}/retry', [PlatformController::class, 'retryFailedJob'])->whereNumber('job');
     Route::delete('/superadmin/operations/failed-jobs/{job}', [PlatformController::class, 'forgetFailedJob'])->whereNumber('job');
