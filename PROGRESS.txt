@@ -1,3 +1,6 @@
+- 2026-09-20 STUDENT PROMOTION UPDATE:
+  - Added a school-admin promotion workflow: select active students, choose a target class, validate capacity, update current class, preserve old and new enrollment history, and write an audit event for each student. Added the promotion modal to the Students page.
+  - Verification passed: SchoolOperations feature suite (16 tests, 85 assertions); Vite production build; Blade view cache; diff check.
 - 2026-09-20 REPORT CARD ATTENDANCE UPDATE:
   - Added an attendance summary to printed report cards using existing records through the exam date: recorded days, present/late, absent, excused, and attendance rate. No migration was required.
   - Verification passed: ReportCard feature suite (2 tests, 23 assertions); Blade view cache; diff check.

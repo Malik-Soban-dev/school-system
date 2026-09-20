@@ -134,6 +134,37 @@ class PortalController extends Controller
         return response()->json(['rows' => $rows]);
     }
 
+    public function promoteStudents(Request $request): JsonResponse
+    {
+        abort_unless($this->portal->admin($request->user()), 403);
+        $tenant = app(TenantContext::class);
+        $data = $request->validate([
+            'student_ids' => ['required', 'array', 'min:1', 'max:500'],
+            'student_ids.*' => ['required', 'integer', 'distinct', 'min:1'],
+            'class_id' => ['required', 'integer', 'min:1'],
+        ]);
+        $targetClass = $tenant->table('school_classes')->where('id', $data['class_id'])->first(['id', 'name', 'capacity']);
+        abort_unless($targetClass, 422, 'Choose a class from this school branch.');
+        $students = $tenant->table('school_students')->whereIn('id', $data['student_ids'])->where('status', 'active')->get(['id', 'name', 'class_id']);
+        abort_if($students->count() !== count($data['student_ids']), 422, 'One or more students are not active in this school branch.');
+        $moving = $students->filter(fn (object $student): bool => (int) $student->class_id !== (int) $targetClass->id);
+        abort_if($moving->isEmpty(), 422, 'All selected students are already in that class.');
+        if ($targetClass->capacity !== null) {
+            $currentCount = $tenant->table('school_students')->where('class_id', $targetClass->id)->where('status', 'active')->whereNotIn('id', $moving->pluck('id'))->count();
+            abort_if($currentCount + $moving->count() > (int) $targetClass->capacity, 422, 'The target class does not have enough capacity for this promotion.');
+        }
+        DB::transaction(function () use ($request, $tenant, $moving, $targetClass): void {
+            $now = now();
+            foreach ($moving as $student) {
+                $tenant->table('school_students')->where('id', $student->id)->update(['class_id' => $targetClass->id, 'updated_at' => $now]);
+                $tenant->table('school_enrollments')->insertOrIgnore(['student_id' => $student->id, 'class_id' => $targetClass->id, 'created_at' => $now, 'updated_at' => $now]);
+                DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $request->user()->id, 'module' => 'students', 'record_id' => $student->id, 'action' => 'promoted', 'changes' => json_encode(['from_class_id' => $student->class_id, 'to_class_id' => $targetClass->id, 'to_class_name' => $targetClass->name]), 'created_at' => $now]);
+            }
+        });
+
+        return response()->json(['message' => $moving->count().' students promoted to '.$targetClass->name.'.', 'promoted' => $moving->count(), 'class_id' => $targetClass->id]);
+    }
+
     public function tutorial(Request $request): JsonResponse
     {
         $data = $request->validate(['module' => ['required', Rule::in(['overview', 'people', 'invitations', 'notifications', 'settings', ...array_keys(config('school-modules'))])]]);

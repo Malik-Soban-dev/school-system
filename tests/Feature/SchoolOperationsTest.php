@@ -174,6 +174,24 @@ class SchoolOperationsTest extends TestCase
         $this->assertDatabaseHas('school_enrollments', ['student_id' => $student, 'class_id' => $newClass]);
     }
 
+    public function test_owner_can_promote_active_students_and_preserve_enrollment_history(): void
+    {
+        $owner = $this->person('owner');
+        $year = $this->record('academic_years', ['name' => '2027', 'starts_on' => '2027-01-01', 'ends_on' => '2027-12-31']);
+        $from = $this->record('classes', ['name' => 'Grade 5', 'year_id' => $year, 'capacity' => 30]);
+        $to = $this->record('classes', ['name' => 'Grade 6', 'year_id' => $year, 'capacity' => 30]);
+        $first = $this->record('students', ['name' => 'First Student', 'admission_number' => 'PROMOTE-1', 'class_id' => $from, 'status' => 'active']);
+        $second = $this->record('students', ['name' => 'Second Student', 'admission_number' => 'PROMOTE-2', 'class_id' => $from, 'status' => 'active']);
+
+        $this->actingAs($owner)->postJson('/portal/promotions', ['student_ids' => [$first, $second], 'class_id' => $to])->assertOk()->assertJsonPath('promoted', 2);
+
+        $this->assertDatabaseHas('school_students', ['id' => $first, 'class_id' => $to]);
+        $this->assertDatabaseHas('school_students', ['id' => $second, 'class_id' => $to]);
+        $this->assertDatabaseHas('school_enrollments', ['student_id' => $first, 'class_id' => $from]);
+        $this->assertDatabaseHas('school_enrollments', ['student_id' => $first, 'class_id' => $to]);
+        $this->assertDatabaseHas('school_audit', ['record_id' => $first, 'action' => 'promoted']);
+    }
+
     public function test_teacher_parent_combined_role_does_not_expose_other_families_invoices(): void
     {
         $teacher = $this->person('teacher');
