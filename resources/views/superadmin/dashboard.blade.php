@@ -271,6 +271,7 @@
         existingUserPanel.querySelector('#existing-user-access-form').addEventListener('submit', async event => {
             event.preventDefault();
             const formData = new FormData(event.currentTarget);
+            if (!window.confirm('Grant the selected roles to this account on all selected branches? This change will be audited.')) return;
             try {
                 await request(`/superadmin/schools/${schoolId}/members/${formData.get('user_id')}/branch-access/bulk`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({branch_ids: formData.getAll('branch_ids').map(Number), roles: formData.getAll('roles'), status: 'active'})});
                 await showSchoolDetail(schoolId);
@@ -366,7 +367,7 @@
             }
         }));
         document.querySelectorAll('.branch-default').forEach(button => button.addEventListener('click', async event => {
-            if (!window.confirm('Make this active branch the school default?')) return;
+            if (!window.confirm('Make this active branch the school default? Client users without a branch grant may be routed here, and this change will be audited.')) return;
             try {
                 await request(`/superadmin/schools/${schoolId}/branches/${event.currentTarget.dataset.branch}/default`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf}});
                 await showSchoolDetail(schoolId);
@@ -631,8 +632,10 @@
         event.preventDefault();
         if (!userAccessUser.value || !userAccessSchool.value || !userAccessBranch.value) return;
         const formData = new FormData(event.currentTarget);
+        const action = userAccessStatus.value === 'suspended' ? 'suspend' : 'grant or restore';
+        if (!window.confirm(`Are you sure you want to ${action} this user\'s branch access? This change will be audited.`)) return;
         try {
-            await request(`/superadmin/users/${userAccessUser.value}/branch-access`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({school_id: Number(userAccessSchool.value), branch_id: Number(userAccessBranch.value), roles: new FormData(event.currentTarget).getAll('roles'), status: userAccessStatus.value})});
+            await request(`/superadmin/users/${userAccessUser.value}/branch-access`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({school_id: Number(userAccessSchool.value), branch_id: Number(userAccessBranch.value), roles: formData.getAll('roles'), status: userAccessStatus.value})});
             window.alert('User branch access updated and audited.');
             await loadUsers();
         } catch (error) {

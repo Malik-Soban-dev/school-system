@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN SENSITIVE-ACTION CONFIRMATION UPDATE:
+  - Added explicit confirmation before changing a school default branch and before global/bulk branch-access grants, preserving the audit trail and preventing accidental access-routing changes.
+  - Verification passed: focused Superadmin tests (11 tests, 68 assertions); Blade view cache; full PHPUnit (133 tests, 872 assertions); Pint; diff check.
 - 2026-09-20 SUPERADMIN EFFECTIVE-FEATURE VISIBILITY UPDATE:
   - School detail now returns and displays effective module access for attendance, grades, invoices, payroll, notifications and branches after combining subscription plan features, per-school overrides and canceled-subscription precedence.
   - Verification passed: focused feature/census coverage (2 tests, 31 assertions), Blade view cache, full PHPUnit (133 tests, 872 assertions), Pint, and diff check.
