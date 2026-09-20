@@ -55,7 +55,7 @@
     </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">PLATFORM ACCOUNTS</p><h2>Every user</h2></div></div>
-        <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><select id="user-school" aria-label="Filter users by school"><option value="">All schools</option></select><select id="user-branch" aria-label="Filter users by branch"><option value="">All branches</option></select><select id="user-status" aria-label="Filter users by account status"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><button type="submit">Search</button></form>
+        <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><select id="user-school" aria-label="Filter users by school"><option value="">All schools</option></select><select id="user-branch" aria-label="Filter users by branch"><option value="">All branches</option></select><select id="user-role" aria-label="Filter users by role"><option value="">All roles</option><option value="superadmin">Superadmin</option><option value="owner">Owner</option><option value="admin">Admin</option><option value="teacher">Teacher</option><option value="student">Student</option><option value="parent">Parent</option><option value="accountant">Accountant</option></select><select id="user-status" aria-label="Filter users by account status"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><button type="submit">Search</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>User</th><th>Status</th><th>School / branch access</th><th>Control</th></tr></thead><tbody id="user-rows"><tr><td colspan="4">Loading platform users…</td></tr></tbody></table></div><div id="user-pagination"></div>
     </section>
     <section class="platform-panel"><div class="platform-panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Platform activity</h2></div></div><form id="audit-search-form"><select id="audit-school" aria-label="Audit school"><option value="">All schools and platform events</option></select><select id="audit-branch" aria-label="Audit branch"><option value="">All branches</option></select><input id="audit-search" maxlength="100" placeholder="Search school, actor, module or action" aria-label="Search audit activity"><button type="submit">Search audit</button></form><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>School</th><th>Branch</th><th>Actor</th><th>Module</th><th>Action</th><th>Changes</th></tr></thead><tbody id="audit-rows"><tr><td colspan="7">Loading audit trail…</td></tr></tbody></table></div><div id="audit-pagination"></div></section>
@@ -92,6 +92,7 @@
     const userPagination = document.querySelector('#user-pagination');
     const userSchool = document.querySelector('#user-school');
     const userBranch = document.querySelector('#user-branch');
+    const userRole = document.querySelector('#user-role');
     const userStatus = document.querySelector('#user-status');
     const explorerForm = document.querySelector('#data-explorer-form');
     const explorerSchool = document.querySelector('#explorer-school');
@@ -443,6 +444,7 @@
         if (search) params.set('search', search);
         if (userSchool.value) params.set('school_id', userSchool.value);
         if (userBranch.value) params.set('branch_id', userBranch.value);
+        if (userRole.value) params.set('role', userRole.value);
         if (userStatus.value) params.set('status', userStatus.value);
         const data = await request(`/superadmin/users?${params}`);
         userRows.innerHTML = data.users.data.map(user => {
