@@ -7,6 +7,7 @@ use App\Support\SchoolEntitlements;
 use App\Support\TenantContext;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
@@ -352,7 +353,7 @@ class SchoolPortal
         if ($this->can($user, $this->definition('staff')['read'])) {
             $stats[] = ['key' => 'staff', 'label' => 'Active staff', 'value' => $this->query('staff', $user)->where('status', 'active')->count(), 'icon' => 'staff'];
         }
-        if ($this->can($user, $this->definition('staff_attendance')['read'])) {
+        if ($this->can($user, $this->definition('staff_attendance')['read']) && Schema::hasTable('school_staff_attendance')) {
             $staffQuery = $this->query('staff_attendance', $user)->where('date', $today);
             $staffAttendance['total'] = (clone $staffQuery)->count();
             foreach (['present', 'late', 'absent', 'leave'] as $status) {

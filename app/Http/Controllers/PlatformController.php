@@ -83,6 +83,9 @@ class PlatformController extends Controller
             'school_user_branches' => 'branch_access',
             'school_audit' => 'audit',
         ] as $table => $key) {
+            if (! Schema::hasTable($table)) {
+                continue;
+            }
             $platformCensus[$key] = DB::table($table)->count();
         }
         $entitlementAlerts = $schools->flatMap(function (object $school): array {
@@ -149,11 +152,16 @@ class PlatformController extends Controller
             'school_notification_deliveries' => 'notification_deliveries',
             'school_notification_preferences' => 'notification_preferences',
         ];
+        $availableBranchMetrics = [];
         foreach ($branchMetrics as $table => $key) {
+            if (! Schema::hasTable($table)) {
+                continue;
+            }
             $query->leftJoinSub(DB::table($table)->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id'), $key, $key.'.branch_id', '=', 'b.id');
+            $availableBranchMetrics[$key] = true;
         }
         $columns = ['b.id', 'b.school_id', 's.name as school_name', 'b.name', 'b.code', 'b.status', 'b.is_default', 'b.created_at'];
-        foreach (array_merge(['members', 'students', 'staff', 'teachers', 'guardians', 'classes', 'open_invoices'], array_values($branchMetrics)) as $key) {
+        foreach (array_merge(['members', 'students', 'staff', 'teachers', 'guardians', 'classes', 'open_invoices'], array_keys($availableBranchMetrics)) as $key) {
             $columns[] = DB::raw('coalesce('.$key.'.total, 0) as '.$key);
         }
         $branches = $query->paginate((int) ($data['per_page'] ?? 50), $columns);
@@ -854,6 +862,9 @@ class PlatformController extends Controller
             'school_notification_preferences' => 'notification_preferences',
             'school_settings' => 'settings',
         ] as $table => $key) {
+            if (! Schema::hasTable($table)) {
+                continue;
+            }
             $counts[$key] = DB::table($table)->where('school_id', $school)->count();
         }
         $counts['open_invoices'] = DB::table('school_invoices')->where('school_id', $school)->whereIn('status', ['issued', 'partial', 'overdue'])->count();
@@ -889,6 +900,9 @@ class PlatformController extends Controller
             'school_notification_deliveries' => 'notification_deliveries',
             'school_notification_preferences' => 'notification_preferences',
         ] as $table => $key) {
+            if (! Schema::hasTable($table)) {
+                continue;
+            }
             $countsByBranch = DB::table($table)->where('school_id', $school)->whereNotNull('branch_id')->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id')->pluck('total', 'branch_id');
             $branches = $branches->map(function (object $branch) use ($countsByBranch, $key): object {
                 $branch->{$key} = (int) ($countsByBranch[$branch->id] ?? 0);

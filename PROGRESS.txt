@@ -1,3 +1,8 @@
+- 2026-09-20 DASHBOARD 500 REGRESSION FIX:
+  - Diagnosed Render dashboard shell 200 responses followed by /portal/meta 500 responses. Added schema guards around new staff-attendance overview and Superadmin platform/branch census loops so a missing or partially migrated operational table cannot break either dashboard JSON response.
+  - Verification passed: full PHPUnit (159 tests, 1149 assertions); focused Superadmin and StaffAttendance suites (72 tests, 635 assertions); PHP syntax checks; Render latest deployment previously reached live state.
+  - Next verification: deploy this guard and confirm the live dashboard API responses.
+
 - 2026-09-20 STAFF ATTENDANCE DASHBOARD UPDATE:
   - Added today's staff attendance summary to the school dashboard with present, late, absent and attendance-rate totals. Admins see the branch register; staff summary remains limited by existing staff-attendance visibility rules.
   - Verification passed: focused StaffAttendance suite (1 test, 12 assertions) and Vite production build.
