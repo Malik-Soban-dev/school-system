@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\SchoolPortal;
+use App\Support\SchoolEntitlements;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -47,7 +48,7 @@ class PortalController extends Controller
         return response()->json(['contexts' => $this->availableContexts($request->user()), 'current' => ['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId()]]);
     }
 
-    public function switchContext(Request $request): JsonResponse
+    public function switchContext(Request $request, SchoolEntitlements $entitlements): JsonResponse
     {
         $data = $request->validate(['school_id' => ['required', 'integer'], 'branch_id' => ['required', 'integer']]);
         $context = $request->user()->hasRole('superadmin')
@@ -56,6 +57,8 @@ class PortalController extends Controller
                 $join->on('membership.school_id', '=', 'access.school_id')->on('membership.user_id', '=', 'access.user_id');
             })->join('schools', 'schools.id', '=', 'access.school_id')->join('school_branches as branch', 'branch.id', '=', 'access.branch_id')->where('access.user_id', $request->user()->id)->where('access.school_id', $data['school_id'])->where('access.branch_id', $data['branch_id'])->where('access.status', 'active')->where('membership.status', 'active')->where('schools.status', 'active')->where('branch.status', 'active')->first(['access.school_id', 'access.branch_id']);
         abort_unless($context, 403, 'You do not have access to that school branch.');
+        $defaultBranch = DB::table('school_branches')->where('school_id', $context->school_id)->where('is_default', true)->value('id');
+        abort_if(! $request->user()->hasRole('superadmin') && (int) $context->branch_id !== (int) $defaultBranch && ! $entitlements->allowsForSchool((int) $context->school_id, 'branches'), 403, 'Branch access is not enabled for this school subscription.');
         $request->session()->put(['school_id' => (int) $context->school_id, 'branch_id' => (int) $context->branch_id]);
         app(TenantContext::class)->set((int) $context->school_id, (int) $context->branch_id);
 

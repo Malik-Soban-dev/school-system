@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN BRANCH-ENTITLEMENT UPDATE:
+  - Added a branches entitlement to the plan/override model; Growth plans enable multi-branch access by default, while single-branch schools can be explicitly enabled by Superadmin.
+  - Server-enforced context switching now blocks client users from entering non-default branches when branch access is not entitled; Superadmin remains unrestricted and audited.
+  - Verification passed: focused Superadmin suite (57 tests, 387 assertions), full PHPUnit suite (118 tests, 746 assertions), Pint, Vite build, and diff check.
 - 2026-09-19 SUPERADMIN SCHOOL-FEATURE-OVERRIDE UPDATE:
   - Added explicit per-school module overrides for attendance, grades, invoices, payroll and notifications; each school can inherit its plan, enable a feature, or disable a feature from the Superadmin school detail view.
   - Overrides are enforced server-side, exported with school data, and recorded in both school and platform audit trails with actor, school, feature and before/after state.

@@ -7,7 +7,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final class SchoolEntitlements
 {
-    public const FEATURES = ['attendance', 'grades', 'invoices', 'payroll', 'notifications'];
+    public const FEATURES = ['attendance', 'grades', 'invoices', 'payroll', 'notifications', 'branches'];
 
     public function __construct(private TenantContext $tenant) {}
 
@@ -21,18 +21,26 @@ final class SchoolEntitlements
 
     public function allows(string $feature): bool
     {
+        return $this->allowsForSchool($this->tenant->id(), $feature);
+    }
+
+    public function allowsForSchool(int $schoolId, string $feature): bool
+    {
         if (auth()->user()?->hasRole('superadmin')) {
             return true;
         }
 
         if (Schema::hasTable('school_feature_overrides')) {
-            $override = \DB::table('school_feature_overrides')->where('school_id', $this->tenant->id())->where('feature', $feature)->value('enabled');
+            $override = \DB::table('school_feature_overrides')->where('school_id', $schoolId)->where('feature', $feature)->value('enabled');
             if ($override !== null) {
                 return (bool) $override;
             }
         }
 
-        $plan = $this->plan();
+        $plan = \DB::table('school_subscriptions as subscription')
+            ->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')
+            ->where('subscription.school_id', $schoolId)
+            ->first(['plan.features', 'subscription.status as subscription_status']);
         if (! $plan || $plan->subscription_status === 'canceled') {
             return $plan === null;
         }

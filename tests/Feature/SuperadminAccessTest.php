@@ -65,6 +65,23 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_notices', ['school_id' => $school, 'branch_id' => $branch, 'title' => 'Platform notice']);
     }
 
+    public function test_single_branch_plan_blocks_client_context_switch_until_superadmin_enables_branch_access(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Single Branch School', 'slug' => 'single-branch-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $default = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Main', 'code' => 'main', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $second = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Second', 'code' => 'second', 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
+        $plan = DB::table('platform_plans')->where('code', 'starter')->value('id');
+        DB::table('school_subscriptions')->insert(['school_id' => $school, 'plan_id' => $plan, 'status' => 'active', 'starts_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $client->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert([['school_id' => $school, 'branch_id' => $default, 'user_id' => $client->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()], ['school_id' => $school, 'branch_id' => $second, 'user_id' => $client->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]]);
+
+        $this->actingAs($client)->putJson('/portal/context', ['school_id' => $school, 'branch_id' => $second])->assertForbidden();
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/features', ['feature' => 'branches', 'enabled' => true])->assertOk();
+        $this->actingAs($client)->putJson('/portal/context', ['school_id' => $school, 'branch_id' => $second])->assertOk()->assertJsonPath('current.branch_id', $second);
+    }
+
     public function test_superadmin_can_manage_an_owner_access_grant_inside_the_selected_workspace(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Workspace Authority School', 'slug' => 'workspace-authority-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
