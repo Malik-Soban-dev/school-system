@@ -808,6 +808,19 @@ class SuperadminAccessTest extends TestCase
         DB::table('school_user_branches')->insert(['school_id' => $schoolOne, 'branch_id' => $branch, 'user_id' => $user->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
     }
 
+    public function test_superadmin_cannot_grant_active_access_on_a_suspended_branch(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Suspended Grant School', 'slug' => 'suspended-grant-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Suspended Branch', 'code' => 'suspended', 'status' => 'suspended', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/superadmin/users/'.$client->id.'/branch-access', ['school_id' => $school, 'branch_id' => $branch, 'roles' => ['admin'], 'status' => 'active'])->assertUnprocessable();
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/members/'.$client->id.'/branch-access', ['branch_id' => $branch, 'roles' => ['admin'], 'status' => 'active'])->assertUnprocessable();
+        $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/members/'.$client->id.'/branch-access/bulk', ['branch_ids' => [$branch], 'roles' => ['admin'], 'status' => 'active'])->assertUnprocessable();
+        $this->assertDatabaseMissing('school_user', ['school_id' => $school, 'user_id' => $client->id]);
+    }
+
     public function test_superadmin_can_override_the_assigned_plan_branch_limit(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Branch Limit School', 'slug' => 'branch-limit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
