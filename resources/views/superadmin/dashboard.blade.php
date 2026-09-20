@@ -15,62 +15,94 @@
         <a href="{{ route('account') }}">Account security</a>
         <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit">Sign out</button></form>
     </header>
-    <section class="platform-overview" aria-labelledby="overview-title">
+    <div class="platform-app-layout">
+        <aside class="platform-sidebar" aria-label="Superadmin sections">
+            <div class="platform-sidebar-brand"><span class="platform-brand-mark">S</span><div><strong>School System</strong><small>Platform owner</small></div></div>
+            <nav class="platform-nav">
+                <button type="button" data-platform-tab-button="overview">Overview</button>
+                <button type="button" data-platform-tab-button="schools">Schools</button>
+                <button type="button" data-platform-tab-button="branches">Branches</button>
+                <button type="button" data-platform-tab-button="users">Users & access</button>
+                <button type="button" data-platform-tab-button="billing">Billing</button>
+                <button type="button" data-platform-tab-button="data">Data explorer</button>
+                <button type="button" data-platform-tab-button="audit">Audit trail</button>
+                <button type="button" data-platform-tab-button="operations">Operations</button>
+            </nav>
+            <div class="platform-sidebar-footer"><span class="platform-live-dot"></span><span>Platform controls active</span></div>
+        </aside>
+        <div class="platform-content">
+    <section class="platform-overview" data-platform-tab="overview" aria-labelledby="overview-title">
         <div class="platform-overview-hero"><div><p class="eyebrow">PLATFORM OVERVIEW</p><h2 id="overview-title">Your entire school network, at a glance.</h2><p>Monitor growth, operational health, capacity, billing, and client access from the platform owner workspace.</p></div><div class="overview-actions"><button class="platform-primary-action" id="overview-refresh" type="button">Refresh overview</button><a href="#platform-health">View operations</a></div></div>
         <div class="platform-primary-kpis" id="platform-primary-kpis" aria-live="polite"><article><span class="overview-kpi-label">Schools</span><strong>—</strong><small>Loading platform census</small></article><article><span class="overview-kpi-label">Branches</span><strong>—</strong><small>Loading platform census</small></article><article><span class="overview-kpi-label">Students</span><strong>—</strong><small>Loading platform census</small></article><article><span class="overview-kpi-label">Accounts</span><strong>—</strong><small>Loading platform census</small></article><article><span class="overview-kpi-label">Projected MRR</span><strong>—</strong><small>Loading billing</small></article></div>
         <div class="platform-chart-grid"><article class="platform-chart-card"><div class="chart-heading"><div><p class="eyebrow">NETWORK HEALTH</p><h3>Schools and branches</h3></div><span class="chart-caption">Live status</span></div><div class="status-bars" id="school-health-chart"><p>Loading chart…</p></div></article><article class="platform-chart-card"><div class="chart-heading"><div><p class="eyebrow">PLATFORM COMPOSITION</p><h3>People and activity</h3></div><span class="chart-caption">Total records</span></div><div class="metric-bars" id="platform-composition-chart"><p>Loading chart…</p></div></article></div>
         <article class="platform-inventory-card"><div class="chart-heading"><div><p class="eyebrow">FULL CENSUS</p><h3>Platform inventory</h3></div><button class="platform-subtle-action" type="button" id="inventory-toggle">Show all metrics</button></div><div class="platform-inventory" id="platform-inventory" hidden></div></article>
     </section>
-    <section class="platform-grid" id="platform-summary" aria-live="polite">
+    <section class="platform-grid" data-platform-tab="overview" id="platform-summary" aria-live="polite">
         <article><strong>Loading…</strong><span>Schools</span></article><article><strong>Loading…</strong><span>Branches</span></article><article><strong>Loading…</strong><span>Members</span></article><article><strong>Loading…</strong><span>Students</span></article><article><strong>Loading…</strong><span>Teachers</span></article><article><strong>Loading…</strong><span>Classes</span></article><article><strong>Loading…</strong><span>Enrollments</span></article><article><strong>Loading…</strong><span>Payments</span></article><article><strong>Loading…</strong><span>Payroll payments</span></article><article><strong>Loading…</strong><span>Notifications</span></article><article><strong>Loading…</strong><span>Open invoices</span></article>
     </section>
-    <section class="platform-panel" id="platform-entitlement-alerts" aria-live="polite"><div class="platform-panel-heading"><div><p class="eyebrow">ENTITLEMENTS</p><h2>Capacity and subscription alerts</h2></div></div><div id="entitlement-alert-content">Loading entitlement alerts…</div></section>
-    <section class="platform-panel" id="platform-health">
+    <section class="platform-panel" data-platform-tab="overview" id="platform-entitlement-alerts" aria-live="polite"><div class="platform-panel-heading"><div><p class="eyebrow">ENTITLEMENTS</p><h2>Capacity and subscription alerts</h2></div></div><div id="entitlement-alert-content">Loading entitlement alerts…</div></section>
+    <section class="platform-panel" data-platform-tab="operations" id="platform-health">
         <div class="platform-panel-heading"><div><p class="eyebrow">OPERATIONS</p><h2>Platform health</h2></div><div><button class="platform-refresh" id="backup-create" type="button">Create encrypted backup</button> <button class="platform-refresh" id="user-export-create" type="button">Export user registry</button> <button class="platform-refresh" id="health-refresh" type="button">Refresh health</button></div></div>
         <div id="health-content">Loading operational health…</div><div id="failed-job-content">Loading failed jobs…</div><div id="export-content">Loading exports…</div>
     </section>
-    <section class="platform-panel">
+    <section class="platform-panel" data-platform-tab="billing">
         <div class="platform-panel-heading"><div><p class="eyebrow">PLAN CATALOG</p><h2>Platform plans</h2></div></div>
         <form id="create-plan-form"><input name="code" required maxlength="60" pattern="[A-Za-z0-9_-]+" placeholder="Plan code" aria-label="New plan code"><input name="name" required maxlength="100" placeholder="Plan name" aria-label="New plan name"><input name="monthly_price_cents" required type="number" min="0" placeholder="Monthly cents" aria-label="New plan monthly price"><input name="max_branches" type="number" min="1" placeholder="Max branches" aria-label="New plan maximum branches"><input name="max_students" type="number" min="1" placeholder="Max students" aria-label="New plan maximum students"><input name="features" placeholder="Features, e.g. attendance, grades" aria-label="New plan features"><button type="submit">Create plan</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>Plan</th><th>Monthly cents</th><th>Max branches</th><th>Max students</th><th>Features</th><th>Status</th><th>Control</th></tr></thead><tbody id="plan-rows"><tr><td colspan="7">Loading plan catalog…</td></tr></tbody></table></div>
     </section>
-    <section class="platform-panel">
+    <section class="platform-panel" data-platform-tab="billing">
         <div class="platform-panel-heading"><div><p class="eyebrow">CLIENT BILLING</p><h2>Platform invoices</h2></div></div>
         <form id="platform-invoice-form"><select id="platform-invoice-school" name="school_id" required aria-label="Invoice school"></select><input name="amount_cents" type="number" min="1" required placeholder="Amount in cents" aria-label="Invoice amount in cents"><input name="period_start" type="date" required aria-label="Billing period start"><input name="period_end" type="date" required aria-label="Billing period end"><input name="due_on" type="date" required aria-label="Invoice due date"><input name="notes" maxlength="2000" placeholder="Notes" aria-label="Invoice notes"><button type="submit">Issue invoice</button></form>
         <form id="platform-invoice-filter"><select id="platform-invoice-status" aria-label="Invoice status"><option value="">All statuses</option><option value="issued">Issued</option><option value="paid">Paid</option><option value="overdue">Overdue</option><option value="void">Void</option></select><button type="submit">Filter invoices</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Invoice</th><th>Amount</th><th>Period</th><th>Due</th><th>Status</th><th>Control</th></tr></thead><tbody id="platform-invoice-rows"><tr><td colspan="7">Loading platform invoices…</td></tr></tbody></table></div><div id="platform-invoice-pagination"></div>
     </section>
-    <section class="platform-panel">
+    <section class="platform-panel" data-platform-tab="schools">
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL REGISTRY</p><h2>Every school</h2></div><div><button class="platform-refresh" type="button">Refresh data</button></div></div>
         <form id="school-registry-filter"><input id="school-registry-search" maxlength="100" placeholder="Search school or slug" aria-label="Search schools"><select id="school-registry-status" aria-label="Filter schools by status"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><button type="submit">Filter schools</button></form>
         <form id="create-school-form"><input name="name" required maxlength="150" placeholder="New school name" aria-label="New school name"><input name="slug" required maxlength="80" pattern="[A-Za-z0-9_-]+" placeholder="Slug" aria-label="New school slug"><select id="onboard-plan" name="plan_id" aria-label="Initial school plan"><option value="">Starter trial</option></select><input name="owner_name" maxlength="100" placeholder="Initial owner name (optional)" aria-label="Initial owner name"><input name="owner_email" type="email" maxlength="255" placeholder="Initial owner email (optional)" aria-label="Initial owner email"><select name="owner_role" aria-label="Initial administrator role"><option value="owner">Owner</option><option value="admin">Admin</option></select><button type="submit">Onboard school</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Status</th><th>Plan / subscription</th><th>Branches</th><th>Members</th><th>Students</th><th>Staff</th><th>Teachers</th><th>Open invoices</th><th>Control</th></tr></thead><tbody id="school-rows"><tr><td colspan="10">Loading school registry…</td></tr></tbody></table></div>
     </section>
-    <section class="platform-panel">
+    <section class="platform-panel" data-platform-tab="branches">
         <div class="platform-panel-heading"><div><p class="eyebrow">BRANCH REGISTRY</p><h2>Every branch</h2></div></div>
         <form id="branch-search-form"><select id="branch-school" aria-label="Filter branches by school"><option value="">All schools</option></select><select id="branch-status" aria-label="Branch status"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><input id="branch-search" maxlength="100" placeholder="Search branch or school" aria-label="Search branches"><button type="submit">Search branches</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Branch</th><th>Status</th><th>Members</th><th>Students</th><th>Staff</th><th>Teachers</th><th>Guardians</th><th>Classes</th><th>Open invoices</th><th>Operations</th><th>Control</th></tr></thead><tbody id="branch-rows"><tr><td colspan="12">Loading branch registry…</td></tr></tbody></table></div><div id="branch-pagination"></div>
     </section>
-    <section class="platform-panel" id="school-detail" hidden>
+    <section class="platform-panel" data-platform-tab="schools" id="school-detail" hidden>
         <div class="platform-panel-heading"><div><p class="eyebrow">SCHOOL DETAIL</p><h2 id="school-detail-title">Selected school</h2></div><button class="platform-refresh" id="school-detail-close" type="button">Close</button></div>
         <div id="school-detail-content">Select a school to inspect its members and activity.</div>
     </section>
-    <section class="platform-panel">
+    <section class="platform-panel" data-platform-tab="data">
         <div class="platform-panel-heading"><div><p class="eyebrow">DATA EXPLORER</p><h2>Inspect school records</h2></div></div>
         <form id="data-explorer-form"><select id="explorer-school" name="school_id" aria-label="School"></select><select id="explorer-branch" name="branch_id" aria-label="Branch"><option value="">All branches</option></select><select id="explorer-module" name="module" aria-label="Data module"><option value="academic_years">Academic years</option><option value="students">Students</option><option value="staff">Staff</option><option value="classes">Classes</option><option value="subjects">Subjects</option><option value="teacher_assignments">Teaching assignments</option><option value="guardian_links">Guardian links</option><option value="attendance">Attendance</option><option value="timetables">Timetables</option><option value="exams">Exams</option><option value="grades">Grades</option><option value="users">Users</option><option value="invoices">Invoices</option><option value="payments">Payments</option><option value="expenses">Expenses</option><option value="leave_requests">Leave requests</option><option value="payroll">Payroll</option><option value="payroll_payments">Payroll payments</option><option value="notices">Notices</option><option value="enrollments">Enrollments</option><option value="invitations">Invitations</option><option value="notifications">Notifications</option><option value="audit">Audit</option></select><input id="explorer-search" name="search" maxlength="100" placeholder="Search records" aria-label="Search records"><button type="submit">Load records</button></form>
         <div class="platform-table-wrap"><table><thead id="explorer-head"><tr><th>Records</th></tr></thead><tbody id="explorer-rows"><tr><td>Select a school and module.</td></tr></tbody></table></div><div id="explorer-pagination"></div>
     </section>
-    <section class="platform-panel">
+    <section class="platform-panel" data-platform-tab="users">
         <div class="platform-panel-heading"><div><p class="eyebrow">PLATFORM ACCOUNTS</p><h2>Every user</h2></div></div>
         <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><select id="user-school" aria-label="Filter users by school"><option value="">All schools</option></select><select id="user-branch" aria-label="Filter users by branch"><option value="">All branches</option></select><select id="user-school-status" aria-label="Filter school lifecycle status"><option value="">All school statuses</option><option value="active">School active</option><option value="suspended">School suspended</option></select><select id="user-branch-status" aria-label="Filter branch lifecycle status"><option value="">All branch statuses</option><option value="active">Branch active</option><option value="suspended">Branch suspended</option></select><select id="user-role" aria-label="Filter users by role"><option value="">All roles</option><option value="superadmin">Superadmin</option><option value="owner">Owner</option><option value="admin">Admin</option><option value="teacher">Teacher</option><option value="student">Student</option><option value="parent">Parent</option><option value="accountant">Accountant</option></select><select id="user-status" aria-label="Filter users by account status"><option value="">All account statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><select id="user-membership-status" aria-label="Filter school membership status"><option value="">All school memberships</option><option value="active">Membership active</option><option value="suspended">Membership suspended</option></select><button type="submit">Search</button></form>
         <form id="user-access-form"><select id="user-access-user" required aria-label="User to grant branch access"><option value="">Select a loaded user</option></select><select id="user-access-school" required aria-label="Access school"><option value="">Select school</option></select><select id="user-access-branch" required aria-label="Access branch"><option value="">Select branch</option></select><select id="user-access-roles" name="roles" required aria-label="Access roles" multiple size="3"><option value="admin">Admin</option><option value="owner">Owner</option><option value="teacher">Teacher</option><option value="student">Student</option><option value="parent">Parent</option><option value="accountant">Accountant</option></select><select id="user-access-status" required aria-label="Access status"><option value="active">Active</option><option value="suspended">Suspended</option></select><button type="submit">Grant / update branch access</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>User</th><th>Status</th><th>School / branch access</th><th>Control</th></tr></thead><tbody id="user-rows"><tr><td colspan="4">Loading platform users…</td></tr></tbody></table></div><div id="user-pagination"></div>
     </section>
-    <section class="platform-panel"><div class="platform-panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Platform activity</h2></div></div><form id="audit-search-form"><select id="audit-school" aria-label="Audit school"><option value="">All schools and platform events</option></select><select id="audit-branch" aria-label="Audit branch"><option value="">All branches</option></select><input id="audit-search" maxlength="100" placeholder="Search school, actor, module or action" aria-label="Search audit activity"><button type="submit">Search audit</button></form><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>School</th><th>Branch</th><th>Actor</th><th>Module</th><th>Action</th><th>Changes</th></tr></thead><tbody id="audit-rows"><tr><td colspan="7">Loading audit trail…</td></tr></tbody></table></div><div id="audit-pagination"></div></section>
+    <section class="platform-panel" data-platform-tab="audit"><div class="platform-panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Platform activity</h2></div></div><form id="audit-search-form"><select id="audit-school" aria-label="Audit school"><option value="">All schools and platform events</option></select><select id="audit-branch" aria-label="Audit branch"><option value="">All branches</option></select><input id="audit-search" maxlength="100" placeholder="Search school, actor, module or action" aria-label="Search audit activity"><button type="submit">Search audit</button></form><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>School</th><th>Branch</th><th>Actor</th><th>Module</th><th>Action</th><th>Changes</th></tr></thead><tbody id="audit-rows"><tr><td colspan="7">Loading audit trail…</td></tr></tbody></table></div><div id="audit-pagination"></div></section>
+        </div>
+    </div>
 </main>
 <script>
 (() => {
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    const platformTabButtons = document.querySelectorAll('[data-platform-tab-button]');
+    const platformTabPanels = document.querySelectorAll('[data-platform-tab]');
+    const activatePlatformTab = tab => {
+        const selected = document.querySelector('[data-platform-tab-button="' + tab + '"]') ? tab : 'overview';
+        platformTabButtons.forEach(button => {
+            const active = button.dataset.platformTabButton === selected;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-current', active ? 'page' : 'false');
+        });
+        platformTabPanels.forEach(panel => { panel.hidden = panel.dataset.platformTab !== selected; });
+        if (window.location.hash !== '#' + selected) history.replaceState(null, '', '#' + selected);
+    };
+    platformTabButtons.forEach(button => button.addEventListener('click', () => activatePlatformTab(button.dataset.platformTabButton)));
+    activatePlatformTab(window.location.hash.slice(1) || 'overview');
     const summary = document.querySelector('#platform-summary');
     const schoolRegistryFilter = document.querySelector('#school-registry-filter');
     const schoolRegistrySearch = document.querySelector('#school-registry-search');

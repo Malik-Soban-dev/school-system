@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN SIDEBAR WORKSPACE UPDATE:
+  - Replaced the endless Superadmin scroll with a responsive sidebar/tab workspace: Overview, Schools, Branches, Users & access, Billing, Data explorer, Audit trail and Operations. Active tab persists in the URL hash, and mobile collapses to a horizontal tab bar.
+  - Verification passed: Feature PHPUnit (141 tests, 1029 assertions); Vite production build; Blade view cache; diff check.
 - 2026-09-20 SUPERADMIN DASHBOARD OVERVIEW REDESIGN:
   - Reworked the first Superadmin screen into a platform control center with a clear overview hero, primary KPI cards, live school/branch health bars, platform composition bars, full census inventory toggle, refresh action and operations shortcut. Existing registry, billing, audit, data explorer and control panels remain available below.
   - Verification passed: Feature PHPUnit (141 tests, 1029 assertions); Vite production build; Blade view cache; diff check.
