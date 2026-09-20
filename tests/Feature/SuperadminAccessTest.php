@@ -610,11 +610,14 @@ class SuperadminAccessTest extends TestCase
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
         $this->actingAs($superadmin)->putJson('/superadmin/users/'.$client->id.'/branch-access', ['school_id' => $school, 'branch_id' => $branch, 'roles' => ['admin'], 'status' => 'active'])->assertOk();
-        $this->actingAs($superadmin)->putJson('/superadmin/users/'.$client->id.'/branch-access', ['school_id' => $school, 'branch_id' => $branch, 'roles' => ['owner'], 'status' => 'active'])->assertOk();
+        DB::table('sessions')->insert(['id' => 'global-access-session', 'user_id' => $client->id, 'payload' => '', 'last_activity' => time()]);
+        $this->actingAs($superadmin)->putJson('/superadmin/users/'.$client->id.'/branch-access', ['school_id' => $school, 'branch_id' => $branch, 'roles' => ['owner'], 'status' => 'suspended'])->assertOk();
 
         $this->assertDatabaseHas('school_user', ['school_id' => $school, 'user_id' => $client->id, 'status' => 'active']);
-        $this->assertDatabaseHas('school_user_branches', ['school_id' => $school, 'branch_id' => $branch, 'user_id' => $client->id, 'roles' => json_encode(['owner'])]);
+        $this->assertDatabaseHas('school_user_branches', ['school_id' => $school, 'branch_id' => $branch, 'user_id' => $client->id, 'roles' => json_encode(['owner']), 'status' => 'suspended']);
+        $this->assertDatabaseMissing('sessions', ['id' => 'global-access-session']);
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'user_branch_access_updated']);
+        $this->assertStringContainsString('"revoked_sessions":1', (string) DB::table('school_audit')->where('school_id', $school)->where('record_id', $client->id)->where('action', 'branch_access_updated')->latest('id')->value('changes'));
     }
 
     public function test_database_rejects_a_branch_grant_whose_branch_belongs_to_another_school(): void

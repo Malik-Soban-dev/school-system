@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN ACCESS-SUSPENSION HARDENING UPDATE:
+  - Global branch-access suspension now immediately revokes all database sessions for the affected client and records the revoked-session count in the before/after audit event.
+  - Added regression coverage for session invalidation while preserving idempotent role/status updates.
+  - Verification passed: focused Superadmin suite (55 tests, 350 assertions), full PHPUnit suite (114 tests, 704 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN GLOBAL BRANCH-ACCESS UPDATE:
   - Added a protected global user-registry action that grants or updates an existing account's school-branch roles and status directly from the Superadmin dashboard.
   - The endpoint validates school/branch ownership, blocks platform Superadmin reassignment, creates missing active memberships transactionally, records before/after changes in school and platform audit trails, and exposes a dashboard form for loaded users.

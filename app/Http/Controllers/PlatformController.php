@@ -344,7 +344,8 @@ class PlatformController extends Controller
                 DB::table('school_user_branches')->insert(['school_id' => $data['school_id'], 'branch_id' => $data['branch_id'], 'user_id' => $user, 'roles' => json_encode($data['roles']), 'status' => $data['status'], 'created_at' => now(), 'updated_at' => now()]);
             }
 
-            $changes = ['school_id' => $data['school_id'], 'branch_id' => $data['branch_id'], 'before' => $access ? ['roles' => json_decode((string) $access->roles, true) ?: [], 'status' => $access->status] : null, 'after' => ['roles' => $data['roles'], 'status' => $data['status']]];
+            $revokedSessions = $data['status'] === 'suspended' && Schema::hasTable('sessions') ? DB::table('sessions')->where('user_id', $user)->delete() : 0;
+            $changes = ['school_id' => $data['school_id'], 'branch_id' => $data['branch_id'], 'before' => $access ? ['roles' => json_decode((string) $access->roles, true) ?: [], 'status' => $access->status] : null, 'after' => ['roles' => $data['roles'], 'status' => $data['status']], 'revoked_sessions' => $revokedSessions];
             DB::table('school_audit')->insert(['school_id' => $data['school_id'], 'branch_id' => $data['branch_id'], 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'branch_access_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
             DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'user_branch_access_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
         });
