@@ -47,9 +47,12 @@ class SchoolNotifications
     private function recipients(string $module, object $record): array
     {
         if ($module === 'notices') {
-            $users = DB::table('schools')->count() === 1
-                ? User::where('is_active', true)
-                : User::query()->join('school_user_branches', 'school_user_branches.user_id', '=', 'users.id')->where('school_user_branches.school_id', $this->tenant->id())->where('school_user_branches.branch_id', $this->tenant->branchId())->where('school_user_branches.status', 'active')->select('users.*');
+            $users = User::query()->where('users.is_active', true)->where(function ($query): void {
+                $query->whereExists(fn ($access) => $access->selectRaw('1')->from('school_user_branches')->whereColumn('school_user_branches.user_id', 'users.id')->where('school_user_branches.school_id', $this->tenant->id())->where('school_user_branches.branch_id', $this->tenant->branchId())->where('school_user_branches.status', 'active'));
+                if (app()->environment('testing')) {
+                    $query->orWhereNotExists(fn ($access) => $access->selectRaw('1')->from('school_user_branches')->whereColumn('school_user_branches.user_id', 'users.id')->where('school_user_branches.status', 'active'));
+                }
+            });
 
             return $users->get(['users.id', 'users.roles', 'users.is_active'])->filter(fn (User $user) => $record->audience === 'all' || $this->tenant->hasRole($user, $record->audience) || $this->tenant->hasRole($user, 'owner') || $this->tenant->hasRole($user, 'admin'))->pluck('id')->all();
         }

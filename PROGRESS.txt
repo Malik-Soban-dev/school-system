@@ -1,3 +1,6 @@
+- 2026-09-19 BRANCH-ISOLATED NOTIFICATION WORKER UPDATE:
+  - Scheduled school notifications now process active branches individually, and all-notice recipient queries require a current branch grant; users assigned only to another branch are excluded. Testing-only null-branch compatibility remains isolated from production worker behavior.
+  - Verification passed: focused notification branch-isolation coverage (2 tests, 9 assertions), full PHPUnit suite (127 tests, 814 assertions), Pint, and diff check.
 - 2026-09-19 BRANCH EFFECTIVE-ROLE METADATA UPDATE:
   - Portal metadata now exposes effective_roles for the selected branch, alongside the account’s global roles, so branch-scoped administrator UI and behavior remain aligned with Superadmin grants.
   - Verification passed: focused branch-role metadata coverage (1 test, 6 assertions), full PHPUnit suite (126 tests, 811 assertions), Pint, and diff check.

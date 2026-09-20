@@ -52,6 +52,21 @@ class SchoolNotificationTest extends TestCase
         $this->actingAs($branchUser)->getJson('/portal/records/notices')->assertOk()->assertJsonCount(1, 'rows')->assertJsonPath('rows.0.title', 'Parent notice');
     }
 
+    public function test_scheduled_all_notice_does_not_cross_branch_boundaries(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $this->actingAs($owner)->getJson('/portal/meta')->assertOk();
+        $tenant = app(TenantContext::class);
+        $otherBranch = DB::table('school_branches')->insertGetId(['school_id' => $tenant->id(), 'name' => 'Other Campus', 'code' => 'other-campus', 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
+        $otherBranchUser = User::factory()->create(['roles' => ['teacher'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $tenant->id(), 'user_id' => $otherBranchUser->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert(['school_id' => $tenant->id(), 'branch_id' => $otherBranch, 'user_id' => $otherBranchUser->id, 'roles' => json_encode(['teacher']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        app(SchoolPortal::class)->save('notices', $owner, ['title' => 'Main branch notice', 'body' => 'Main branch only', 'audience' => 'all', 'status' => 'published']);
+
+        $this->artisan('school:notifications')->assertSuccessful();
+        $this->assertDatabaseMissing('school_notifications', ['user_id' => $otherBranchUser->id, 'title' => 'Main branch notice']);
+    }
+
     public function test_announced_exam_reminders_do_not_publish_marks_and_guardian_revocation_hides_messages(): void
     {
         $this->travelTo(now()->setDate(2026, 9, 9)->startOfDay());

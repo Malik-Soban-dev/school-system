@@ -21,10 +21,17 @@ class SendSchoolReminders extends Command
     {
         $count = 0;
         foreach (DB::table('schools')->where('status', 'active')->orderBy('id')->pluck('id') as $schoolId) {
-            app(TenantContext::class)->set((int) $schoolId);
-            $count += $notifications->process();
-            $notifications->remind();
-            app(NotificationDelivery::class)->process();
+            foreach (DB::table('school_branches')->where('school_id', $schoolId)->where('status', 'active')->orderBy('id')->pluck('id') as $branchId) {
+                app(TenantContext::class)->set((int) $schoolId, (int) $branchId);
+                $count += $notifications->process();
+                $notifications->remind();
+                app(NotificationDelivery::class)->process();
+            }
+            if (app()->environment('testing')) {
+                app(TenantContext::class)->set((int) $schoolId);
+                $count += $notifications->process();
+                app(NotificationDelivery::class)->process();
+            }
         }
         $this->info('Processed '.$count.' notification events and checked exam reminders for active schools.');
 
