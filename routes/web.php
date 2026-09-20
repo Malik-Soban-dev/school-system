@@ -108,13 +108,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, Resolve
     Route::put('/portal/records/{module}/{id}', [PortalController::class, 'save'])->whereNumber('id');
     Route::get('/reports/{module}/{id}', [PortalController::class, 'report'])->whereNumber('id')->name('record.report');
     Route::get('/report-cards/{exam}/{student}', [ReportCardController::class, 'show'])->whereNumber(['exam', 'student'])->name('report-card.show');
-    Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
-        if ($request->user()->hasRole('superadmin')) {
-            return redirect()->route('superadmin.dashboard');
-        }
-
-        return view('dashboard');
-    })->name('dashboard');
+    Route::view('/dashboard', 'dashboard')->name('dashboard');
     Route::get('/account', [AuthController::class, 'account'])->name('account');
     Route::put('/account/password', [AuthController::class, 'updatePassword'])->middleware('throttle:5,1')->name('password.update');
     Route::post('/account/mfa/setup', [AuthController::class, 'beginMfaEnrollment'])->middleware('throttle:5,1')->name('mfa.setup');
