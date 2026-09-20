@@ -714,8 +714,14 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $admin->id, 'action' => 'branch_access_updated']);
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'branch', 'entity_id' => $branch['id'], 'action' => 'branch_created']);
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $admin->id, 'action' => 'branch_access_updated']);
+        $teacher = User::factory()->create(['roles' => ['teacher'], 'is_active' => true]);
+        $year = DB::table('school_academic_years')->insertGetId(['school_id' => $school, 'branch_id' => $branch['id'], 'name' => 'Branch Year', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31', 'created_at' => now(), 'updated_at' => now()]);
+        $class = DB::table('school_classes')->insertGetId(['school_id' => $school, 'branch_id' => $branch['id'], 'name' => 'Branch Class', 'year_id' => $year, 'capacity' => 30, 'created_at' => now(), 'updated_at' => now()]);
+        $subject = DB::table('school_subjects')->insertGetId(['school_id' => $school, 'branch_id' => $branch['id'], 'name' => 'Branch Subject', 'code' => 'BR-SUB', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_teacher_assignments')->insert(['school_id' => $school, 'branch_id' => $branch['id'], 'user_id' => $teacher->id, 'class_id' => $class, 'subject_id' => $subject, 'status' => 'suspended', 'created_at' => now(), 'updated_at' => now()]);
         $branchDetail = collect($this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->json('branches'))->firstWhere('id', $branch['id']);
         $this->assertSame(1, $branchDetail['members']);
+        $this->assertSame(0, $branchDetail['teachers']);
         $this->assertSame(0, $branchDetail['open_invoices']);
     }
 

@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN BRANCH-TEACHER METRIC CONSISTENCY UPDATE:
+  - School-detail branch teacher counts now include only active teacher assignments, matching the global school and branch registries; suspended assignments remain visible in record explorers without inflating active usage metrics.
+  - Verification passed: focused branch-control coverage (1 test, 10 assertions), full PHPUnit (131 tests, 836 assertions), Pint, and diff check.
+
 - 2026-09-19 SCHOOL-DETAIL AUDIT ATTRIBUTION UPDATE:
   - The Superadmin school-detail endpoint now joins branch identities into recent audit rows, completing the branch label shown by the detail activity view.
   - Verification passed: focused audit attribution coverage (2 tests, 8 assertions), full PHPUnit (131 tests, 835 assertions), Pint, and diff check.

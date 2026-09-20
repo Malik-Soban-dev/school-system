@@ -711,7 +711,7 @@ class PlatformController extends Controller
         }
         $branches = DB::table('school_branches')->where('school_id', $school)->orderBy('name')->get(['id', 'name', 'code', 'status', 'is_default']);
         foreach (['school_students' => 'students', 'school_staff' => 'staff', 'school_classes' => 'classes', 'school_teacher_assignments' => 'teachers', 'school_user_branches' => 'members', 'school_invoices' => 'open_invoices'] as $table => $key) {
-            $countsByBranch = DB::table($table)->where('school_id', $school)->whereNotNull('branch_id')->when($key === 'members', fn ($query) => $query->where('status', 'active'))->when($key === 'open_invoices', fn ($query) => $query->whereIn('status', ['issued', 'partial', 'overdue']))->select('branch_id')->selectRaw(in_array($key, ['teachers', 'members'], true) ? 'count(distinct user_id) as total' : 'count(*) as total')->groupBy('branch_id')->pluck('total', 'branch_id');
+            $countsByBranch = DB::table($table)->where('school_id', $school)->whereNotNull('branch_id')->when(in_array($key, ['members', 'teachers'], true), fn ($query) => $query->where('status', 'active'))->when($key === 'open_invoices', fn ($query) => $query->whereIn('status', ['issued', 'partial', 'overdue']))->select('branch_id')->selectRaw(in_array($key, ['teachers', 'members'], true) ? 'count(distinct user_id) as total' : 'count(*) as total')->groupBy('branch_id')->pluck('total', 'branch_id');
             $branches = $branches->map(function (object $branch) use ($countsByBranch, $key): object {
                 $branch->{$key} = (int) ($countsByBranch[$branch->id] ?? 0);
 
