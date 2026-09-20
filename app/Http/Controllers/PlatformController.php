@@ -661,8 +661,10 @@ class PlatformController extends Controller
         $audit = DB::table('school_audit as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->where('a.school_id', $school)->orderByDesc('a.id')->limit(50)->get(['a.id', 'a.module', 'a.action', 'a.created_at', 'u.name as actor']);
         $subscription = DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->where('subscription.school_id', $school)->first(['subscription.id', 'subscription.plan_id', 'subscription.status', 'subscription.starts_at', 'subscription.renews_at', 'subscription.canceled_at', 'plan.code as plan_code', 'plan.name as plan_name', 'plan.monthly_price_cents', 'plan.max_branches', 'plan.max_students', 'plan.features']);
         $featureOverrides = DB::table('school_feature_overrides')->where('school_id', $school)->pluck('enabled', 'feature');
+        $platformInvoices = DB::table('platform_billing_invoices')->where('school_id', $school)->orderByDesc('id')->limit(50)->get(['id', 'invoice_number', 'amount_cents', 'currency', 'period_start', 'period_end', 'due_on', 'status', 'paid_at', 'payment_reference', 'notes', 'created_at']);
+        $billing = ['paid_cents' => (int) $platformInvoices->where('status', 'paid')->sum('amount_cents'), 'outstanding_cents' => (int) $platformInvoices->whereIn('status', ['issued', 'overdue'])->sum('amount_cents'), 'invoices' => $platformInvoices];
 
-        return response()->json(['school' => DB::table('schools')->where('id', $school)->first(), 'branches' => $branches, 'counts' => $counts, 'subscription' => $subscription, 'feature_overrides' => $featureOverrides, 'members' => $members, 'available_users' => $availableUsers, 'access' => $access, 'invitations' => $invitations, 'audit' => $audit]);
+        return response()->json(['school' => DB::table('schools')->where('id', $school)->first(), 'branches' => $branches, 'counts' => $counts, 'subscription' => $subscription, 'feature_overrides' => $featureOverrides, 'billing' => $billing, 'members' => $members, 'available_users' => $availableUsers, 'access' => $access, 'invitations' => $invitations, 'audit' => $audit]);
     }
 
     public function updateSchoolFeature(Request $request, int $school): JsonResponse

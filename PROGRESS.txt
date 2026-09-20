@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN SCHOOL-BILLING DRILL-DOWN UPDATE:
+  - Added paid totals, outstanding totals, renewal context and the latest platform invoice/payment history to each Superadmin school detail response and dashboard.
+  - Billing history remains read-only in the drill-down while existing invoice controls and audit trails remain the mutation path.
+  - Verification passed: focused Superadmin suite (57 tests, 397 assertions), full PHPUnit suite (118 tests, 756 assertions), Pint, Vite build, and diff check.
 - 2026-09-19 SUPERADMIN FEATURE-CONFIRMATION UPDATE:
   - Added explicit confirmation before changing a school feature override, clearly stating the enable/disable/inherit action and its audit consequence.
   - Verification passed: Vite production build and git diff check; existing full suite remains green at 118 tests and 752 assertions.

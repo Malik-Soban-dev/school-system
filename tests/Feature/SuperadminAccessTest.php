@@ -385,9 +385,14 @@ class SuperadminAccessTest extends TestCase
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
         $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/subscription', ['plan_id' => $plan, 'status' => 'active', 'renews_at' => '2027-01-01'])->assertOk();
+        DB::table('platform_billing_invoices')->insert([
+            ['school_id' => $school, 'invoice_number' => 'PLAT-BILLING-PAID', 'amount_cents' => 4900, 'currency' => 'USD', 'period_start' => '2026-09-01', 'period_end' => '2026-09-30', 'due_on' => '2026-09-15', 'status' => 'paid', 'paid_at' => now(), 'payment_reference' => 'receipt-1', 'created_at' => now(), 'updated_at' => now()],
+            ['school_id' => $school, 'invoice_number' => 'PLAT-BILLING-OPEN', 'amount_cents' => 14900, 'currency' => 'USD', 'period_start' => '2026-10-01', 'period_end' => '2026-10-31', 'due_on' => '2026-10-15', 'status' => 'issued', 'paid_at' => null, 'payment_reference' => null, 'created_at' => now(), 'updated_at' => now()],
+        ]);
 
         $this->assertDatabaseHas('school_subscriptions', ['school_id' => $school, 'plan_id' => $plan, 'status' => 'active', 'renews_at' => '2027-01-01']);
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'module' => 'billing', 'action' => 'subscription_updated']);
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->assertJsonPath('billing.paid_cents', 4900)->assertJsonPath('billing.outstanding_cents', 14900)->assertJsonPath('billing.invoices.0.invoice_number', 'PLAT-BILLING-OPEN');
     }
 
     public function test_superadmin_can_override_a_school_feature_and_clear_it_back_to_the_plan(): void
