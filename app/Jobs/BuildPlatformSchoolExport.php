@@ -18,7 +18,7 @@ class BuildPlatformSchoolExport implements ShouldQueue
     /** @var list<string> */
     private const SCHOOL_TABLES = [
         'school_branches', 'school_user', 'school_user_branches', 'school_academic_years', 'school_classes', 'school_subjects',
-        'school_staff', 'school_students', 'school_student_welfare', 'school_assignments', 'school_guardian_links', 'school_teacher_assignments', 'school_attendance',
+        'school_staff', 'school_students', 'school_student_welfare', 'school_assignments', 'school_submissions', 'school_guardian_links', 'school_teacher_assignments', 'school_attendance',
         'school_timetables', 'school_exams', 'school_grades', 'school_subject_attendance', 'school_invoices', 'school_payments', 'school_expenses',
         'school_leave_requests', 'school_payroll', 'school_payroll_payments', 'school_notices', 'school_enrollments',
         'school_invitations', 'school_notification_events', 'school_notifications', 'school_notification_deliveries',

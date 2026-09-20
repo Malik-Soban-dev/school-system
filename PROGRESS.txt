@@ -1,3 +1,8 @@
+- 2026-09-20 ASSIGNMENT SUBMISSIONS UPDATE:
+  - Added student submissions for published assignments with duplicate prevention, submission timestamps and review status.
+  - Teachers/admins can return feedback and grades; students can submit only their own available work; parents can view linked submissions. Added Superadmin explorer and export support.
+  - Verification passed: full PHPUnit (155 tests, 1112 assertions); AssignmentSubmission focused test (1 test, 7 assertions); Vite production build; diff check.
+
 - 2026-09-20 ASSIGNMENTS UPDATE:
   - Added class/subject assignments with teacher ownership, instructions, due dates and draft/published visibility.
   - Teachers are restricted to their assigned class and subject; linked parents/students see published work only. Added tenant storage, Superadmin explorer and export support.

@@ -138,6 +138,14 @@ class SchoolPortal
                 }
             });
         }
+        if ($module === 'submissions') {
+            $assignments = $this->query('assignments', $user)->select('id');
+            if ($this->tenant->hasRole($user, 'teacher')) {
+                return $query->whereIn('assignment_id', $assignments);
+            }
+
+            return $query->whereIn('assignment_id', $assignments)->whereIn('student_id', $family);
+        }
         if ($module === 'grades') {
             return $query->where(function (Builder $query) use ($user, $family): void {
                 $query->where(function (Builder $query) use ($family): void {
@@ -238,7 +246,7 @@ class SchoolPortal
     public function options(User $user): array
     {
         $options = [];
-        foreach (['academic_years', 'classes', 'subjects', 'staff', 'students', 'exams', 'invoices'] as $module) {
+        foreach (['academic_years', 'classes', 'subjects', 'staff', 'students', 'exams', 'assignments', 'invoices'] as $module) {
             if (! $this->can($user, $this->definition($module)['read'])) {
                 continue;
             }
@@ -357,6 +365,20 @@ class SchoolPortal
             $rules[$field['name']] = $rule;
         }
         $data = Validator::make($input, $rules)->validate();
+        if ($module === 'submissions') {
+            $assignment = $this->tenant->table('school_assignments')->where('id', $data['assignment_id'])->first();
+            abort_unless($assignment, 422, 'Choose a valid assignment.');
+            if ($this->tenant->hasRole($user, 'student')) {
+                abort_unless(! $id, 403, 'Students cannot edit a submitted record.');
+                abort_unless((int) $data['student_id'] === (int) $this->tenant->table('school_students')->where('user_id', $user->id)->value('id'), 403);
+                abort_unless($assignment->status === 'published' && $this->query('assignments', $user)->where('id', $assignment->id)->exists(), 403, 'This assignment is not available to you.');
+                $data['submitted_at'] = $data['submitted_at'] ?? $this->today();
+                abort_if($this->tenant->table('school_submissions')->where('assignment_id', $data['assignment_id'])->where('student_id', $data['student_id'])->exists(), 422, 'A submission already exists for this assignment.');
+            }
+            if ($this->tenant->hasRole($user, 'teacher')) {
+                abort_unless($id !== null, 403, 'Teachers review existing submissions rather than creating them.');
+            }
+        }
         if ($module === 'assignments' && $this->tenant->hasRole($user, 'teacher')) {
             abort_unless((int) $data['teacher_id'] === $user->id, 403, 'Teachers can only publish assignments under their own account.');
             abort_unless($this->tenant->table('school_teacher_assignments')->where('user_id', $user->id)->where('class_id', $data['class_id'])->where('subject_id', $data['subject_id'])->where('status', 'active')->exists(), 403, 'You are not assigned to this class and subject.');

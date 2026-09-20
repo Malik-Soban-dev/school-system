@@ -227,6 +227,50 @@ return [
             'choices' => ['active', 'ended'],
         ]],
     ],
+    'submissions' => [
+        'label' => 'Assignment submissions',
+        'singular' => 'submission',
+        'help' => 'Students submit published assignments here. Teachers can review submissions, record a grade and return feedback.',
+        'read' => ['owner', 'admin', 'teacher', 'student', 'parent'],
+        'write' => ['owner', 'admin', 'teacher', 'student'],
+        'fields' => [[
+            'name' => 'assignment_id',
+            'label' => 'Assignment',
+            'type' => 'relation',
+            'relation' => 'assignments',
+        ], [
+            'name' => 'student_id',
+            'label' => 'Student',
+            'type' => 'relation',
+            'relation' => 'students',
+        ], [
+            'name' => 'content',
+            'label' => 'Submission',
+            'type' => 'textarea',
+        ], [
+            'name' => 'submitted_at',
+            'label' => 'Submitted at',
+            'type' => 'date',
+            'optional' => true,
+        ], [
+            'name' => 'status',
+            'label' => 'Review status',
+            'type' => 'select',
+            'choices' => ['submitted', 'returned'],
+        ], [
+            'name' => 'grade',
+            'label' => 'Grade %',
+            'type' => 'decimal',
+            'min' => 0,
+            'max' => 100,
+            'optional' => true,
+        ], [
+            'name' => 'feedback',
+            'label' => 'Teacher feedback',
+            'type' => 'textarea',
+            'optional' => true,
+        ]],
+    ],
     'assignments' => [
         'label' => 'Assignments',
         'singular' => 'assignment',
