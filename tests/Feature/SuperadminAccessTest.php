@@ -450,6 +450,16 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/data')->assertOk()->assertJsonFragment(['action' => 'branch_status_updated', 'school_name' => 'Dashboard School', 'branch_name' => 'North Branch']);
     }
 
+    public function test_superadmin_school_detail_activity_keeps_branch_attribution(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Detail Audit School', 'slug' => 'detail-audit-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'East Branch', 'code' => 'east', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_audit')->insert(['school_id' => $school, 'branch_id' => $branch, 'record_id' => $branch, 'module' => 'platform', 'action' => 'detail_branch_event', 'changes' => json_encode(['branch_id' => $branch]), 'created_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->assertJsonFragment(['action' => 'detail_branch_event', 'branch_id' => $branch, 'branch_name' => 'East Branch']);
+    }
+
     public function test_school_billing_totals_include_history_beyond_the_display_window(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Long Billing School', 'slug' => 'long-billing-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
