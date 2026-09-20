@@ -48,7 +48,7 @@ class SuperadminAccessTest extends TestCase
     {
         $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
-        $this->actingAs($user)->get('/superadmin')->assertOk()->assertSee('Superadmin dashboard')->assertSee('Account security')->assertSee('Search school or slug');
+        $this->actingAs($user)->get('/superadmin')->assertOk()->assertSee('Superadmin dashboard')->assertSee('Account security')->assertSee('Search school or slug')->assertSee('Invitation roles');
     }
 
     public function test_superadmin_can_switch_into_any_branch_workspace_and_use_full_portal_authority(): void

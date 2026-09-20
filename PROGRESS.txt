@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN INVITATION ROLE-CONTRACT FIX:
+  - Corrected the school-detail branch invitation form to submit the server-required roles[] array, exposing all supported client roles and adding explicit confirmation before the audited 48-hour invitation is issued.
+  - Verification passed: focused dashboard/access/invitation tests (7 tests, 60 assertions); Blade view cache; full PHPUnit (134 tests, 906 assertions); Pint; diff check.
 - 2026-09-20 SUPERADMIN BRANCH-ACCESS EXPLORER UPDATE:
   - Added a dedicated tenant- and branch-scoped data-explorer module for every branch access grant, including user identity, branch, roles, grant status and parent school membership status; the dashboard now exposes it as Branch access grants.
   - Verification passed: branch-filter isolation coverage (1 test, 9 assertions); Blade view cache; full PHPUnit (134 tests, 905 assertions); Pint; diff check.
