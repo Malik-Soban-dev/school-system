@@ -1,3 +1,7 @@
+- 2026-09-20 SUPERADMIN PROVISIONING UPDATE:
+  - Added the operator-only platform:superadmin command to create a true platform Superadmin or explicitly promote an existing client account; passwords are read privately, hashed, never logged, old sessions are revoked, and provisioning/promotion is recorded in platform_audit.
+  - Verification passed: focused provisioning coverage (2 tests, 13 assertions); full PHPUnit (141 tests, 1021 assertions); command help/registration; Blade view cache; Pint; diff check.
+  - Usage: run php artisan platform:superadmin <username> for a new account, or add --promote-existing to intentionally elevate an existing account; enter the password when prompted.
 - 2026-09-20 SUPERADMIN LOGIN DESTINATION UPDATE:
   - Successful Superadmin authentication now defaults to the protected platform dashboard, including after MFA verification; client owner/admin accounts continue to land on the normal portal dashboard. This removes ambiguity when opening /superadmin while preserving route authorization.
   - Verification passed: focused authentication/Superadmin coverage (3 tests, 25 assertions); full PHPUnit (139 tests, 1008 assertions); Blade view cache; Pint; diff check.
