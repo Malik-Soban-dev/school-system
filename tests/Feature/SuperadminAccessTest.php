@@ -1093,6 +1093,7 @@ class SuperadminAccessTest extends TestCase
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
         $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/users?branch_id='.$branchOne)->assertOk()->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.email', 'branch-one-user@example.test');
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school.'/records/branch_access?branch_id='.$branchOne)->assertOk()->assertJsonPath('records.total', 1)->assertJsonPath('records.data.0.email', 'branch-one-user@example.test')->assertJsonPath('records.data.0.branch_name', 'One')->assertJsonPath('records.data.0.roles', '["admin"]')->assertJsonPath('records.data.0.membership_status', 'active');
     }
 
     public function test_branch_admin_can_list_and_switch_only_assigned_contexts(): void

@@ -110,6 +110,7 @@
     const explorerSchool = document.querySelector('#explorer-school');
     const explorerBranch = document.querySelector('#explorer-branch');
     const explorerModule = document.querySelector('#explorer-module');
+    if (! explorerModule.querySelector('option[value="branch_access"]')) explorerModule.insertAdjacentHTML('beforeend', '<option value="branch_access">Branch access grants</option>');
     ['grade_bands', 'exam_subjects'].forEach(module => {
         if (! explorerModule.querySelector(`option[value="${module}"]`)) {
             explorerModule.insertAdjacentHTML('beforeend', `<option value="${module}">${module === 'grade_bands' ? 'Grading bands' : 'Exam subjects'}</option>`);
