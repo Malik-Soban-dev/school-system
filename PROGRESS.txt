@@ -1,3 +1,6 @@
+- 2026-09-20 RESTORE SEPARATE ADMIN AND SUPERADMIN DASHBOARDS:
+  - Restored strict dashboard separation after the temporary revert: school owner/admin accounts render /dashboard, while Superadmin accounts are redirected to /superadmin. Added regression coverage for the Superadmin redirect.
+  - Verification passed: Authentication feature suite (16 tests, 54 assertions); diff check.
 - 2026-09-20 SUPERADMIN ONBOARDING WORKFLOW UPDATE:
   - Added a visual three-step guide to the Superadmin overview: create the school, add its branches, then grant the correct admin access. Each step opens the relevant workspace tab and explains the result for the school owner versus platform owner.
   - Verification passed: Vite production build; Blade view cache; diff check.
