@@ -443,7 +443,7 @@
         const data = await request(`/superadmin/users?${params}`);
         userRows.innerHTML = data.users.data.map(user => {
             const access = user.is_superadmin ? 'Platform Superadmin' : (user.access.map(item => `${esc(item.school_name)} / ${esc(item.branch_name)} (${esc(item.roles.join(', '))})`).join('<br>') || 'No active branch access');
-            const control = user.is_superadmin ? '<span>Protected</span>' : `<button class="platform-user-edit" data-id="${esc(user.id)}" data-name="${esc(user.name)}" data-email="${esc(user.email || '')}" data-username="${esc(user.username || '')}">Edit profile</button> <button class="platform-user-reset" data-id="${esc(user.id)}">Create reset link</button> <button class="platform-user-status" data-id="${esc(user.id)}" data-active="${user.is_active ? '1' : '0'}">${user.is_active ? 'Suspend' : 'Activate'}</button>`;
+            const control = user.is_superadmin ? '<span>Protected</span>' : `<button class="platform-user-edit" data-id="${esc(user.id)}" data-name="${esc(user.name)}" data-email="${esc(user.email || '')}" data-username="${esc(user.username || '')}">Edit profile</button> <button class="platform-user-reset" data-id="${esc(user.id)}">Create reset link</button> <button class="platform-user-revoke" data-id="${esc(user.id)}">Revoke sessions</button> <button class="platform-user-status" data-id="${esc(user.id)}" data-active="${user.is_active ? '1' : '0'}">${user.is_active ? 'Suspend' : 'Activate'}</button>`;
             return `<tr><td><strong>${esc(user.name)}</strong><small>${esc(user.email)} · ${esc(user.username)}</small></td><td><span class="platform-status ${user.is_active ? 'active' : 'suspended'}">${user.is_active ? 'Active' : 'Suspended'}</span></td><td>${access}</td><td>${control}</td></tr>`;
         }).join('') || '<tr><td colspan="4">No matching users.</td></tr>';
         userPagination.innerHTML = data.users.last_page > 1 ? `<button type="button" data-user-page="${data.users.current_page - 1}" ${data.users.current_page === 1 ? 'disabled' : ''}>Previous</button> <span>Page ${data.users.current_page} of ${data.users.last_page}</span> <button type="button" data-user-page="${data.users.current_page + 1}" ${data.users.current_page === data.users.last_page ? 'disabled' : ''}>Next</button>` : '';
@@ -480,6 +480,10 @@
             } catch (error) {
                 window.alert(error.message);
             }
+        }));
+        document.querySelectorAll('.platform-user-revoke').forEach(button => button.addEventListener('click', async () => {
+            if (!window.confirm('Revoke all active sessions for this client account?')) return;
+            try { const data = await request(`/superadmin/users/${button.dataset.id}/sessions/revoke`, {method: 'POST', headers: {'X-CSRF-TOKEN': csrf}}); window.alert(`${data.revoked_sessions} active session(s) revoked and audited.`); } catch (error) { window.alert(error.message); }
         }));
     };
     const loadBranches = async (page = 1) => {

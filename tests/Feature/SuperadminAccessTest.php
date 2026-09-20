@@ -703,6 +703,24 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'user_status_updated']);
     }
 
+    public function test_superadmin_can_revoke_client_sessions_without_changing_account_status(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Session Control School', 'slug' => 'session-control-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $client->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('sessions')->insert([
+            ['id' => 'session-control-one', 'user_id' => $client->id, 'payload' => '', 'last_activity' => time()],
+            ['id' => 'session-control-two', 'user_id' => $client->id, 'payload' => '', 'last_activity' => time()],
+        ]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->postJson('/superadmin/users/'.$client->id.'/sessions/revoke')->assertOk()->assertJsonPath('revoked_sessions', 2);
+        $this->assertDatabaseMissing('sessions', ['user_id' => $client->id]);
+        $this->assertDatabaseHas('users', ['id' => $client->id, 'is_active' => true]);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $client->id, 'action' => 'user_sessions_revoked']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'user_sessions_revoked']);
+    }
+
     public function test_superadmin_can_update_a_client_profile_with_auditing_and_session_revocation(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Profile Account School', 'slug' => 'profile-account-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

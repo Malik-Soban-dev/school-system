@@ -403,6 +403,25 @@ class PlatformController extends Controller
         return response()->json(['message' => 'Account status updated and active sessions revoked.']);
     }
 
+    public function revokeUserSessions(Request $request, int $user): JsonResponse
+    {
+        $revokedSessions = DB::transaction(function () use ($request, $user): int {
+            $userRecord = DB::table('users')->where('id', $user)->lockForUpdate()->first(['id', 'roles']);
+            abort_unless($userRecord, 404);
+            abort_if(in_array('superadmin', json_decode((string) $userRecord->roles, true) ?: [], true), 422, 'Platform Superadmin sessions are managed separately.');
+            $revokedSessions = Schema::hasTable('sessions') ? DB::table('sessions')->where('user_id', $user)->delete() : 0;
+            $memberships = DB::table('school_user')->where('user_id', $user)->pluck('school_id');
+            foreach ($memberships as $schoolId) {
+                DB::table('school_audit')->insert(['school_id' => $schoolId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'user_sessions_revoked', 'changes' => json_encode(['revoked_sessions' => $revokedSessions]), 'created_at' => now()]);
+            }
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'user_sessions_revoked', 'changes' => json_encode(['school_ids' => $memberships->values()->all(), 'revoked_sessions' => $revokedSessions]), 'created_at' => now()]);
+
+            return $revokedSessions;
+        });
+
+        return response()->json(['message' => 'Active sessions revoked.', 'revoked_sessions' => $revokedSessions]);
+    }
+
     public function createSchool(Request $request): JsonResponse
     {
         $data = $request->validate([

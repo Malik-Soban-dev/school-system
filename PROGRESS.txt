@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN SESSION-REVOCATION CONTROL UPDATE:
+  - Added a dedicated global client-session revoke action to the Superadmin user registry, preserving account status while immediately invalidating every active session.
+  - Revocation is recorded in each affected school audit and the platform audit, with the revoked-session count returned to the dashboard.
+  - Verification passed: full PHPUnit suite (110 tests, 674 assertions), focused Superadmin suite (51 tests, 320 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN EXPORT-FAILURE CLEANUP UPDATE:
   - Failed user and tenant export jobs now remove partial private files, clear download metadata, preserve bounded error state, and record safe failure audit events.
   - Added regression coverage for both queued export types.
