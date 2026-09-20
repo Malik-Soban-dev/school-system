@@ -1,3 +1,7 @@
+- 2026-09-20 SUPERADMIN FREE-PLAN SETUP UPDATE:
+  - Added a one-time token-gated /superadmin/setup web flow for Render free plan deployments. It creates a separate platform Superadmin, hashes the password through the User model, writes a platform audit event, and becomes unavailable once an active Superadmin exists.
+  - Verification passed: focused setup/provisioning coverage (3 tests, 22 assertions); full PHPUnit (142 tests, 1030 assertions); Blade view cache; route registration; Pint; diff check.
+  - Usage: set a temporary SUPERADMIN_SETUP_TOKEN of at least 32 characters in Render environment variables, open /superadmin/setup?token=<that-token>, create the account, then remove the environment variable.
 - 2026-09-20 SUPERADMIN PROVISIONING UPDATE:
   - Added the operator-only platform:superadmin command to create a true platform Superadmin or explicitly promote an existing client account; passwords are read privately, hashed, never logged, old sessions are revoked, and provisioning/promotion is recorded in platform_audit.
   - Verification passed: focused provisioning coverage (2 tests, 13 assertions); full PHPUnit (141 tests, 1021 assertions); command help/registration; Blade view cache; Pint; diff check.

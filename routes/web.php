@@ -8,6 +8,7 @@ use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ReportCardController;
+use App\Http\Controllers\SuperadminSetupController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureMfa;
@@ -66,6 +67,9 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, EnsureS
 
 Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify']);
 Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'receive']);
+
+Route::get('/superadmin/setup', [SuperadminSetupController::class, 'create'])->name('superadmin.setup');
+Route::post('/superadmin/setup', [SuperadminSetupController::class, 'store'])->middleware('throttle:5,1')->name('superadmin.setup.store');
 
 Route::middleware('guest')->group(function () {
     Route::get('/invitations/{token}', [InvitationController::class, 'show'])->name('invitation.show');

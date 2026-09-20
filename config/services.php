@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'superadmin_setup' => [
+        'token' => env('SUPERADMIN_SETUP_TOKEN'),
+    ],
     'school_email' => ['enabled' => env('SCHOOL_EMAIL_NOTIFICATIONS', false)],
     'whatsapp' => [
         'enabled' => env('WHATSAPP_ENABLED', false),
