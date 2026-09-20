@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN EXPORT-FAILURE CLEANUP UPDATE:
+  - Failed user and tenant export jobs now remove partial private files, clear download metadata, preserve bounded error state, and record safe failure audit events.
+  - Added regression coverage for both queued export types.
+  - Verification passed: full PHPUnit suite (109 tests, 668 assertions), focused Superadmin suite (50 tests, 314 assertions), PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN DATA-EXPLORER SECRET-REDACTION UPDATE:
   - Hardened the school settings explorer with an explicit allowlist for display-safe values; unknown/future settings are now represented as [redacted setting], and logo data remains redacted.
   - Added regression coverage proving token-like settings never reach the Superadmin response.

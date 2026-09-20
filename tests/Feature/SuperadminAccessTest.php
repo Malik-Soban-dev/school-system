@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\BuildPlatformSchoolExport;
+use App\Jobs\BuildPlatformUserExport;
 use App\Models\User;
 use App\Support\TenantContext;
 use App\Support\Totp;
@@ -232,6 +234,29 @@ class SuperadminAccessTest extends TestCase
         } finally {
             File::delete($path);
         }
+    }
+
+    public function test_failed_exports_remove_partial_files_and_create_safe_failure_audits(): void
+    {
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+        $school = DB::table('schools')->insertGetId(['name' => 'Failed Export School', 'slug' => 'failed-export-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $userExportId = DB::table('platform_exports')->insertGetId(['requested_by' => $superadmin->id, 'type' => 'users', 'status' => 'processing', 'file_path' => 'exports/users-999998.csv', 'created_at' => now(), 'updated_at' => now()]);
+        $schoolExportId = DB::table('platform_exports')->insertGetId(['requested_by' => $superadmin->id, 'school_id' => $school, 'type' => 'school', 'status' => 'processing', 'file_path' => 'exports/school-'.$school.'-999997.ndjson', 'created_at' => now(), 'updated_at' => now()]);
+        $userPath = storage_path('app/private/exports/users-'.$userExportId.'.csv');
+        $schoolPath = storage_path('app/private/exports/school-'.$school.'-'.$schoolExportId.'.ndjson');
+        File::ensureDirectoryExists(dirname($userPath));
+        File::put($userPath, 'partial');
+        File::put($schoolPath, 'partial');
+
+        (new BuildPlatformUserExport($userExportId))->failed(new \RuntimeException('user worker failed'));
+        (new BuildPlatformSchoolExport($schoolExportId, $school))->failed(new \RuntimeException('school worker failed'));
+
+        $this->assertDatabaseHas('platform_exports', ['id' => $userExportId, 'status' => 'failed', 'file_path' => null]);
+        $this->assertDatabaseHas('platform_exports', ['id' => $schoolExportId, 'status' => 'failed', 'file_path' => null]);
+        $this->assertFileDoesNotExist($userPath);
+        $this->assertFileDoesNotExist($schoolPath);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'export', 'entity_id' => $userExportId, 'action' => 'user_export_failed']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'export', 'entity_id' => $schoolExportId, 'action' => 'school_export_failed']);
     }
 
     public function test_expired_platform_exports_are_pruned_with_audit_trail(): void

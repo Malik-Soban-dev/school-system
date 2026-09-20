@@ -69,7 +69,12 @@ class BuildPlatformSchoolExport implements ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
-        DB::table('platform_exports')->where('id', $this->exportId)->update(['status' => 'failed', 'error' => substr($exception->getMessage(), 0, 2000), 'updated_at' => now()]);
+        $export = DB::table('platform_exports')->where('id', $this->exportId)->first(['id', 'requested_by', 'type']);
+        File::delete(storage_path('app/private/exports/school-'.$this->schoolId.'-'.$this->exportId.'.ndjson'));
+        DB::table('platform_exports')->where('id', $this->exportId)->update(['status' => 'failed', 'file_path' => null, 'expires_at' => null, 'error' => substr($exception->getMessage(), 0, 2000), 'updated_at' => now()]);
+        if ($export) {
+            DB::table('platform_audit')->insert(['user_id' => $export->requested_by, 'entity_type' => 'export', 'entity_id' => $this->exportId, 'action' => 'school_export_failed', 'changes' => json_encode(['type' => $export->type, 'school_id' => $this->schoolId]), 'created_at' => now()]);
+        }
     }
 
     private function writeSchoolTable($handle, string $table): int
