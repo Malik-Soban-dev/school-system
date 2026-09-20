@@ -128,6 +128,16 @@ class SchoolPortal
                 }
             });
         }
+        if ($module === 'assignments') {
+            $classes = $this->tenant->table('school_students')->whereIn('id', $family)->select('class_id');
+
+            return $query->where(function (Builder $scope) use ($classes, $user): void {
+                $scope->where('status', 'published')->whereIn('class_id', $classes);
+                if ($this->tenant->hasRole($user, 'teacher')) {
+                    $scope->orWhere('teacher_id', $user->id);
+                }
+            });
+        }
         if ($module === 'grades') {
             return $query->where(function (Builder $query) use ($user, $family): void {
                 $query->where(function (Builder $query) use ($family): void {
@@ -347,6 +357,10 @@ class SchoolPortal
             $rules[$field['name']] = $rule;
         }
         $data = Validator::make($input, $rules)->validate();
+        if ($module === 'assignments' && $this->tenant->hasRole($user, 'teacher')) {
+            abort_unless((int) $data['teacher_id'] === $user->id, 403, 'Teachers can only publish assignments under their own account.');
+            abort_unless($this->tenant->table('school_teacher_assignments')->where('user_id', $user->id)->where('class_id', $data['class_id'])->where('subject_id', $data['subject_id'])->where('status', 'active')->exists(), 403, 'You are not assigned to this class and subject.');
+        }
         if ($module === 'exams') {
             $data['schedule_status'] = $data['schedule_status'] ?? $old?->schedule_status ?? 'draft';
         }

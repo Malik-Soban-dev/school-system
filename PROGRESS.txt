@@ -1,3 +1,8 @@
+- 2026-09-20 ASSIGNMENTS UPDATE:
+  - Added class/subject assignments with teacher ownership, instructions, due dates and draft/published visibility.
+  - Teachers are restricted to their assigned class and subject; linked parents/students see published work only. Added tenant storage, Superadmin explorer and export support.
+  - Verification passed: full PHPUnit (154 tests, 1105 assertions); Assignment focused tests (2 tests, 8 assertions); Vite production build; diff check.
+
 - 2026-09-20 SUBJECT ATTENDANCE UPDATE:
   - Added subject-level attendance records with student, subject, date, status and note fields, separate from daily attendance.
   - Added teacher/parent relationship visibility, admin controls, tenant/branch storage, Superadmin explorer and export support.

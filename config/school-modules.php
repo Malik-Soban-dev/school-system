@@ -227,6 +227,46 @@ return [
             'choices' => ['active', 'ended'],
         ]],
     ],
+    'assignments' => [
+        'label' => 'Assignments',
+        'singular' => 'assignment',
+        'help' => 'Create class and subject work, set a due date, and publish it when students should see it.',
+        'read' => ['owner', 'admin', 'teacher', 'student', 'parent'],
+        'write' => ['owner', 'admin', 'teacher'],
+        'fields' => [[
+            'name' => 'class_id',
+            'label' => 'Class',
+            'type' => 'relation',
+            'relation' => 'classes',
+        ], [
+            'name' => 'subject_id',
+            'label' => 'Subject',
+            'type' => 'relation',
+            'relation' => 'subjects',
+        ], [
+            'name' => 'teacher_id',
+            'label' => 'Teacher account',
+            'type' => 'relation',
+            'relation' => 'users',
+        ], [
+            'name' => 'title',
+            'label' => 'Title',
+            'type' => 'text',
+        ], [
+            'name' => 'description',
+            'label' => 'Instructions',
+            'type' => 'textarea',
+        ], [
+            'name' => 'due_on',
+            'label' => 'Due date',
+            'type' => 'date',
+        ], [
+            'name' => 'status',
+            'label' => 'Visibility',
+            'type' => 'select',
+            'choices' => ['draft', 'published'],
+        ]],
+    ],
     'subject_attendance' => [
         'label' => 'Subject attendance',
         'singular' => 'subject attendance record',
