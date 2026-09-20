@@ -1,3 +1,6 @@
+- 2026-09-20 RENDER SQLITE UNKNOWN RECOVERY UPDATE:
+  - Made the branch-integrity migration resumable after Render showed SQLITE_UNKNOWN for an already-created school_branches_school_id_id_unique index. Existing indexes and foreign keys are now detected; Turso uses trigger-backed branch integrity without another remote table rebuild.
+  - Verification passed: full PHPUnit (142 tests, 1030 assertions); migration syntax; Pint.
 - 2026-09-20 RENDER SQLITE MISMATCH FIX UPDATE:
   - Updated the tenant ownership migration for the Turso driver: it now backfills missing school_id values and removes stale rebuild artifacts, but skips Laravel's unsupported remote SQLite nullable-to-not-null table rebuild. This prevents sqlite_mismatch during Render startup migrations.
   - Verification passed: full PHPUnit (142 tests, 1030 assertions); migration syntax; Pint.

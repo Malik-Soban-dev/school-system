@@ -21,19 +21,25 @@ return new class extends Migration
 
     public function up(): void
     {
-        Schema::table('school_branches', function (Blueprint $table): void {
-            $table->unique(['school_id', 'id'], 'school_branches_school_id_id_unique');
-        });
+        $driver = DB::connection()->getDriverName();
+        $isTurso = $driver === 'turso';
+        if (! Schema::hasIndex('school_branches', 'school_branches_school_id_id_unique')) {
+            Schema::table('school_branches', function (Blueprint $table): void {
+                $table->unique(['school_id', 'id'], 'school_branches_school_id_id_unique');
+            });
+        }
 
         foreach ($this->branchTables as $tableName) {
             if (! Schema::hasTable($tableName) || ! Schema::hasColumn($tableName, 'school_id') || ! Schema::hasColumn($tableName, 'branch_id')) {
                 continue;
             }
-            Schema::table($tableName, function (Blueprint $table) use ($tableName): void {
-                $table->foreign(['school_id', 'branch_id'], $tableName.'_school_branch_foreign')
-                    ->references(['school_id', 'id'])->on('school_branches')->nullOnDelete();
-            });
-            if (DB::connection()->getDriverName() === 'sqlite') {
+            if (! $isTurso && ! Schema::hasForeignKey($tableName, $tableName.'_school_branch_foreign')) {
+                Schema::table($tableName, function (Blueprint $table) use ($tableName): void {
+                    $table->foreign(['school_id', 'branch_id'], $tableName.'_school_branch_foreign')
+                        ->references(['school_id', 'id'])->on('school_branches')->nullOnDelete();
+                });
+            }
+            if (in_array($driver, ['sqlite', 'turso'], true)) {
                 DB::statement("CREATE TRIGGER IF NOT EXISTS {$tableName}_school_branch_insert BEFORE INSERT ON {$tableName} WHEN NEW.branch_id IS NOT NULL AND (NEW.school_id IS NULL OR NOT EXISTS (SELECT 1 FROM school_branches WHERE id = NEW.branch_id AND school_id = NEW.school_id)) BEGIN SELECT RAISE(ABORT, 'branch does not belong to school'); END");
                 DB::statement("CREATE TRIGGER IF NOT EXISTS {$tableName}_school_branch_update BEFORE UPDATE OF school_id, branch_id ON {$tableName} WHEN NEW.branch_id IS NOT NULL AND (NEW.school_id IS NULL OR NOT EXISTS (SELECT 1 FROM school_branches WHERE id = NEW.branch_id AND school_id = NEW.school_id)) BEGIN SELECT RAISE(ABORT, 'branch does not belong to school'); END");
             }
