@@ -653,6 +653,21 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school['id'], 'action' => 'school_created']);
     }
 
+    public function test_superadmin_can_onboard_a_school_with_an_initial_admin_invitation_atomically(): void
+    {
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $response = $this->actingAs($superadmin)->postJson('/superadmin/schools', ['name' => 'Onboarding Admin School', 'slug' => 'onboarding-admin-school', 'owner_name' => 'Initial Owner', 'owner_email' => 'initial-owner@example.test', 'owner_role' => 'owner'])->assertCreated();
+        $school = $response->json('school');
+        $invitation = $response->json('invitation');
+        $this->assertNotNull($invitation['url']);
+        $this->assertSame('initial-owner@example.test', $invitation['email']);
+        $this->assertSame(['owner'], $invitation['roles']);
+        $this->assertDatabaseHas('school_invitations', ['school_id' => $school['id'], 'branch_id' => $invitation['branch_id'], 'email' => 'initial-owner@example.test']);
+        $this->assertDatabaseHas('school_audit', ['school_id' => $school['id'], 'action' => 'initial_admin_invitation_issued']);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'school', 'entity_id' => $school['id'], 'action' => 'initial_admin_invitation_issued']);
+    }
+
     public function test_superadmin_can_suspend_a_branch_with_audited_status_change(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Branch Status School', 'slug' => 'branch-status-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

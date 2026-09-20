@@ -424,12 +424,18 @@ class PlatformController extends Controller
 
     public function createSchool(Request $request): JsonResponse
     {
+        if ($request->filled('owner_email')) {
+            $request->merge(['owner_email' => strtolower(trim((string) $request->input('owner_email')))]);
+        }
         $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'slug' => ['required', 'alpha_dash', 'max:80', 'unique:schools,slug'],
             'plan_id' => ['nullable', 'integer', Rule::exists('platform_plans', 'id')->where(fn ($query) => $query->where('status', 'active'))],
+            'owner_name' => ['nullable', 'required_with:owner_email', 'string', 'max:100'],
+            'owner_email' => ['nullable', 'required_with:owner_name', 'email', 'max:255', Rule::unique('users', 'email')],
+            'owner_role' => ['nullable', Rule::in(['owner', 'admin'])],
         ]);
-        $school = DB::transaction(function () use ($request, $data): object {
+        $onboarding = DB::transaction(function () use ($request, $data): array {
             $schoolId = DB::table('schools')->insertGetId(['name' => $data['name'], 'slug' => $data['slug'], 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
             $branchId = DB::table('school_branches')->insertGetId(['school_id' => $schoolId, 'name' => $data['name'].' Main Branch', 'code' => 'main', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
             $plan = DB::table('platform_plans')->where('id', $data['plan_id'] ?? null)->where('status', 'active')->first(['id', 'code']);
@@ -437,11 +443,28 @@ class PlatformController extends Controller
             abort_unless($plan, 422, 'No active Starter plan is available for onboarding.');
             DB::table('school_subscriptions')->insert(['school_id' => $schoolId, 'plan_id' => $plan->id, 'status' => 'trialing', 'starts_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
             DB::table('school_audit')->insert(['school_id' => $schoolId, 'branch_id' => $branchId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $schoolId, 'action' => 'school_created', 'changes' => json_encode(['name' => $data['name'], 'slug' => $data['slug'], 'plan' => $plan->code]), 'created_at' => now()]);
+            $invitation = null;
+            if (! empty($data['owner_email'])) {
+                $token = Str::random(64);
+                $roles = [$data['owner_role'] ?? 'owner'];
+                $email = strtolower(trim($data['owner_email']));
+                $invitationId = DB::table('school_invitations')->insertGetId(['school_id' => $schoolId, 'branch_id' => $branchId, 'name' => $data['owner_name'], 'email' => $email, 'roles' => json_encode($roles), 'token_hash' => hash('sha256', $token), 'expires_at' => now()->addHours(48), 'accepted_at' => null, 'created_by' => $request->user()->id, 'created_at' => now(), 'updated_at' => now()]);
+                $auditChanges = ['invitation_id' => $invitationId, 'branch_id' => $branchId, 'email' => $email, 'roles' => $roles];
+                DB::table('school_audit')->insert(['school_id' => $schoolId, 'branch_id' => $branchId, 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $invitationId, 'action' => 'initial_admin_invitation_issued', 'changes' => json_encode($auditChanges), 'created_at' => now()]);
+                DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'school', 'entity_id' => $schoolId, 'action' => 'initial_admin_invitation_issued', 'changes' => json_encode($auditChanges), 'created_at' => now()]);
+                $invitation = ['id' => $invitationId, 'token' => $token, 'branch_id' => $branchId, 'email' => $email, 'roles' => $roles];
+            }
 
-            return DB::table('schools')->where('id', $schoolId)->first();
+            return ['school' => DB::table('schools')->where('id', $schoolId)->first(), 'invitation' => $invitation];
         });
 
-        return response()->json(['school' => $school], 201);
+        $invitation = $onboarding['invitation'];
+        if ($invitation) {
+            $invitation['url'] = route('invitation.show', ['token' => $invitation['token']]);
+            unset($invitation['token']);
+        }
+
+        return response()->json(['school' => $onboarding['school'], 'invitation' => $invitation], 201);
     }
 
     public function updateSubscription(Request $request, int $school): JsonResponse

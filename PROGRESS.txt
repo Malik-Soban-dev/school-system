@@ -1,3 +1,8 @@
+- 2026-09-19 SUPERADMIN ONBOARDING INVITATION UPDATE:
+  - School onboarding now optionally creates a 48-hour initial owner/admin invitation for the default branch in the same transaction as the school, branch and subscription.
+  - The private invitation link is returned once to Superadmin, while school and platform audit records capture the issued access without storing the plaintext token.
+  - Verification passed: full PHPUnit suite (111 tests, 681 assertions), focused Superadmin suite (52 tests, 327 assertions), Vite production build, PHP Pint and git diff check.
+
 - 2026-09-19 SUPERADMIN SESSION-REVOCATION CONTROL UPDATE:
   - Added a dedicated global client-session revoke action to the Superadmin user registry, preserving account status while immediately invalidating every active session.
   - Revocation is recorded in each affected school audit and the platform audit, with the revoked-session count returned to the dashboard.
