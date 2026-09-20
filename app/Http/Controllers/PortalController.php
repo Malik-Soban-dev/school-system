@@ -165,6 +165,41 @@ class PortalController extends Controller
         return response()->json(['message' => $moving->count().' students promoted to '.$targetClass->name.'.', 'promoted' => $moving->count(), 'class_id' => $targetClass->id]);
     }
 
+    public function createBatchInvoices(Request $request): JsonResponse
+    {
+        abort_unless($this->portal->can($request->user(), ['owner', 'admin', 'accountant']), 403);
+        $tenant = app(TenantContext::class);
+        $data = $request->validate([
+            'billing_month' => ['required', 'date_format:Y-m'],
+            'amount' => ['required', 'regex:/^\d+(?:\.\d{1,2})?$/', 'not_regex:/^0+(?:\.0{1,2})?$/'],
+            'due_on' => ['required', 'date'],
+            'description' => ['required', 'string', 'max:255'],
+            'class_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $classId = $data['class_id'] ?? null;
+        if ($classId !== null) {
+            abort_unless($tenant->table('school_classes')->where('id', $classId)->exists(), 422, 'Choose a class from this school branch.');
+        }
+        $parts = explode('.', (string) $data['amount']);
+        $amount = (int) $parts[0] * 100 + (int) str_pad(substr($parts[1] ?? '', 0, 2), 2, '0');
+        $students = $tenant->table('school_students')->where('status', 'active')->when($classId, fn ($query) => $query->where('class_id', $classId))->orderBy('id')->get(['id', 'name']);
+        abort_if($students->isEmpty(), 422, 'No active students match this invoice batch.');
+        $existing = $tenant->table('school_invoices')->where('billing_month', $data['billing_month'])->whereIn('student_id', $students->pluck('id'))->pluck('student_id')->map(fn ($id): int => (int) $id)->all();
+        $now = now();
+        $rows = $students->reject(fn (object $student): bool => in_array($student->id, $existing, true))->map(fn (object $student): array => [
+            'school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'reference' => 'FEE-'.$data['billing_month'].'-'.$student->id,
+            'student_id' => $student->id, 'description' => $data['description'], 'amount' => $amount, 'due_on' => $data['due_on'], 'billing_month' => $data['billing_month'], 'created_at' => $now, 'updated_at' => $now,
+        ])->values();
+        DB::transaction(function () use ($request, $tenant, $rows, $data, $existing, $now): void {
+            if ($rows->isNotEmpty()) {
+                DB::table('school_invoices')->insert($rows->all());
+            }
+            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $request->user()->id, 'module' => 'invoices', 'record_id' => 0, 'action' => 'batch_created', 'changes' => json_encode(['billing_month' => $data['billing_month'], 'created' => $rows->count(), 'skipped_existing' => count($existing)]), 'created_at' => $now]);
+        });
+
+        return response()->json(['message' => $rows->count().' invoices created; '.count($existing).' existing invoices skipped.', 'created' => $rows->count(), 'skipped' => count($existing)]);
+    }
+
     public function tutorial(Request $request): JsonResponse
     {
         $data = $request->validate(['module' => ['required', Rule::in(['overview', 'people', 'invitations', 'notifications', 'settings', ...array_keys(config('school-modules'))])]]);

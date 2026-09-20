@@ -54,4 +54,23 @@ class MonthlySettlementTest extends TestCase
         $this->getJson('/portal/records/invoices?month=invalid')->assertUnprocessable();
         $this->assertDatabaseHas('school_notification_events', ['module' => 'payments']);
     }
+
+    public function test_admin_can_create_repeat_safe_batch_monthly_invoices(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $portal = app(SchoolPortal::class);
+        $year = $portal->save('academic_years', $owner, ['name' => '2026', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
+        $class = $portal->save('classes', $owner, ['name' => 'Grade 6', 'year_id' => $year, 'capacity' => 30]);
+        $first = $portal->save('students', $owner, ['name' => 'First Student', 'admission_number' => 'BATCH-1', 'class_id' => $class, 'status' => 'active']);
+        $second = $portal->save('students', $owner, ['name' => 'Second Student', 'admission_number' => 'BATCH-2', 'class_id' => $class, 'status' => 'active']);
+
+        $payload = ['billing_month' => '2026-10', 'amount' => '1250.50', 'due_on' => '2026-10-10', 'description' => 'October tuition'];
+        $this->actingAs($owner)->postJson('/portal/invoices/batch', $payload)->assertOk()->assertJsonPath('created', 2)->assertJsonPath('skipped', 0);
+        $this->actingAs($owner)->postJson('/portal/invoices/batch', $payload)->assertOk()->assertJsonPath('created', 0)->assertJsonPath('skipped', 2);
+
+        $this->assertDatabaseCount('school_invoices', 2);
+        $this->assertDatabaseHas('school_invoices', ['student_id' => $first, 'billing_month' => '2026-10', 'amount' => 125050]);
+        $this->assertDatabaseHas('school_invoices', ['student_id' => $second, 'reference' => 'FEE-2026-10-'.$second]);
+        $this->assertDatabaseHas('school_audit', ['module' => 'invoices', 'action' => 'batch_created']);
+    }
 }
