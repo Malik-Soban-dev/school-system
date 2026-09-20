@@ -41,6 +41,9 @@ final class SchoolEntitlements
     public function featureForModule(string $module): ?string
     {
         return match ($module) {
+            'attendance' => 'attendance',
+            'exams', 'exam_subjects', 'grades', 'grade_bands' => 'grades',
+            'invoices', 'payments' => 'invoices',
             'payroll', 'payroll_payments' => 'payroll',
             default => null,
         };

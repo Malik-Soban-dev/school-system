@@ -3,14 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Services\SchoolNotifications;
+use App\Support\SchoolEntitlements;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
-    public function index(Request $request, SchoolNotifications $notifications): JsonResponse
+    public function index(Request $request, SchoolNotifications $notifications, SchoolEntitlements $entitlements): JsonResponse
     {
+        $entitlements->assertFeature('notifications');
         $request->validate(['page' => ['nullable', 'integer', 'min:1', 'max:100000']]);
 
         $rows = $notifications->visible($request->user())->orderByDesc('id')->paginate(30);
@@ -25,8 +27,9 @@ class NotificationController extends Controller
             'unread' => $notifications->visible($request->user())->whereNull('read_at')->count()]);
     }
 
-    public function read(Request $request, SchoolNotifications $notifications, int $id): JsonResponse
+    public function read(Request $request, SchoolNotifications $notifications, SchoolEntitlements $entitlements, int $id): JsonResponse
     {
+        $entitlements->assertFeature('notifications');
         $query = $notifications->visible($request->user())->where('id', $id);
         abort_unless($query->exists(), 404);
         $query->whereNull('read_at')->update(['read_at' => now()]);

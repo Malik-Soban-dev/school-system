@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN ENTITLEMENT-ENFORCEMENT UPDATE:
+  - Completed plan feature enforcement for attendance, grades/exams, invoices/payments and payroll modules; notification feeds and preferences now require the subscribed notifications feature.
+  - Superadmin remains unrestricted through the entitlement bypass, while client plans now consistently control the capabilities configured from the Superadmin plan catalog.
+  - Verification passed: SchoolOperations suite (13 tests, 74 assertions), full PHPUnit suite (115 tests, 732 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN NOTIFICATION-HEALTH UPDATE:
   - Added platform-wide notification delivery health with verified availability, total activity in the last 24 hours, status counts, recent failed/unknown deliveries, school/branch context and safe error codes; recipients and provider identifiers remain excluded.
   - Added an indexed status/update path and made recent delivery failures contribute to the explicit attention state while preserving tenant-scoped source data.

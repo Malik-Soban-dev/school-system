@@ -50,6 +50,15 @@ class SchoolOperationsTest extends TestCase
         $this->actingAs($this->person('owner'))->getJson('/portal/records/payroll')->assertForbidden();
     }
 
+    public function test_starter_plan_hides_notification_endpoints_from_the_school_portal(): void
+    {
+        $starter = DB::table('platform_plans')->where('code', 'starter')->value('id');
+        DB::table('school_subscriptions')->where('school_id', 1)->update(['plan_id' => $starter, 'status' => 'active']);
+
+        $this->actingAs($this->person('owner'))->getJson('/portal/notifications')->assertForbidden();
+        $this->getJson('/portal/notification-preferences')->assertForbidden();
+    }
+
     public function test_superadmin_can_use_entitled_modules_and_exceed_student_limit(): void
     {
         $superadmin = $this->person('superadmin');

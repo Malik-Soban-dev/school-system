@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\NotificationDelivery;
+use App\Support\SchoolEntitlements;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,8 +12,9 @@ use Illuminate\Validation\ValidationException;
 
 class NotificationPreferenceController extends Controller
 {
-    public function show(Request $request, NotificationDelivery $delivery): JsonResponse
+    public function show(Request $request, NotificationDelivery $delivery, SchoolEntitlements $entitlements): JsonResponse
     {
+        $entitlements->assertFeature('notifications');
         $preferences = app(TenantContext::class)->table('school_notification_preferences')->where('user_id', $request->user()->id)->first();
 
         return response()->json(['email' => $request->user()->email, 'whatsapp_phone' => $preferences?->whatsapp_phone ?? '',
@@ -20,8 +22,9 @@ class NotificationPreferenceController extends Controller
             'whatsapp_ready' => $delivery->ready('whatsapp'), 'email_ready' => $delivery->ready('email')]);
     }
 
-    public function update(Request $request): JsonResponse
+    public function update(Request $request, SchoolEntitlements $entitlements): JsonResponse
     {
+        $entitlements->assertFeature('notifications');
         $data = $request->validate(['current_password' => ['required', 'current_password'], 'whatsapp_phone' => ['nullable', 'regex:/^\+[1-9]\d{7,14}$/'],
             'whatsapp_enabled' => ['required', 'boolean'], 'email_enabled' => ['required', 'boolean']]);
         if ($data['whatsapp_enabled'] && empty($data['whatsapp_phone'])) {
