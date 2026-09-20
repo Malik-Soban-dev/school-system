@@ -913,6 +913,17 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'user_status_updated']);
     }
 
+    public function test_superadmin_can_control_an_unassigned_client_account(): void
+    {
+        $client = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/superadmin/users/'.$client->id.'/status', ['is_active' => false])->assertOk();
+
+        $this->assertDatabaseHas('users', ['id' => $client->id, 'is_active' => false]);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'user_status_updated']);
+    }
+
     public function test_superadmin_can_revoke_client_sessions_without_changing_account_status(): void
     {
         $school = DB::table('schools')->insertGetId(['name' => 'Session Control School', 'slug' => 'session-control-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

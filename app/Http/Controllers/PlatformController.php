@@ -544,7 +544,6 @@ class PlatformController extends Controller
             abort_unless($userRecord, 404);
             abort_if(in_array('superadmin', json_decode((string) $userRecord->roles, true) ?: [], true), 422, 'Platform Superadmin accounts are managed separately.');
             $memberships = DB::table('school_user')->where('user_id', $user)->where('status', 'active')->pluck('school_id');
-            abort_if($memberships->isEmpty(), 422, 'This account is not assigned to a school.');
             DB::table('users')->where('id', $user)->update(['is_active' => $data['is_active'], 'updated_at' => now()]);
             DB::table('sessions')->where('user_id', $user)->delete();
             foreach ($memberships as $schoolId) {

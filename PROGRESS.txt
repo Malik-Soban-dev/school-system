@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN ORPHAN-ACCOUNT CONTROL UPDATE:
+  - Superadmin account status controls now work for non-Superadmin users even when they have no active school membership, while platform Superadmin identities remain protected and all changes remain audited.
+  - Verification passed: focused account-control coverage (5 tests, 16 assertions), full PHPUnit (130 tests, 827 assertions), Pint, and diff check.
+
 - 2026-09-19 SUPERADMIN SUSPENDED-GRANT REGISTRY UPDATE:
   - Explicit school/branch filters in the global Superadmin user registry now include suspended branch grants, including role filters, so suspended client access remains visible for restoration; unscoped role searches still require active grants.
   - Verification passed: focused registry coverage (5 tests, 45 assertions), full PHPUnit (129 tests, 824 assertions), Pint, and diff check.
