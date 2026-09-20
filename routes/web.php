@@ -41,6 +41,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, EnsureS
     Route::get('/superadmin/users', [PlatformController::class, 'users']);
     Route::get('/superadmin/schools/{school}/records/{module}', [PlatformController::class, 'records'])->whereNumber('school')->whereIn('module', ['academic_years', 'students', 'staff', 'classes', 'subjects', 'teacher_assignments', 'guardian_links', 'attendance', 'timetables', 'exams', 'grade_bands', 'exam_subjects', 'grades', 'invoices', 'payments', 'expenses', 'leave_requests', 'payroll', 'payroll_payments', 'notices', 'enrollments', 'invitations', 'notifications', 'notification_deliveries', 'notification_preferences', 'notification_events', 'settings', 'users', 'audit']);
     Route::put('/superadmin/users/{user}', [PlatformController::class, 'updateUserProfile'])->whereNumber('user');
+    Route::put('/superadmin/users/{user}/branch-access', [PlatformController::class, 'grantUserBranchAccess'])->whereNumber('user');
     Route::post('/superadmin/users/{user}/password-reset', [PlatformController::class, 'issuePasswordReset'])->whereNumber('user');
     Route::post('/superadmin/users/{user}/sessions/revoke', [PlatformController::class, 'revokeUserSessions'])->whereNumber('user');
     Route::put('/superadmin/users/{user}/status', [PlatformController::class, 'updateUserStatus'])->whereNumber('user');

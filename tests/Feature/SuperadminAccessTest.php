@@ -602,6 +602,21 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['school_id' => $school, 'record_id' => $existing->id, 'action' => 'school_membership_created']);
     }
 
+    public function test_superadmin_can_grant_branch_access_from_the_global_user_registry(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Global Access School', 'slug' => 'global-access-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Global Campus', 'code' => 'global', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['name' => 'Global Access Client', 'roles' => ['teacher'], 'is_active' => true]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->putJson('/superadmin/users/'.$client->id.'/branch-access', ['school_id' => $school, 'branch_id' => $branch, 'roles' => ['admin'], 'status' => 'active'])->assertOk();
+        $this->actingAs($superadmin)->putJson('/superadmin/users/'.$client->id.'/branch-access', ['school_id' => $school, 'branch_id' => $branch, 'roles' => ['owner'], 'status' => 'active'])->assertOk();
+
+        $this->assertDatabaseHas('school_user', ['school_id' => $school, 'user_id' => $client->id, 'status' => 'active']);
+        $this->assertDatabaseHas('school_user_branches', ['school_id' => $school, 'branch_id' => $branch, 'user_id' => $client->id, 'roles' => json_encode(['owner'])]);
+        $this->assertDatabaseHas('platform_audit', ['entity_type' => 'user', 'entity_id' => $client->id, 'action' => 'user_branch_access_updated']);
+    }
+
     public function test_database_rejects_a_branch_grant_whose_branch_belongs_to_another_school(): void
     {
         $schoolOne = DB::table('schools')->insertGetId(['name' => 'Integrity One', 'slug' => 'integrity-one', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);

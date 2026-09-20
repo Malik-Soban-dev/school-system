@@ -315,6 +315,43 @@ class PlatformController extends Controller
         })]);
     }
 
+    public function grantUserBranchAccess(Request $request, int $user): JsonResponse
+    {
+        $data = $request->validate([
+            'school_id' => ['required', 'integer', Rule::exists('schools', 'id')],
+            'branch_id' => ['required', 'integer', Rule::exists('school_branches', 'id')->where(fn ($query) => $query->where('school_id', $request->integer('school_id')))],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => [Rule::in(['owner', 'admin', 'teacher', 'student', 'parent', 'accountant']), 'distinct'],
+            'status' => ['required', Rule::in(['active', 'suspended'])],
+        ]);
+
+        DB::transaction(function () use ($request, $user, $data): void {
+            $userRecord = DB::table('users')->where('id', $user)->lockForUpdate()->first(['id', 'roles']);
+            abort_unless($userRecord, 404);
+            abort_if(in_array('superadmin', json_decode((string) $userRecord->roles, true) ?: [], true), 422, 'Platform Superadmin access is managed separately.');
+
+            $membership = DB::table('school_user')->where('school_id', $data['school_id'])->where('user_id', $user)->lockForUpdate()->first(['status']);
+            if (! $membership) {
+                DB::table('school_user')->insert(['school_id' => $data['school_id'], 'user_id' => $user, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+            } else {
+                abort_unless($membership->status === 'active', 422, 'Activate the school membership before granting branch access.');
+            }
+
+            $access = DB::table('school_user_branches')->where('school_id', $data['school_id'])->where('branch_id', $data['branch_id'])->where('user_id', $user)->lockForUpdate()->first(['roles', 'status']);
+            if ($access) {
+                DB::table('school_user_branches')->where('school_id', $data['school_id'])->where('branch_id', $data['branch_id'])->where('user_id', $user)->update(['roles' => json_encode($data['roles']), 'status' => $data['status'], 'updated_at' => now()]);
+            } else {
+                DB::table('school_user_branches')->insert(['school_id' => $data['school_id'], 'branch_id' => $data['branch_id'], 'user_id' => $user, 'roles' => json_encode($data['roles']), 'status' => $data['status'], 'created_at' => now(), 'updated_at' => now()]);
+            }
+
+            $changes = ['school_id' => $data['school_id'], 'branch_id' => $data['branch_id'], 'before' => $access ? ['roles' => json_decode((string) $access->roles, true) ?: [], 'status' => $access->status] : null, 'after' => ['roles' => $data['roles'], 'status' => $data['status']]];
+            DB::table('school_audit')->insert(['school_id' => $data['school_id'], 'branch_id' => $data['branch_id'], 'user_id' => $request->user()->id, 'module' => 'platform', 'record_id' => $user, 'action' => 'branch_access_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+            DB::table('platform_audit')->insert(['user_id' => $request->user()->id, 'entity_type' => 'user', 'entity_id' => $user, 'action' => 'user_branch_access_updated', 'changes' => json_encode($changes), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'User branch access updated.']);
+    }
+
     public function records(Request $request, int $school, string $module): JsonResponse
     {
         $data = $request->validate(['branch_id' => ['nullable', 'integer'], 'search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);

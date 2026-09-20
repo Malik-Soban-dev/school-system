@@ -56,6 +56,7 @@
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">PLATFORM ACCOUNTS</p><h2>Every user</h2></div></div>
         <form id="user-search-form"><input id="user-search" name="search" maxlength="100" placeholder="Search name, email or username" aria-label="Search platform users"><select id="user-school" aria-label="Filter users by school"><option value="">All schools</option></select><select id="user-branch" aria-label="Filter users by branch"><option value="">All branches</option></select><select id="user-role" aria-label="Filter users by role"><option value="">All roles</option><option value="superadmin">Superadmin</option><option value="owner">Owner</option><option value="admin">Admin</option><option value="teacher">Teacher</option><option value="student">Student</option><option value="parent">Parent</option><option value="accountant">Accountant</option></select><select id="user-status" aria-label="Filter users by account status"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><button type="submit">Search</button></form>
+        <form id="user-access-form"><select id="user-access-user" required aria-label="User to grant branch access"><option value="">Select a loaded user</option></select><select id="user-access-school" required aria-label="Access school"><option value="">Select school</option></select><select id="user-access-branch" required aria-label="Access branch"><option value="">Select branch</option></select><select id="user-access-role" required aria-label="Access role"><option value="admin">Admin</option><option value="owner">Owner</option><option value="teacher">Teacher</option><option value="student">Student</option><option value="parent">Parent</option><option value="accountant">Accountant</option></select><select id="user-access-status" required aria-label="Access status"><option value="active">Active</option><option value="suspended">Suspended</option></select><button type="submit">Grant / update branch access</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>User</th><th>Status</th><th>School / branch access</th><th>Control</th></tr></thead><tbody id="user-rows"><tr><td colspan="4">Loading platform users…</td></tr></tbody></table></div><div id="user-pagination"></div>
     </section>
     <section class="platform-panel"><div class="platform-panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Platform activity</h2></div></div><form id="audit-search-form"><select id="audit-school" aria-label="Audit school"><option value="">All schools and platform events</option></select><select id="audit-branch" aria-label="Audit branch"><option value="">All branches</option></select><input id="audit-search" maxlength="100" placeholder="Search school, actor, module or action" aria-label="Search audit activity"><button type="submit">Search audit</button></form><div class="platform-table-wrap"><table><thead><tr><th>Time</th><th>School</th><th>Branch</th><th>Actor</th><th>Module</th><th>Action</th><th>Changes</th></tr></thead><tbody id="audit-rows"><tr><td colspan="7">Loading audit trail…</td></tr></tbody></table></div><div id="audit-pagination"></div></section>
@@ -95,6 +96,12 @@
     const userBranch = document.querySelector('#user-branch');
     const userRole = document.querySelector('#user-role');
     const userStatus = document.querySelector('#user-status');
+    const userAccessForm = document.querySelector('#user-access-form');
+    const userAccessUser = document.querySelector('#user-access-user');
+    const userAccessSchool = document.querySelector('#user-access-school');
+    const userAccessBranch = document.querySelector('#user-access-branch');
+    const userAccessRole = document.querySelector('#user-access-role');
+    const userAccessStatus = document.querySelector('#user-access-status');
     const explorerForm = document.querySelector('#data-explorer-form');
     const explorerSchool = document.querySelector('#explorer-school');
     const explorerBranch = document.querySelector('#explorer-branch');
@@ -400,6 +407,10 @@
         const selectedBranchSchool = branchSchool.value;
         branchSchool.innerHTML = '<option value="">All schools</option>' + platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
         if (platformSchools.some(school => String(school.id) === selectedBranchSchool)) branchSchool.value = selectedBranchSchool;
+        const selectedAccessSchool = userAccessSchool.value;
+        userAccessSchool.innerHTML = '<option value="">Select school</option>' + platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
+        if (platformSchools.some(school => String(school.id) === selectedAccessSchool)) userAccessSchool.value = selectedAccessSchool;
+        updateUserAccessBranches();
         updateAuditBranches();
         renderPlans();
         const selectedSchool = explorerSchool.value;
@@ -451,6 +462,9 @@
         if (userRole.value) params.set('role', userRole.value);
         if (userStatus.value) params.set('status', userStatus.value);
         const data = await request(`/superadmin/users?${params}`);
+        const selectedAccessUser = userAccessUser.value;
+        userAccessUser.innerHTML = '<option value="">Select a loaded user</option>' + data.users.data.filter(user => !user.is_superadmin).map(user => `<option value="${esc(user.id)}">${esc(user.name)} · ${esc(user.email || user.username || '')}</option>`).join('');
+        if (data.users.data.some(user => String(user.id) === selectedAccessUser && !user.is_superadmin)) userAccessUser.value = selectedAccessUser;
         userRows.innerHTML = data.users.data.map(user => {
             const access = user.is_superadmin ? 'Platform Superadmin' : (user.access.map(item => `${esc(item.school_name)} / ${esc(item.branch_name)} (${esc(item.roles.join(', '))})`).join('<br>') || 'No active branch access');
             const control = user.is_superadmin ? '<span>Protected</span>' : `<button class="platform-user-edit" data-id="${esc(user.id)}" data-name="${esc(user.name)}" data-email="${esc(user.email || '')}" data-username="${esc(user.username || '')}">Edit profile</button> <button class="platform-user-reset" data-id="${esc(user.id)}">Create reset link</button> <button class="platform-user-revoke" data-id="${esc(user.id)}">Revoke sessions</button> <button class="platform-user-status" data-id="${esc(user.id)}" data-active="${user.is_active ? '1' : '0'}">${user.is_active ? 'Suspend' : 'Activate'}</button>`;
@@ -561,8 +575,22 @@
             window.alert(error.message);
         }
     });
-        document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
+    document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
     userSchool.addEventListener('change', () => { const school = platformSchools.find(item => String(item.id) === String(userSchool.value)); userBranch.innerHTML = '<option value="">All branches</option>' + (school?.branch_options || []).map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)}</option>`).join(''); });
+    const updateUserAccessBranches = () => { const school = platformSchools.find(item => String(item.id) === String(userAccessSchool.value)); userAccessBranch.innerHTML = '<option value="">Select branch</option>' + (school?.branch_options || []).map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)}</option>`).join(''); };
+    userAccessSchool.addEventListener('change', updateUserAccessBranches);
+    userAccessForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!userAccessUser.value || !userAccessSchool.value || !userAccessBranch.value) return;
+        const formData = new FormData(event.currentTarget);
+        try {
+            await request(`/superadmin/users/${userAccessUser.value}/branch-access`, {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({school_id: Number(userAccessSchool.value), branch_id: Number(userAccessBranch.value), roles: [userAccessRole.value], status: userAccessStatus.value})});
+            window.alert('User branch access updated and audited.');
+            await loadUsers();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
     document.querySelector('#branch-search-form').addEventListener('submit', event => { event.preventDefault(); loadBranches().catch(error => { branchRows.innerHTML = `<tr><td colspan="8">${esc(error.message)}</td></tr>`; }); });
     branchSchool.addEventListener('change', () => loadBranches().catch(error => { branchRows.innerHTML = `<tr><td colspan="8">${esc(error.message)}</td></tr>`; }));
     document.querySelector('#audit-search-form').addEventListener('submit', event => { event.preventDefault(); loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; }); });

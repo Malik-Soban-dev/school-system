@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN GLOBAL BRANCH-ACCESS UPDATE:
+  - Added a protected global user-registry action that grants or updates an existing account's school-branch roles and status directly from the Superadmin dashboard.
+  - The endpoint validates school/branch ownership, blocks platform Superadmin reassignment, creates missing active memberships transactionally, records before/after changes in school and platform audit trails, and exposes a dashboard form for loaded users.
+  - Verification passed: focused Superadmin suite (55 tests, 348 assertions), full PHPUnit suite (114 tests, 702 assertions), Pint, Vite build, and diff check.
 - 2026-09-19 SUPERADMIN BRANCH-REGISTRY CONTROLS UPDATE:
   - Added school filtering to the global branch registry and a direct Open workspace action for every listed branch, including suspended branches that Superadmin is authorized to inspect.
   - Preserved server-side branch ownership validation, Superadmin context auditing, and existing branch status controls.
