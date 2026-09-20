@@ -493,6 +493,7 @@ class SuperadminAccessTest extends TestCase
         $this->assertDatabaseHas('platform_audit', ['entity_type' => 'school_feature', 'entity_id' => $school, 'action' => 'school_feature_override_updated']);
         $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/features', ['feature' => 'payroll', 'enabled' => null])->assertOk()->assertJsonPath('enabled', null);
         $this->assertDatabaseMissing('school_feature_overrides', ['school_id' => $school, 'feature' => 'payroll']);
+        $this->actingAs($superadmin)->getJson('/superadmin/schools/'.$school)->assertOk()->assertJsonPath('feature_access.payroll', false)->assertJsonPath('feature_access.attendance', true);
     }
 
     public function test_platform_summary_reports_billing_metrics(): void
