@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\BuildPlatformSchoolExport;
 use App\Jobs\BuildPlatformUserExport;
 use App\Models\User;
+use App\Support\PlatformErrorRecorder;
 use App\Support\PlatformSchedulerRuns;
 use App\Support\TenantContext;
 use App\Support\Totp;
@@ -138,8 +139,9 @@ class SuperadminAccessTest extends TestCase
         $schedulerRuns = app(PlatformSchedulerRuns::class);
         $schedulerRuns->start('platform:mark-overdue-invoices');
         $schedulerRuns->finish('platform:mark-overdue-invoices', 0);
+        app(PlatformErrorRecorder::class)->record(new \RuntimeException('private diagnostic message must not be exposed'));
 
-        $this->actingAs($user)->getJson('/superadmin/health')->assertOk()->assertJsonPath('database', 'ok')->assertJsonPath('storage.available', true)->assertJsonPath('scheduled_runs.0.command', 'platform:mark-overdue-invoices')->assertJsonPath('scheduled_runs.0.status', 'success')->assertJsonStructure(['status', 'queue' => ['pending', 'failed'], 'schools' => ['active', 'suspended'], 'storage' => ['available', 'bytes', 'files'], 'scheduled_runs', 'backups']);
+        $this->actingAs($user)->getJson('/superadmin/health')->assertOk()->assertJsonPath('database', 'ok')->assertJsonPath('storage.available', true)->assertJsonPath('scheduled_runs.0.command', 'platform:mark-overdue-invoices')->assertJsonPath('scheduled_runs.0.status', 'success')->assertJsonPath('application_errors.last_24h', 1)->assertJsonStructure(['status', 'queue' => ['pending', 'failed'], 'schools' => ['active', 'suspended'], 'storage' => ['available', 'bytes', 'files'], 'scheduled_runs', 'application_errors' => ['last_24h', 'recent'], 'backups'])->assertJsonMissing(['private diagnostic message must not be exposed']);
     }
 
     public function test_superadmin_can_create_an_encrypted_backup_without_receiving_contents(): void

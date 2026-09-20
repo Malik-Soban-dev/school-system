@@ -157,13 +157,16 @@ class PlatformController extends Controller
         $scheduledRuns = Schema::hasTable('platform_scheduler_runs')
             ? DB::table('platform_scheduler_runs')->orderByDesc('started_at')->limit(20)->get(['command', 'status', 'exit_code', 'error_type', 'started_at', 'finished_at'])
             : collect();
+        $applicationErrors = Schema::hasTable('platform_errors')
+            ? ['last_24h' => DB::table('platform_errors')->where('occurred_at', '>=', now()->subDay())->count(), 'recent' => DB::table('platform_errors')->orderByDesc('occurred_at')->limit(20)->get(['error_type', 'status', 'method', 'route', 'fingerprint', 'occurred_at'])]
+            : ['last_24h' => null, 'recent' => collect()];
         $backups = collect();
         $backupDirectory = storage_path('app/private/backups');
         if (File::isDirectory($backupDirectory)) {
             $backups = collect(File::files($backupDirectory))->sortByDesc(fn ($file): int => $file->getMTime())->take(10)->values()->map(fn ($file): array => ['name' => $file->getFilename(), 'bytes' => $file->getSize(), 'modified_at' => date(DATE_ATOM, $file->getMTime()), 'download_url' => route('superadmin.backup.download', ['name' => $file->getFilename()])]);
         }
 
-        return response()->json(['status' => $database === 'ok' && $failedJobs === 0 ? 'ok' : 'attention', 'database' => $database, 'queue' => ['pending' => $pendingJobs, 'failed' => $failedJobs], 'sessions' => $sessions, 'storage' => $storage, 'scheduled_runs' => $scheduledRuns, 'schools' => ['active' => DB::table('schools')->where('status', 'active')->count(), 'suspended' => DB::table('schools')->where('status', 'suspended')->count()], 'last_audit_at' => DB::table('school_audit')->max('created_at'), 'backups' => $backups]);
+        return response()->json(['status' => $database === 'ok' && $failedJobs === 0 ? 'ok' : 'attention', 'database' => $database, 'queue' => ['pending' => $pendingJobs, 'failed' => $failedJobs], 'sessions' => $sessions, 'storage' => $storage, 'scheduled_runs' => $scheduledRuns, 'application_errors' => $applicationErrors, 'schools' => ['active' => DB::table('schools')->where('status', 'active')->count(), 'suspended' => DB::table('schools')->where('status', 'suspended')->count()], 'last_audit_at' => DB::table('school_audit')->max('created_at'), 'backups' => $backups]);
     }
 
     public function createBackup(Request $request): JsonResponse

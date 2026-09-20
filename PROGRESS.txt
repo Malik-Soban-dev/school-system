@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN ERROR-HEALTH UPDATE:
+  - Added a privacy-preserving platform_errors ledger for server-side application failures, retaining safe exception type/status/request metadata and a bounded 90-day history without messages or payloads.
+  - Superadmin health now reports 24-hour error counts and the latest safe error records alongside scheduler, storage and backup health.
+  - Verification passed: focused Superadmin suite (55 tests, 365 assertions), full PHPUnit suite (114 tests, 719 assertions), Pint, Vite build, and diff check.
 - 2026-09-19 SUPERADMIN SCHEDULER-HEALTH UPDATE:
   - Added a durable platform_scheduler_runs history for recurring notification, invoice, overdue-invoice and export-pruning commands, with success/running/failed status, exit code and bounded error type metadata.
   - Command lifecycle listeners record runs in production without storing command output or secrets; Superadmin health displays the latest 20 runs and retains explicit operational visibility.
