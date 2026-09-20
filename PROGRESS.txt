@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN SUSPENDED-GRANT REGISTRY UPDATE:
+  - Explicit school/branch filters in the global Superadmin user registry now include suspended branch grants, including role filters, so suspended client access remains visible for restoration; unscoped role searches still require active grants.
+  - Verification passed: focused registry coverage (5 tests, 45 assertions), full PHPUnit (129 tests, 824 assertions), Pint, and diff check.
+
 - 2026-09-19 SUPERADMIN DASHBOARD AUDIT ATTRIBUTION UPDATE:
   - Platform dashboard data now preserves structured school and branch names for recent platform audit events; school-detail activity also shows branch context beside the actor.
   - Verification passed: focused regression, full PHPUnit (128 tests, 818 assertions), Pint, and git diff check.

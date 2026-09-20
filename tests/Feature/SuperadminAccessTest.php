@@ -172,6 +172,19 @@ class SuperadminAccessTest extends TestCase
         $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&role=teacher')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.email', 'role-filter-client@example.test');
     }
 
+    public function test_superadmin_branch_registry_includes_suspended_grants_for_restore_operations(): void
+    {
+        $school = DB::table('schools')->insertGetId(['name' => 'Suspended Registry School', 'slug' => 'suspended-registry-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Suspended Branch', 'code' => 'suspended', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $client = User::factory()->create(['email' => 'suspended-registry-client@example.test', 'roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $client->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert(['school_id' => $school, 'branch_id' => $branch, 'user_id' => $client->id, 'roles' => json_encode(['admin']), 'status' => 'suspended', 'created_at' => now(), 'updated_at' => now()]);
+        $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
+
+        $this->actingAs($superadmin)->getJson('/superadmin/users?school_id='.$school.'&branch_id='.$branch.'&role=admin')->assertOk()->assertJsonPath('users.total', 1)->assertJsonPath('users.data.0.email', 'suspended-registry-client@example.test')->assertJsonPath('users.data.0.access.0.status', 'suspended');
+        $this->actingAs($superadmin)->getJson('/superadmin/users?branch_id='.$branch)->assertOk()->assertJsonPath('users.total', 1);
+    }
+
     public function test_superadmin_can_review_platform_health_without_backup_contents(): void
     {
         $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
