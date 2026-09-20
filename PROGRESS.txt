@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN INITIAL-BRANCH RESOLUTION HARDENING UPDATE:
+  - ResolveSchool now applies the branch entitlement before establishing the tenant context, preventing second-branch-only accounts from bypassing the context-switch guard on their first request.
+  - Unauthorized users are redirected only to an entitled default branch when they have one; otherwise access is denied, while Superadmin behavior remains unrestricted.
+  - Verification passed: focused Superadmin suite (57 tests, 393 assertions), full PHPUnit suite (118 tests, 752 assertions), Pint, and diff check.
 - 2026-09-19 SUPERADMIN BRANCH-CONTEXT VISIBILITY UPDATE:
   - Client context lists now hide non-default branches when the school lacks branch entitlement, while the server-side context switch denial remains in place as the authorization boundary.
   - Enabling branch access through Superadmin immediately makes the granted branch visible and selectable; regression coverage verifies both states.

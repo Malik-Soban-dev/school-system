@@ -75,8 +75,12 @@ class SuperadminAccessTest extends TestCase
         $client = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
         DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $client->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         DB::table('school_user_branches')->insert([['school_id' => $school, 'branch_id' => $default, 'user_id' => $client->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()], ['school_id' => $school, 'branch_id' => $second, 'user_id' => $client->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]]);
+        $restricted = User::factory()->create(['roles' => ['admin'], 'is_active' => true]);
+        DB::table('school_user')->insert(['school_id' => $school, 'user_id' => $restricted->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert(['school_id' => $school, 'branch_id' => $second, 'user_id' => $restricted->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
 
         $this->actingAs($client)->getJson('/portal/contexts')->assertOk()->assertJsonCount(1, 'contexts')->assertJsonPath('contexts.0.branch_id', $default);
+        $this->actingAs($restricted)->getJson('/portal/meta')->assertForbidden();
         $this->actingAs($client)->putJson('/portal/context', ['school_id' => $school, 'branch_id' => $second])->assertForbidden();
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
         $this->actingAs($superadmin)->putJson('/superadmin/schools/'.$school.'/features', ['feature' => 'branches', 'enabled' => true])->assertOk();
