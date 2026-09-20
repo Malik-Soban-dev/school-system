@@ -1,3 +1,7 @@
+- 2026-09-19 SUPERADMIN BRANCH-REGISTRY CONTROLS UPDATE:
+  - Added school filtering to the global branch registry and a direct Open workspace action for every listed branch, including suspended branches that Superadmin is authorized to inspect.
+  - Preserved server-side branch ownership validation, Superadmin context auditing, and existing branch status controls.
+  - Verification passed: focused Superadmin suite (54 tests, 343 assertions), full PHPUnit suite (113 tests, 697 assertions), Pint, Vite build, and diff check.
 - 2026-09-19 SUPERADMIN ROLE-FILTER UPDATE:
   - Added tenant-aware global user registry role filtering for superadmin, owner, admin, teacher, student, parent, and accountant roles.
   - Added the dashboard role selector so Superadmin can locate and manage branch administrators and other role holders across the platform while preserving school/branch boundaries.

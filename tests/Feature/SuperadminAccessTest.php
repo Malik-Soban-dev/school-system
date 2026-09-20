@@ -102,7 +102,7 @@ class SuperadminAccessTest extends TestCase
         ]);
         $superadmin = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
-        $this->actingAs($superadmin)->getJson('/superadmin/branches?status=active&search=North&per_page=1')->assertOk()->assertJsonPath('branches.total', 1)->assertJsonPath('branches.data.0.school_name', 'Branch Registry School')->assertJsonPath('branches.data.0.name', 'North Branch')->assertJsonPath('branches.data.0.students', 0);
+        $this->actingAs($superadmin)->getJson('/superadmin/branches?school_id='.$school.'&status=active&search=North&per_page=1')->assertOk()->assertJsonPath('branches.total', 1)->assertJsonPath('branches.data.0.school_name', 'Branch Registry School')->assertJsonPath('branches.data.0.name', 'North Branch')->assertJsonPath('branches.data.0.students', 0);
     }
 
     public function test_superadmin_school_detail_does_not_truncate_large_member_rosters(): void

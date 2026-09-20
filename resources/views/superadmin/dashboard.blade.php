@@ -41,7 +41,7 @@
     </section>
     <section class="platform-panel">
         <div class="platform-panel-heading"><div><p class="eyebrow">BRANCH REGISTRY</p><h2>Every branch</h2></div></div>
-        <form id="branch-search-form"><select id="branch-status" aria-label="Branch status"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><input id="branch-search" maxlength="100" placeholder="Search branch or school" aria-label="Search branches"><button type="submit">Search branches</button></form>
+        <form id="branch-search-form"><select id="branch-school" aria-label="Filter branches by school"><option value="">All schools</option></select><select id="branch-status" aria-label="Branch status"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select><input id="branch-search" maxlength="100" placeholder="Search branch or school" aria-label="Search branches"><button type="submit">Search branches</button></form>
         <div class="platform-table-wrap"><table><thead><tr><th>School</th><th>Branch</th><th>Status</th><th>Members</th><th>Students</th><th>Staff</th><th>Teachers</th><th>Control</th></tr></thead><tbody id="branch-rows"><tr><td colspan="8">Loading branch registry…</td></tr></tbody></table></div><div id="branch-pagination"></div>
     </section>
     <section class="platform-panel" id="school-detail" hidden>
@@ -77,6 +77,7 @@
     const platformInvoicePagination = document.querySelector('#platform-invoice-pagination');
     const schools = document.querySelector('#school-rows');
     const branchRows = document.querySelector('#branch-rows');
+    const branchSchool = document.querySelector('#branch-school');
     const branchStatus = document.querySelector('#branch-status');
     const branchSearch = document.querySelector('#branch-search');
     const branchPagination = document.querySelector('#branch-pagination');
@@ -396,6 +397,9 @@
         userSchool.innerHTML = '<option value="">All schools</option>' + platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
         if (platformSchools.some(school => String(school.id) === selectedUserSchool)) userSchool.value = selectedUserSchool;
         userSchool.dispatchEvent(new Event('change'));
+        const selectedBranchSchool = branchSchool.value;
+        branchSchool.innerHTML = '<option value="">All schools</option>' + platformSchools.map(school => `<option value="${esc(school.id)}">${esc(school.name)}</option>`).join('');
+        if (platformSchools.some(school => String(school.id) === selectedBranchSchool)) branchSchool.value = selectedBranchSchool;
         updateAuditBranches();
         renderPlans();
         const selectedSchool = explorerSchool.value;
@@ -494,12 +498,23 @@
     };
     const loadBranches = async (page = 1) => {
         const params = new URLSearchParams({page, per_page: 50});
+        if (branchSchool.value) params.set('school_id', branchSchool.value);
         if (branchStatus.value) params.set('status', branchStatus.value);
         if (branchSearch.value.trim()) params.set('search', branchSearch.value.trim());
         const data = await request(`/superadmin/branches?${params}`);
-        branchRows.innerHTML = data.branches.data.map(branch => `<tr><td>${esc(branch.school_name)}</td><td><strong>${esc(branch.name)}</strong><small>${esc(branch.code)}${branch.is_default ? ' · Default' : ''}</small></td><td><span class="platform-status ${esc(branch.status)}">${esc(branch.status)}</span></td><td>${esc(branch.members)}</td><td>${esc(branch.students)}</td><td>${esc(branch.staff)}</td><td>${esc(branch.teachers)}</td><td><button class="platform-branch-status" data-school="${esc(branch.school_id)}" data-branch="${esc(branch.id)}" data-status="${branch.status === 'active' ? 'suspended' : 'active'}">${branch.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="8">No matching branches.</td></tr>';
+        branchRows.innerHTML = data.branches.data.map(branch => `<tr><td>${esc(branch.school_name)}</td><td><strong>${esc(branch.name)}</strong><small>${esc(branch.code)}${branch.is_default ? ' · Default' : ''}</small></td><td><span class="platform-status ${esc(branch.status)}">${esc(branch.status)}</span></td><td>${esc(branch.members)}</td><td>${esc(branch.students)}</td><td>${esc(branch.staff)}</td><td>${esc(branch.teachers)}</td><td><button class="platform-branch-workspace" data-school="${esc(branch.school_id)}" data-branch="${esc(branch.id)}" type="button">Open workspace</button> <button class="platform-branch-status" data-school="${esc(branch.school_id)}" data-branch="${esc(branch.id)}" data-status="${branch.status === 'active' ? 'suspended' : 'active'}">${branch.status === 'active' ? 'Suspend' : 'Activate'}</button></td></tr>`).join('') || '<tr><td colspan="8">No matching branches.</td></tr>';
         branchPagination.innerHTML = data.branches.last_page > 1 ? `<button type="button" data-branch-page="${data.branches.current_page - 1}" ${data.branches.current_page === 1 ? 'disabled' : ''}>Previous</button> <span>Page ${data.branches.current_page} of ${data.branches.last_page}</span> <button type="button" data-branch-page="${data.branches.current_page + 1}" ${data.branches.current_page === data.branches.last_page ? 'disabled' : ''}>Next</button>` : '';
         branchPagination.querySelectorAll('[data-branch-page]').forEach(button => button.addEventListener('click', () => loadBranches(Number(button.dataset.branchPage)).catch(error => { branchRows.innerHTML = `<tr><td colspan="8">${esc(error.message)}</td></tr>`; })));
+        branchRows.querySelectorAll('.platform-branch-workspace').forEach(button => button.addEventListener('click', async () => {
+            button.disabled = true;
+            try {
+                await request('/portal/context', {method: 'PUT', headers: {'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({school_id: Number(button.dataset.school), branch_id: Number(button.dataset.branch)})});
+                window.location.href = '/dashboard';
+            } catch (error) {
+                button.disabled = false;
+                window.alert(error.message);
+            }
+        }));
         branchRows.querySelectorAll('.platform-branch-status').forEach(button => button.addEventListener('click', async () => {
             const status = button.dataset.status;
             if (!window.confirm(`Are you sure you want to ${status === 'suspended' ? 'suspend' : 'activate'} this branch?`)) return;
@@ -549,6 +564,7 @@
         document.querySelector('#user-search-form').addEventListener('submit', event => { event.preventDefault(); loadUsers().catch(error => { userRows.innerHTML = `<tr><td colspan="4">${esc(error.message)}</td></tr>`; }); });
     userSchool.addEventListener('change', () => { const school = platformSchools.find(item => String(item.id) === String(userSchool.value)); userBranch.innerHTML = '<option value="">All branches</option>' + (school?.branch_options || []).map(branch => `<option value="${esc(branch.id)}">${esc(branch.name)}</option>`).join(''); });
     document.querySelector('#branch-search-form').addEventListener('submit', event => { event.preventDefault(); loadBranches().catch(error => { branchRows.innerHTML = `<tr><td colspan="8">${esc(error.message)}</td></tr>`; }); });
+    branchSchool.addEventListener('change', () => loadBranches().catch(error => { branchRows.innerHTML = `<tr><td colspan="8">${esc(error.message)}</td></tr>`; }));
     document.querySelector('#audit-search-form').addEventListener('submit', event => { event.preventDefault(); loadAudit().catch(error => { audit.innerHTML = `<tr><td colspan="7">${esc(error.message)}</td></tr>`; }); });
     auditSchool.addEventListener('change', () => { auditBranch.value = ''; updateAuditBranches(); });
     explorerSchool.addEventListener('change', updateExplorerBranches);
