@@ -1,3 +1,6 @@
+- 2026-09-20 SUPERADMIN SCHOOL-DETAIL CENSUS UPDATE:
+  - Expanded the Superadmin school detail response with school-bounded counts for academic years, subjects, guardians, teacher assignments, attendance, timetables, exams, exam subjects, grading scales, grades, invoices, payments, expenses, leave requests, payroll, notices, invitations, notifications, delivery events, preferences, settings and audit records; added open-invoice totals for operational support.
+  - Verification passed: focused census coverage (1 test, 41 assertions); full PHPUnit (138 tests, 959 assertions); Blade view cache; Pint; diff check.
 - 2026-09-20 SUPERADMIN SUSPENDED-SCHOOL GRANT SAFETY UPDATE:
   - Global, school-detail and bulk branch-access mutations now lock and verify parent school lifecycle state before writing; active grants cannot be assigned under suspended schools, while suspended access remains available for restoration workflows.
   - Verification passed: focused school/branch grant coverage (3 tests, 18 assertions); Blade view cache; full PHPUnit (138 tests, 939 assertions); Pint; diff check.

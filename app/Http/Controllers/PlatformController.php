@@ -759,6 +759,30 @@ class PlatformController extends Controller
             'notifications' => DB::table('school_notifications')->where('school_id', $school)->count(),
             'audit' => DB::table('school_audit')->where('school_id', $school)->count(),
         ];
+        foreach ([
+            'school_academic_years' => 'academic_years',
+            'school_subjects' => 'subjects',
+            'school_guardian_links' => 'guardian_links',
+            'school_teacher_assignments' => 'teacher_assignments',
+            'school_attendance' => 'attendance',
+            'school_timetables' => 'timetables',
+            'school_exams' => 'exams',
+            'school_exam_subjects' => 'exam_subjects',
+            'school_grade_bands' => 'grade_bands',
+            'school_grades' => 'grades',
+            'school_expenses' => 'expenses',
+            'school_leave_requests' => 'leave_requests',
+            'school_payroll' => 'payroll',
+            'school_notices' => 'notices',
+            'school_invitations' => 'invitations',
+            'school_notification_events' => 'notification_events',
+            'school_notification_deliveries' => 'notification_deliveries',
+            'school_notification_preferences' => 'notification_preferences',
+            'school_settings' => 'settings',
+        ] as $table => $key) {
+            $counts[$key] = DB::table($table)->where('school_id', $school)->count();
+        }
+        $counts['open_invoices'] = DB::table('school_invoices')->where('school_id', $school)->whereIn('status', ['issued', 'partial', 'overdue'])->count();
         $branches = DB::table('school_branches')->where('school_id', $school)->orderBy('name')->get(['id', 'name', 'code', 'status', 'is_default']);
         foreach (['school_students' => 'students', 'school_staff' => 'staff', 'school_classes' => 'classes', 'school_teacher_assignments' => 'teachers', 'school_user_branches' => 'members', 'school_invoices' => 'open_invoices'] as $table => $key) {
             $countsByBranch = DB::table($table)->where('school_id', $school)->whereNotNull('branch_id')->when(in_array($key, ['members', 'teachers'], true), fn ($query) => $query->where('status', 'active'))->when($key === 'open_invoices', fn ($query) => $query->whereIn('status', ['issued', 'partial', 'overdue']))->select('branch_id')->selectRaw(in_array($key, ['teachers', 'members'], true) ? 'count(distinct user_id) as total' : 'count(*) as total')->groupBy('branch_id')->pluck('total', 'branch_id');
