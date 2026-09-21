@@ -95,7 +95,7 @@ class SchoolPortal
         if ($this->admin($user)) {
             return $query;
         }
-        if ($this->tenant->hasRole($user, 'accountant') && in_array($module, ['students', 'classes', 'subjects', 'invoices', 'fee_concessions', 'payments', 'expenses', 'payroll', 'payroll_payments'])) {
+        if ($this->tenant->hasRole($user, 'accountant') && in_array($module, ['students', 'classes', 'subjects', 'invoices', 'fee_concessions', 'fee_plans', 'payments', 'expenses', 'payroll', 'payroll_payments'])) {
             return $query;
         }
         if ($module === 'notices') {
@@ -390,7 +390,7 @@ class SchoolPortal
                 default => ['string', 'max:'.($field['type'] === 'textarea' ? 5000 : 255)],
             }];
             $unique = match ($module.'.'.$field['name']) {
-                'subjects.code', 'staff.employee_number', 'students.admission_number', 'invoices.reference', 'payments.reference', 'payroll_payments.reference', 'expenses.reference', 'grade_bands.minimum' => true,
+                'subjects.code', 'staff.employee_number', 'students.admission_number', 'invoices.reference', 'payments.reference', 'payroll_payments.reference', 'expenses.reference', 'grade_bands.minimum', 'fee_plans.class_id' => true,
                 default => false,
             };
             if ($unique) {

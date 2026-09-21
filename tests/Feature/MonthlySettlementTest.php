@@ -177,6 +177,24 @@ class MonthlySettlementTest extends TestCase
         $this->assertDatabaseHas('school_audit', ['module' => 'invoices', 'action' => 'monthly_batch_created']);
     }
 
+    public function test_active_class_fee_plan_overrides_school_monthly_fee_settings(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $portal = app(SchoolPortal::class);
+        $year = $portal->save('academic_years', $owner, ['name' => '2026', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
+        $class = $portal->save('classes', $owner, ['name' => 'Grade 12', 'year_id' => $year, 'capacity' => 30]);
+        $student = $portal->save('students', $owner, ['name' => 'Plan Student', 'admission_number' => 'PLAN-1', 'class_id' => $class, 'status' => 'active']);
+        $portal->save('fee_plans', $owner, ['class_id' => $class, 'name' => 'Senior plan', 'amount' => '300.00', 'due_day' => 18, 'status' => 'active']);
+        DB::table('school_settings')->upsert([
+            ['school_id' => app(TenantContext::class)->id(), 'key' => 'monthly_fee_amount', 'value' => '25000'],
+            ['school_id' => app(TenantContext::class)->id(), 'key' => 'monthly_fee_due_day', 'value' => '10'],
+        ], ['school_id', 'key'], ['value']);
+
+        $this->artisan('school:monthly-invoices', ['--month' => '2026-11'])->assertSuccessful();
+
+        $this->assertDatabaseHas('school_invoices', ['student_id' => $student, 'amount' => 30000, 'due_on' => '2026-11-18', 'description' => 'Monthly school fee — Senior plan']);
+    }
+
     public function test_school_payroll_command_creates_repeat_safe_calculations_from_staff_salary_settings(): void
     {
         $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);

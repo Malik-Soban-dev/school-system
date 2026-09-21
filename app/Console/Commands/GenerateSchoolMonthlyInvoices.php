@@ -26,36 +26,43 @@ class GenerateSchoolMonthlyInvoices extends Command
                 $tenant->set((int) $schoolId, (int) $branchId);
                 $settings = $tenant->table('school_settings')->whereIn('key', ['monthly_fee_amount', 'monthly_fee_due_day', 'monthly_fee_description'])->pluck('value', 'key');
                 $amount = (int) ($settings['monthly_fee_amount'] ?? 0);
-                if ($amount < 1) {
+                $plans = $tenant->table('school_fee_plans')->where('status', 'active')->get(['class_id', 'name', 'amount', 'due_day'])->keyBy('class_id');
+                if ($amount < 1 && $plans->isEmpty()) {
                     continue;
                 }
                 $dueDay = min(28, max(1, (int) ($settings['monthly_fee_due_day'] ?? 10)));
-                $dueOn = $month->setDay($dueDay)->toDateString();
                 $description = trim((string) ($settings['monthly_fee_description'] ?? 'Monthly school fee')) ?: 'Monthly school fee';
                 $now = now();
 
-                $tenant->table('school_students')->where('status', 'active')->orderBy('id')->chunkById(100, function ($students) use ($tenant, $month, $dueOn, $amount, $description, $now, &$created, &$skipped, &$waived): void {
+                $tenant->table('school_students')->where('status', 'active')->orderBy('id')->chunkById(100, function ($students) use ($tenant, $month, $dueDay, $amount, $description, $plans, $now, &$created, &$skipped, &$waived): void {
                     foreach ($students as $student) {
                         $reference = 'FEE-'.$month->format('Y-m').'-'.$student->id;
+                        $plan = $plans->get($student->class_id);
+                        $baseAmount = (int) ($plan->amount ?? $amount);
+                        if ($baseAmount < 1) {
+                            continue;
+                        }
+                        $dueOn = $month->setDay(min(28, max(1, (int) ($plan->due_day ?? $dueDay))))->toDateString();
+                        $baseDescription = $plan ? $description.' — '.$plan->name : $description;
                         $concession = $tenant->table('school_fee_concessions')->where('student_id', $student->id)->where('status', 'active')
                             ->where(function ($query) use ($month): void {
                                 $query->whereNull('starts_on')->orWhere('starts_on', '<=', $month->endOfMonth()->toDateString());
                             })->where(function ($query) use ($month): void {
                                 $query->whereNull('ends_on')->orWhere('ends_on', '>=', $month->startOfMonth()->toDateString());
-                            })->get(['name', 'type', 'value'])->map(function (object $row) use ($amount): array {
+                            })->get(['name', 'type', 'value'])->map(function (object $row) use ($baseAmount): array {
                                 $discount = $row->type === 'percentage'
-                                    ? (int) round($amount * ((float) $row->value / 100))
+                                    ? (int) round($baseAmount * ((float) $row->value / 100))
                                     : $this->decimalToCents($row->value);
 
-                                return ['name' => $row->name, 'discount' => min($amount, max(0, $discount))];
+                                return ['name' => $row->name, 'discount' => min($baseAmount, max(0, $discount))];
                             })->sortByDesc('discount')->first();
                         $discount = (int) ($concession['discount'] ?? 0);
-                        if ($discount >= $amount) {
+                        if ($discount >= $baseAmount) {
                             $waived++;
                             continue;
                         }
-                        $invoiceAmount = $amount - $discount;
-                        $invoiceDescription = $discount > 0 ? $description.' — '.$concession['name'] : $description;
+                        $invoiceAmount = $baseAmount - $discount;
+                        $invoiceDescription = $discount > 0 ? $baseDescription.' — '.$concession['name'] : $baseDescription;
                         $inserted = DB::table('school_invoices')->insertOrIgnore([
                             'school_id' => $tenant->id(),
                             'branch_id' => $tenant->branchId(),

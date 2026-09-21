@@ -96,7 +96,7 @@ final class TenantContext
         return [
             'school_academic_years', 'school_classes', 'school_subjects', 'school_staff',
             'school_students', 'school_student_welfare', 'school_assignments', 'school_submissions', 'school_materials', 'school_guardian_links', 'school_teacher_assignments', 'school_attendance',
-            'school_timetables', 'school_exams', 'school_grades', 'school_subject_attendance', 'school_invoices', 'school_fee_concessions', 'school_payments',
+            'school_timetables', 'school_exams', 'school_grades', 'school_subject_attendance', 'school_invoices', 'school_fee_concessions', 'school_fee_plans', 'school_payments',
             'school_expenses', 'school_leave_requests', 'school_payroll', 'school_payroll_payments',
             'school_notices', 'school_enrollments', 'school_invitations', 'school_staff_attendance', 'school_notification_events',
             'school_notifications', 'school_notification_deliveries', 'school_notification_preferences',

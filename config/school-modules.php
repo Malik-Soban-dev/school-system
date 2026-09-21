@@ -653,6 +653,24 @@ return [
             'choices' => ['active', 'inactive'],
         ]],
     ],
+    'fee_plans' => [
+        'label' => 'Class fee plans',
+        'singular' => 'fee plan',
+        'help' => 'Set a monthly fee for a class. Active class plans override the school-wide monthly fee when automatic invoices are generated.',
+        'read' => ['owner', 'admin', 'accountant'],
+        'write' => ['owner', 'admin', 'accountant'],
+        'fields' => [[
+            'name' => 'class_id', 'label' => 'Class', 'type' => 'relation', 'relation' => 'classes',
+        ], [
+            'name' => 'name', 'label' => 'Plan name', 'type' => 'text',
+        ], [
+            'name' => 'amount', 'label' => 'Monthly amount', 'type' => 'money',
+        ], [
+            'name' => 'due_day', 'label' => 'Due day (1-28)', 'type' => 'number', 'min' => 1, 'max' => 28,
+        ], [
+            'name' => 'status', 'label' => 'Status', 'type' => 'select', 'choices' => ['active', 'inactive'],
+        ]],
+    ],
     'payments' => [
         'label' => 'Payments & receipts',
         'singular' => 'payment',

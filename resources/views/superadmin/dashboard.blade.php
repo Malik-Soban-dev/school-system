@@ -162,6 +162,10 @@
     const explorerSchool = document.querySelector('#explorer-school');
     const explorerBranch = document.querySelector('#explorer-branch');
     const explorerModule = document.querySelector('#explorer-module');
+    const feePlanOption = document.createElement('option');
+    feePlanOption.value = 'fee_plans';
+    feePlanOption.textContent = 'Fee plans';
+    explorerModule.append(feePlanOption);
     if (! explorerModule.querySelector('option[value="branch_access"]')) explorerModule.insertAdjacentHTML('beforeend', '<option value="branch_access">Branch access grants</option>');
     ['grade_bands', 'exam_subjects'].forEach(module => {
         if (! explorerModule.querySelector(`option[value="${module}"]`)) {
