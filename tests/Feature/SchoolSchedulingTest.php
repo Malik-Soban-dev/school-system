@@ -28,6 +28,25 @@ class SchoolSchedulingTest extends TestCase
         $this->assertDatabaseCount('school_timetables', 2);
     }
 
+    public function test_timetable_accepts_a_different_backup_teacher_and_rejects_the_assigned_teacher(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $teacher = User::factory()->create(['roles' => ['teacher'], 'is_active' => true]);
+        $backup = User::factory()->create(['roles' => ['teacher'], 'is_active' => true]);
+        $this->actingAs($owner);
+        $year = $this->postJson('/portal/records/academic_years', ['name' => 'Backup Year', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31'])->assertOk()->json('id');
+        $class = $this->postJson('/portal/records/classes', ['name' => 'Backup Class', 'year_id' => $year, 'capacity' => 30])->assertOk()->json('id');
+        $subject = $this->postJson('/portal/records/subjects', ['name' => 'Backup Subject', 'code' => 'BACKUP'])->assertOk()->json('id');
+        $assignment = ['class_id' => $class, 'subject_id' => $subject, 'status' => 'active'];
+        $this->postJson('/portal/records/teacher_assignments', [...$assignment, 'user_id' => $teacher->id])->assertOk();
+        $this->postJson('/portal/records/teacher_assignments', [...$assignment, 'user_id' => $backup->id])->assertOk();
+
+        $lesson = ['class_id' => $class, 'subject_id' => $subject, 'teacher_id' => $teacher->id, 'weekday' => 'Monday', 'starts_at' => '09:00', 'ends_at' => '10:00', 'room' => 'B-1'];
+        $this->postJson('/portal/records/timetables', [...$lesson, 'substitute_teacher_id' => $backup->id])->assertOk();
+        $this->postJson('/portal/records/timetables', [...$lesson, 'substitute_teacher_id' => $teacher->id, 'weekday' => 'Tuesday', 'room' => 'B-2'])->assertUnprocessable()->assertJsonValidationErrors('substitute_teacher_id');
+        $this->assertDatabaseHas('school_timetables', ['substitute_teacher_id' => $backup->id]);
+    }
+
     public function test_staff_cannot_approve_own_leave_or_request_leave_for_another_user(): void
     {
         $teacher = User::factory()->create(['roles' => ['teacher'], 'is_active' => true]);

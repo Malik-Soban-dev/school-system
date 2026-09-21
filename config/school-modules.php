@@ -448,6 +448,12 @@ return [
             'type' => 'relation',
             'relation' => 'users',
         ], [
+            'name' => 'substitute_teacher_id',
+            'label' => 'Backup teacher',
+            'type' => 'relation',
+            'relation' => 'users',
+            'optional' => true,
+        ], [
             'name' => 'weekday',
             'label' => 'Day',
             'type' => 'select',

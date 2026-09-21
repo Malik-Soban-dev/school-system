@@ -572,6 +572,12 @@ class SchoolPortal
         if ($module === 'teacher_assignments') {
             $this->requireRole((int) $data['user_id'], 'teacher', 'user_id');
         }
+        if ($module === 'timetables' && ! empty($data['substitute_teacher_id'])) {
+            if ((int) $data['substitute_teacher_id'] === (int) $data['teacher_id']) {
+                $this->fail('substitute_teacher_id', 'The backup teacher must be different from the assigned teacher.');
+            }
+            $this->requireRole((int) $data['substitute_teacher_id'], 'teacher', 'substitute_teacher_id');
+        }
         if (in_array($module, ['attendance', 'grades']) && ! $this->admin($user)) {
             $student = $this->tenant->table('school_students')->find($data['student_id']);
             $assignment = $this->tenant->table('school_teacher_assignments')->where('user_id', $user->id)->where('class_id', $student->class_id)->where('status', 'active');
