@@ -133,4 +133,22 @@ class MonthlySettlementTest extends TestCase
         $this->assertDatabaseHas('school_invoices', ['student_id' => $active, 'reference' => 'FEE-2026-10-'.$active, 'amount' => 25000, 'due_on' => '2026-10-12']);
         $this->assertDatabaseHas('school_notification_events', ['module' => 'invoices', 'record_id' => DB::table('school_invoices')->value('id')]);
     }
+
+    public function test_school_payroll_command_creates_repeat_safe_calculations_from_staff_salary_settings(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $portal = app(SchoolPortal::class);
+        $staff = $portal->save('staff', $owner, [
+            'name' => 'Monthly Paid Staff', 'employee_number' => 'AUTO-PAY-1', 'department' => 'Teaching', 'designation' => 'Teacher',
+            'joined_on' => '2026-01-01', 'status' => 'active', 'basic_salary' => '1000.00', 'monthly_allowances' => '125.50', 'monthly_deductions' => '25.25',
+        ]);
+
+        $this->artisan('school:payroll', ['--month' => '2026-10'])->assertSuccessful();
+        $this->artisan('school:payroll', ['--month' => '2026-10'])->assertSuccessful();
+
+        $this->assertDatabaseCount('school_payroll', 1);
+        $this->assertDatabaseHas('school_payroll', ['staff_id' => $staff, 'month' => '2026-10', 'basic' => 100000, 'allowances' => 12550, 'deductions' => 2525]);
+        $this->assertDatabaseHas('school_audit', ['module' => 'payroll', 'action' => 'monthly_payroll_created']);
+        $this->assertDatabaseHas('school_notification_events', ['module' => 'payroll']);
+    }
 }

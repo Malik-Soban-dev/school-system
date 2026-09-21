@@ -435,7 +435,7 @@ class SchoolPortal
             $data['schedule_status'] = $data['schedule_status'] ?? $old?->schedule_status ?? 'draft';
         }
         foreach ($definition['fields'] as $field) {
-            if ($field['type'] === 'money') {
+            if ($field['type'] === 'money' && array_key_exists($field['name'], $data) && $data[$field['name']] !== null) {
                 $parts = explode('.', (string) $data[$field['name']]);
                 $data[$field['name']] = (int) $parts[0] * 100 + (int) str_pad($parts[1] ?? '', 2, '0');
             }

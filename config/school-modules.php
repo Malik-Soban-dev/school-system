@@ -97,6 +97,21 @@ return [
             'label' => 'Status',
             'type' => 'select',
             'choices' => ['active', 'left'],
+        ], [
+            'name' => 'basic_salary',
+            'label' => 'Monthly basic salary',
+            'type' => 'money',
+            'optional' => true,
+        ], [
+            'name' => 'monthly_allowances',
+            'label' => 'Monthly allowances',
+            'type' => 'money',
+            'optional' => true,
+        ], [
+            'name' => 'monthly_deductions',
+            'label' => 'Monthly deductions',
+            'type' => 'money',
+            'optional' => true,
         ]],
     ],
     'staff_attendance' => [
