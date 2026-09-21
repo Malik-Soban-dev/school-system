@@ -10,6 +10,7 @@
 </head>
 <body>
 <main class="platform-shell" id="platform-dashboard">
+    <div id="platform-degraded-alert" class="alert error" role="status" hidden>Some platform census data is temporarily unavailable. Core controls remain available; refresh this panel or inspect Operations for the recorded error.</div>
     <header class="platform-header">
         <div><p class="eyebrow">PLATFORM CONTROL CENTER</p><h1>Superadmin dashboard</h1><p>Welcome, {{ $user->name }}. Manage every school, account, and platform signal from one protected view.</p></div>
         <a href="{{ route('account') }}">Account security</a>
@@ -118,6 +119,7 @@
     const schoolRegistrySearch = document.querySelector('#school-registry-search');
     const schoolRegistryStatus = document.querySelector('#school-registry-status');
     const entitlementAlertContent = document.querySelector('#entitlement-alert-content');
+    const platformDegradedAlert = document.querySelector('#platform-degraded-alert');
     const healthContent = document.querySelector('#health-content');
     const failedJobContent = document.querySelector('#failed-job-content');
     const exportContent = document.querySelector('#export-content');
@@ -485,6 +487,7 @@
     };
     const load = async () => {
         const data = await request('/superadmin/data');
+        platformDegradedAlert.hidden = !data.degraded;
         platformSchools = data.schools;
         platformPlans = data.plans || [];
         const entitlementAlerts = data.entitlement_alerts || [];

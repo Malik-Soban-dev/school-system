@@ -21,6 +21,8 @@ class PortalController extends Controller
     public function meta(Request $request): JsonResponse
     {
         $tenant = app(TenantContext::class);
+        $degraded = false;
+        $degradedReasons = [];
         try {
             $settingsQuery = DB::table('school_settings')->where('school_id', $tenant->id())->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family', 'late_fee_amount', 'late_fee_grace_days', 'monthly_fee_amount', 'monthly_fee_due_day', 'monthly_fee_description']);
             if (DB::table('schools')->count() === 1) {
@@ -31,6 +33,8 @@ class PortalController extends Controller
             $settings = $settingsQuery->pluck('value', 'key')->all();
         } catch (Throwable $exception) {
             report($exception);
+            $degraded = true;
+            $degradedReasons[] = 'school settings';
             $settings = [];
         }
 
@@ -38,6 +42,8 @@ class PortalController extends Controller
             $modules = $this->portal->modules($request->user());
         } catch (Throwable $exception) {
             report($exception);
+            $degraded = true;
+            $degradedReasons[] = 'module access';
             $modules = collect(config('school-modules', []))->map(function (array $definition, string $key) use ($request): array {
                 $definition['key'] = $key;
                 $definition['canWrite'] = $this->portal->admin($request->user()) && collect($definition['write'] ?? [])->contains(fn (string $role): bool => $request->user()->hasRole($role));
@@ -50,6 +56,8 @@ class PortalController extends Controller
             $options = $this->portal->options($request->user());
         } catch (Throwable $exception) {
             report($exception);
+            $degraded = true;
+            $degradedReasons[] = 'record options';
             $options = [];
         }
 
@@ -57,6 +65,8 @@ class PortalController extends Controller
             $overview = $this->portal->overview($request->user());
         } catch (Throwable $exception) {
             report($exception);
+            $degraded = true;
+            $degradedReasons[] = 'overview statistics';
             $overview = ['stats' => [], 'attendance' => ['total' => 0, 'attended' => 0, 'percentage' => 0], 'staff_attendance' => ['total' => 0, 'present' => 0, 'late' => 0, 'absent' => 0, 'leave' => 0, 'percentage' => 0], 'fees' => ['billed' => 0, 'collected' => 0, 'outstanding' => 0, 'overdue' => 0, 'collection_rate' => 0], 'today' => today()->toDateString()];
         }
 
@@ -64,6 +74,8 @@ class PortalController extends Controller
             $effectiveRoles = $tenant->roles($request->user());
         } catch (Throwable $exception) {
             report($exception);
+            $degraded = true;
+            $degradedReasons[] = 'account roles';
             $effectiveRoles = $request->user()->roles ?? [];
         }
 
@@ -71,6 +83,8 @@ class PortalController extends Controller
             $contexts = $this->availableContexts($request->user());
         } catch (Throwable $exception) {
             report($exception);
+            $degraded = true;
+            $degradedReasons[] = 'workspace contexts';
             $contexts = collect();
         }
 
@@ -84,6 +98,8 @@ class PortalController extends Controller
             'today' => today($settings['timezone'] ?? config('app.timezone'))->toDateString(),
             'contexts' => $contexts,
             'current_context' => ['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId()],
+            'degraded' => $degraded,
+            'degraded_reasons' => array_values(array_unique($degradedReasons)),
         ]);
     }
 

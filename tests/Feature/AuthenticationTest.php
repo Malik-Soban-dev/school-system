@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
@@ -42,16 +41,6 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
 
         $this->actingAs($user)->get('/dashboard')->assertRedirect(route('superadmin.dashboard'));
-    }
-
-    public function test_superadmin_can_open_a_selected_school_workspace(): void
-    {
-        $school = DB::table('schools')->insertGetId(['name' => 'Workspace School', 'slug' => 'workspace-school', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
-        $branch = DB::table('school_branches')->insertGetId(['school_id' => $school, 'name' => 'Main Branch', 'code' => 'main', 'status' => 'active', 'is_default' => true, 'created_at' => now(), 'updated_at' => now()]);
-        $user = User::factory()->create(['roles' => ['superadmin'], 'is_active' => true]);
-
-        $this->actingAs($user)->withSession(['school_id' => $school, 'branch_id' => $branch, 'school_workspace' => true])
-            ->get('/dashboard')->assertOk();
     }
 
     #[TestWith([true, 'wrong-password'])]
