@@ -59,7 +59,11 @@ class PortalController extends Controller
         abort_unless($context, 403, 'You do not have access to that school branch.');
         $defaultBranch = DB::table('school_branches')->where('school_id', $context->school_id)->where('is_default', true)->value('id');
         abort_if(! $request->user()->hasRole('superadmin') && (int) $context->branch_id !== (int) $defaultBranch && ! $entitlements->allowsForSchool((int) $context->school_id, 'branches'), 403, 'Branch access is not enabled for this school subscription.');
-        $request->session()->put(['school_id' => (int) $context->school_id, 'branch_id' => (int) $context->branch_id]);
+        $request->session()->put([
+            'school_id' => (int) $context->school_id,
+            'branch_id' => (int) $context->branch_id,
+            'school_workspace' => $request->user()->hasRole('superadmin'),
+        ]);
         app(TenantContext::class)->set((int) $context->school_id, (int) $context->branch_id);
 
         if ($request->user()->hasRole('superadmin')) {

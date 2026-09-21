@@ -113,7 +113,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, Resolve
     Route::get('/reports/{module}/{id}', [PortalController::class, 'report'])->whereNumber('id')->name('record.report');
     Route::get('/report-cards/{exam}/{student}', [ReportCardController::class, 'show'])->whereNumber(['exam', 'student'])->name('report-card.show');
     Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
-        if ($request->user()->hasRole('superadmin')) {
+        if ($request->user()->hasRole('superadmin') && ! $request->session()->get('school_workspace', false)) {
             return redirect()->route('superadmin.dashboard');
         }
 

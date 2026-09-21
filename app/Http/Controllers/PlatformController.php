@@ -21,6 +21,8 @@ class PlatformController extends Controller
 {
     public function index(Request $request): View
     {
+        $request->session()->forget('school_workspace');
+
         return view('superadmin.dashboard', ['user' => $request->user()]);
     }
 
