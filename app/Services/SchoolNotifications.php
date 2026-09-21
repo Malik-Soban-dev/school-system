@@ -144,5 +144,15 @@ class SchoolNotifications
                 $this->publish('invoices', $invoice->id, 'invoice-reminder:'.$invoice->id.':'.$date.':'.$days, 'Fee reminder: '.$days.' day'.($days === 1 ? '' : 's').' to go');
             }
         }
+        foreach ([1, 7, 30] as $days) {
+            $date = today($timezone)->subDays($days)->toDateString();
+            foreach ($this->tenant->table('school_invoices')->where('due_on', $date)->orderBy('id')->get(['id', 'amount']) as $invoice) {
+                $paid = (int) $this->tenant->table('school_payments')->where('invoice_id', $invoice->id)->sum('amount');
+                if ($paid >= (int) $invoice->amount) {
+                    continue;
+                }
+                $this->publish('invoices', $invoice->id, 'invoice-overdue-reminder:'.$invoice->id.':'.$date.':'.$days, 'Overdue fee reminder: '.$days.' day'.($days === 1 ? '' : 's').' overdue');
+            }
+        }
     }
 }

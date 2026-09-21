@@ -119,4 +119,29 @@ class SchoolNotificationTest extends TestCase
         $this->actingAs($studentUser)->getJson('/portal/notifications')->assertJsonPath('unread', 1)->assertJsonPath('rows.data.0.title', 'Fee reminder: 7 days to go');
         $this->assertDatabaseCount('school_notifications', 2);
     }
+
+    public function test_overdue_fee_reminders_are_sent_once_and_paid_invoices_are_skipped(): void
+    {
+        $this->travelTo(now()->setDate(2026, 9, 9)->startOfDay());
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $parent = User::factory()->create(['roles' => ['parent'], 'is_active' => true]);
+        $portal = app(SchoolPortal::class);
+        $year = $portal->save('academic_years', $owner, ['name' => 'Year', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
+        $class = $portal->save('classes', $owner, ['name' => 'Class', 'year_id' => $year, 'capacity' => 30]);
+        $student = $portal->save('students', $owner, ['name' => 'Child', 'admission_number' => 'FEE-OVERDUE-1', 'class_id' => $class, 'status' => 'active']);
+        $portal->save('guardian_links', $owner, ['student_id' => $student, 'user_id' => $parent->id, 'relationship' => 'Parent', 'status' => 'active']);
+        $invoice = $portal->save('invoices', $owner, ['student_id' => $student, 'reference' => 'OVERDUE-REMINDER-1', 'description' => 'September fee', 'amount' => '100.00', 'due_on' => '2026-09-08', 'billing_month' => '2026-09']);
+        DB::table('school_notification_events')->delete();
+
+        $this->artisan('school:notifications')->assertSuccessful();
+        $this->artisan('school:notifications')->assertSuccessful();
+        $this->actingAs($parent)->getJson('/portal/notifications')->assertJsonPath('unread', 1)->assertJsonPath('rows.data.0.title', 'Overdue fee reminder: 1 day overdue');
+        $this->assertDatabaseCount('school_notifications', 1);
+
+        $this->actingAs($owner)->postJson('/portal/records/payments', ['invoice_id' => $invoice, 'reference' => 'OVERDUE-PAID', 'amount' => '100.00', 'paid_on' => '2026-09-09', 'method' => 'cash'])->assertOk();
+        $this->travel(6)->days();
+        $this->artisan('school:notifications')->assertSuccessful();
+        $this->assertDatabaseCount('school_notifications', 2);
+        $this->assertSame(1, DB::table('school_notifications')->where('title', 'Overdue fee reminder: 1 day overdue')->count());
+    }
 }
