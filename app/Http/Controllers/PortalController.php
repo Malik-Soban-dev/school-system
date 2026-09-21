@@ -394,6 +394,35 @@ class PortalController extends Controller
         return response()->json(['month' => $data['month'] ?? null, 'billed' => $billed, 'collected' => $collected, 'outstanding' => max(0, $billed - $collected), 'outstanding_invoices' => $outstandingInvoices, 'overdue_invoices' => $overdueInvoices, 'aging' => $aging, 'receipts' => (int) (clone $payments)->count(), 'methods' => $methods]);
     }
 
+    public function reconciliationExport(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        abort_unless($this->portal->can($request->user(), ['owner', 'admin', 'accountant']), 403);
+        $data = $request->validate(['month' => ['nullable', 'date_format:Y-m']]);
+        $invoices = $this->portal->query('invoices', $request->user());
+        $payments = $this->portal->query('payments', $request->user());
+        if (! empty($data['month'])) {
+            $invoices->where('billing_month', $data['month']);
+            $payments->whereIn('invoice_id', (clone $invoices)->select('id'));
+        }
+        $invoiceRows = (clone $invoices)->orderBy('id')->get(['id', 'reference', 'student_id', 'description', 'amount', 'due_on', 'billing_month']);
+        $paidByInvoice = (clone $payments)->select('invoice_id')->selectRaw('sum(amount) as paid')->groupBy('invoice_id')->pluck('paid', 'invoice_id');
+        $studentNames = app(TenantContext::class)->table('school_students')->whereIn('id', $invoiceRows->pluck('student_id'))->pluck('name', 'id');
+        $month = $data['month'] ?? 'all';
+
+        return response()->streamDownload(function () use ($invoiceRows, $paidByInvoice, $studentNames): void {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Invoice reference', 'Student', 'Description', 'Billing month', 'Due date', 'Billed', 'Collected', 'Outstanding', 'Status']);
+            foreach ($invoiceRows as $invoice) {
+                $billed = (int) $invoice->amount;
+                $paid = (int) ($paidByInvoice[$invoice->id] ?? 0);
+                $balance = max(0, $billed - $paid);
+                $status = $balance === 0 ? 'paid' : ((string) $invoice->due_on < today()->toDateString() ? ($paid > 0 ? 'partially overdue' : 'overdue') : ($paid > 0 ? 'partially paid' : 'unpaid'));
+                fputcsv($handle, [$invoice->reference, $studentNames[$invoice->student_id] ?? 'Unknown student', $invoice->description, $invoice->billing_month, $invoice->due_on, number_format($billed / 100, 2, '.', ''), number_format($paid / 100, 2, '.', ''), number_format($balance / 100, 2, '.', ''), $status]);
+            }
+            fclose($handle);
+        }, 'payment-reconciliation-'.$month.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     public function tutorial(Request $request): JsonResponse
     {
         $data = $request->validate(['module' => ['required', Rule::in(['overview', 'people', 'invitations', 'notifications', 'settings', ...array_keys(config('school-modules'))])]]);

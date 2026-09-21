@@ -108,6 +108,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, Resolve
     Route::post('/portal/promotions', [PortalController::class, 'promoteStudents']);
     Route::post('/portal/invoices/batch', [PortalController::class, 'createBatchInvoices']);
     Route::get('/portal/payments/reconciliation', [PortalController::class, 'reconciliation']);
+    Route::get('/portal/payments/reconciliation/export', [PortalController::class, 'reconciliationExport']);
     Route::get('/portal/audit', [PortalController::class, 'audit']);
     Route::get('/portal/records/{module}', [PortalController::class, 'index']);
     Route::post('/portal/records/{module}', [PortalController::class, 'save']);
