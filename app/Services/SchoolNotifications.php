@@ -91,11 +91,11 @@ class SchoolNotifications
         return [];
     }
 
-    public function publish(string $module, int $id, string $eventKey, ?string $reminder = null): void
+    public function publish(string $module, int $id, string $eventKey, ?string $reminder = null): bool
     {
         $record = $this->tenant->table('school_'.$module)->find($id);
         if (! $record || ($module === 'notices' && $record->status !== 'published') || ($module === 'assignments' && $record->status !== 'published') || ($module === 'exams' && $record->schedule_status === 'draft' && $record->status !== 'published')) {
-            return;
+            return false;
         }
         [$title, $body] = match ($module) {
             'notices' => [$record->title, $record->body],
@@ -115,14 +115,25 @@ class SchoolNotifications
         foreach ($active->chunk(100) as $chunk) {
             DB::table('school_notifications')->insertOrIgnore($chunk->map(fn ($userId) => ['school_id' => $this->tenant->id(), 'branch_id' => $this->tenant->branchId(), 'user_id' => $userId, 'event_key' => $eventKey, 'module' => $module, 'record_id' => $id, 'title' => $title, 'body' => $body, 'created_at' => now(), 'updated_at' => now()])->all());
         }
+
+        return true;
     }
 
     public function process(int $limit = 100): int
     {
-        $events = $this->tenant->table('school_notification_events')->orderBy('id')->limit($limit)->get();
+        $events = $this->tenant->table('school_notification_events')->where(function (Builder $query): void {
+            $query->whereNull('available_at')->orWhere('available_at', '<=', now());
+        })->orderBy('id')->limit($limit)->get();
         foreach ($events as $event) {
-            $this->publish($event->module, $event->record_id, $event->event_key);
-            $this->tenant->table('school_notification_events')->where('id', $event->id)->delete();
+            try {
+                if ($this->publish($event->module, $event->record_id, $event->event_key)) {
+                    $this->tenant->table('school_notification_events')->where('id', $event->id)->delete();
+                    continue;
+                }
+                throw new \RuntimeException('The notification record is no longer available or publishable.');
+            } catch (\Throwable $exception) {
+                $this->tenant->table('school_notification_events')->where('id', $event->id)->update(['attempts' => ((int) ($event->attempts ?? 0)) + 1, 'last_error' => substr($exception->getMessage(), 0, 1000), 'available_at' => now()->addMinutes(5)]);
+            }
         }
 
         return $events->count();

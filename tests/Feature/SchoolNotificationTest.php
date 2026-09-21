@@ -144,4 +144,16 @@ class SchoolNotificationTest extends TestCase
         $this->assertDatabaseCount('school_notifications', 2);
         $this->assertSame(1, DB::table('school_notifications')->where('title', 'Overdue fee reminder: 1 day overdue')->count());
     }
+
+    public function test_failed_notification_events_are_retained_for_retry(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $this->actingAs($owner)->getJson('/portal/meta')->assertOk();
+        $tenant = app(TenantContext::class);
+        DB::table('school_notification_events')->insert(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'module' => 'invoices', 'record_id' => 999999, 'event_key' => 'retry-test-event', 'created_at' => now()]);
+
+        $this->artisan('school:notifications')->assertSuccessful();
+
+        $this->assertDatabaseHas('school_notification_events', ['event_key' => 'retry-test-event', 'attempts' => 1, 'last_error' => 'The notification record is no longer available or publishable.']);
+    }
 }
