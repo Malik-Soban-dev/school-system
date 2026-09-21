@@ -276,7 +276,7 @@ return [
     'submissions' => [
         'label' => 'Assignment submissions',
         'singular' => 'submission',
-        'help' => 'Students submit published assignments here. Teachers can review submissions, record a grade and return feedback.',
+        'help' => 'Students submit published assignments here. Teachers can review submissions, record a grade and return feedback. Optional private PDF, Word or image attachments are supported.',
         'read' => ['owner', 'admin', 'teacher', 'student', 'parent'],
         'write' => ['owner', 'admin', 'teacher', 'student'],
         'fields' => [[

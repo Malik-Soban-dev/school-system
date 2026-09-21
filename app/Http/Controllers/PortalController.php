@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Throwable;
@@ -144,9 +145,42 @@ class PortalController extends Controller
 
     public function save(Request $request, string $module, ?int $id = null): JsonResponse
     {
+        if ($module === 'submissions') {
+            $request->validate(['attachment' => ['nullable', 'file', 'max:10240', 'mimes:pdf,doc,docx,jpg,jpeg,png']]);
+        }
         $id = $this->portal->save($module, $request->user(), $request->all(), $id);
 
+        if ($module === 'submissions' && $request->hasFile('attachment')) {
+            $submission = $this->portal->query('submissions', $request->user())->where('school_submissions.id', $id)->first();
+            abort_unless($submission, 404);
+            $file = $request->file('attachment');
+            $diskName = config('filesystems.default', 'local');
+            $disk = Storage::disk($diskName);
+            $directory = 'school/'.$submission->school_id.'/branch/'.($submission->branch_id ?? 'all').'/submissions/'.$submission->id;
+            $path = $file->store($directory, $diskName);
+            if ($submission->attachment_path) {
+                $disk->delete($submission->attachment_path);
+            }
+            DB::table('school_submissions')->where('id', $submission->id)->update([
+                'attachment_path' => $path,
+                'attachment_name' => $file->getClientOriginalName(),
+                'attachment_mime' => $file->getMimeType(),
+                'attachment_size' => $file->getSize(),
+                'updated_at' => now(),
+            ]);
+        }
+
         return response()->json(['id' => $id, 'message' => 'Record saved.']);
+    }
+
+    public function submissionAttachment(Request $request, int $submission): mixed
+    {
+        $record = $this->portal->query('submissions', $request->user())->where('school_submissions.id', $submission)->first();
+        abort_unless($record && $record->attachment_path, 404);
+        $disk = Storage::disk(config('filesystems.default', 'local'));
+        abort_unless($disk->exists($record->attachment_path), 404);
+
+        return $disk->download($record->attachment_path, $record->attachment_name ?: 'submission-attachment');
     }
 
     public function studentProfile(Request $request, int $student): JsonResponse

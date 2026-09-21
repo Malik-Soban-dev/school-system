@@ -110,6 +110,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, Resolve
     Route::get('/portal/records/{module}', [PortalController::class, 'index']);
     Route::post('/portal/records/{module}', [PortalController::class, 'save']);
     Route::put('/portal/records/{module}/{id}', [PortalController::class, 'save'])->whereNumber('id');
+    Route::get('/portal/submissions/{submission}/attachment', [PortalController::class, 'submissionAttachment'])->whereNumber('submission');
     Route::get('/reports/{module}/{id}', [PortalController::class, 'report'])->whereNumber('id')->name('record.report');
     Route::get('/report-cards/{exam}/{student}', [ReportCardController::class, 'show'])->whereNumber(['exam', 'student'])->name('report-card.show');
     Route::get('/dashboard', function (\Illuminate\Http\Request $request) {

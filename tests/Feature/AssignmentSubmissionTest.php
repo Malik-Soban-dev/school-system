@@ -5,6 +5,9 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Services\SchoolPortal;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AssignmentSubmissionTest extends TestCase
@@ -33,5 +36,32 @@ class AssignmentSubmissionTest extends TestCase
         $this->artisan('school:notifications')->assertSuccessful();
         $this->actingAs($parent)->getJson('/portal/notifications')->assertOk()->assertJsonFragment(['title' => 'Assignment feedback available']);
         $this->assertDatabaseHas('school_submissions', ['id' => $submission, 'status' => 'returned', 'grade' => 92.5]);
+    }
+
+    public function test_submission_attachment_is_private_and_permission_checked_on_download(): void
+    {
+        Storage::fake('local');
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $studentUser = User::factory()->create(['roles' => ['student'], 'is_active' => true]);
+        $parent = User::factory()->create(['roles' => ['parent'], 'is_active' => true]);
+        $otherParent = User::factory()->create(['roles' => ['parent'], 'is_active' => true]);
+        $portal = app(SchoolPortal::class);
+        $year = $portal->save('academic_years', $owner, ['name' => '2026 Attachments', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
+        $class = $portal->save('classes', $owner, ['name' => 'Grade 7', 'year_id' => $year, 'capacity' => 30]);
+        $subject = $portal->save('subjects', $owner, ['name' => 'English', 'code' => 'ENG-7']);
+        $student = $portal->save('students', $owner, ['name' => 'Attachment Student', 'admission_number' => 'ATTACH-1', 'class_id' => $class, 'user_id' => $studentUser->id, 'status' => 'active']);
+        $portal->save('guardian_links', $owner, ['student_id' => $student, 'user_id' => $parent->id, 'relationship' => 'Parent', 'status' => 'active']);
+        $assignment = $portal->save('assignments', $owner, ['class_id' => $class, 'subject_id' => $subject, 'teacher_id' => $owner->id, 'title' => 'Reading task', 'description' => 'Submit your reading notes.', 'due_on' => '2026-09-25', 'status' => 'published']);
+
+        $submission = $this->actingAs($studentUser)->post('/portal/records/submissions', [
+            'assignment_id' => $assignment, 'student_id' => $student, 'content' => 'Attached notes.', 'status' => 'submitted',
+            'attachment' => UploadedFile::fake()->create('reading-notes.pdf', 100, 'application/pdf'),
+        ])->assertOk()->json('id');
+        $this->assertDatabaseHas('school_submissions', ['id' => $submission, 'attachment_name' => 'reading-notes.pdf']);
+        $path = DB::table('school_submissions')->where('id', $submission)->value('attachment_path');
+        Storage::disk('local')->assertExists($path);
+        $this->actingAs($studentUser)->get('/portal/submissions/'.$submission.'/attachment')->assertOk()->assertHeader('content-disposition');
+        $this->actingAs($parent)->get('/portal/submissions/'.$submission.'/attachment')->assertOk();
+        $this->actingAs($otherParent)->get('/portal/submissions/'.$submission.'/attachment')->assertNotFound();
     }
 }
