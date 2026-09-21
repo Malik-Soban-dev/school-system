@@ -512,6 +512,20 @@ class SchoolPortal
 
     private function validateBusiness(string $module, array $data, User $user, ?int $id, ?object $old): void
     {
+        if ($module === 'exams' && $data['status'] === 'published' && $old?->status !== 'published') {
+            $plans = $this->tenant->table('school_exam_subjects')->where('exam_id', $id)->pluck('subject_id');
+            if ($plans->isEmpty()) {
+                $this->fail('status', 'Add an exam subject plan before publishing results.');
+            }
+            $students = $this->tenant->table('school_students')->where('class_id', $data['class_id'])->where('status', 'active')->pluck('id');
+            if ($students->isNotEmpty()) {
+                $completeStudents = $this->tenant->table('school_grades')->where('exam_id', $id)->whereIn('student_id', $students)->whereIn('subject_id', $plans)
+                    ->select('student_id')->groupBy('student_id')->havingRaw('count(distinct subject_id) = ?', [$plans->count()])->count();
+                if ($completeStudents !== $students->count()) {
+                    $this->fail('status', 'Record every planned subject mark for every active student before publishing results.');
+                }
+            }
+        }
         if ($module === 'students' && ! $user->hasRole('superadmin') && $data['status'] === 'active' && (! $old || $old->status !== 'active')) {
             $subscription = DB::table('school_subscriptions as subscription')->join('platform_plans as plan', 'plan.id', '=', 'subscription.plan_id')->where('subscription.school_id', $this->tenant->id())->whereIn('subscription.status', ['trialing', 'active'])->lockForUpdate()->first(['plan.max_students']);
             $currentStudents = DB::table('school_students')->where('school_id', $this->tenant->id())->where('status', 'active')->count();

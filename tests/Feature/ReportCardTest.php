@@ -35,7 +35,9 @@ class ReportCardTest extends TestCase
         $url = '/report-cards/'.$exam.'/'.$student;
         $this->actingAs($owner)->get($url)->assertOk()->assertSee('Incomplete report')->assertDontSee('Weighted overall result:');
         $this->actingAs($parent)->get($url)->assertNotFound();
+        $this->actingAs($owner)->putJson('/portal/records/exams/'.$exam, [...$examData, 'status' => 'published'])->assertUnprocessable()->assertJsonValidationErrors('status');
         $save('grades', ['exam_id' => $exam, 'subject_id' => $english, 'student_id' => $student, 'marks' => 30, 'maximum' => 50]);
+        $this->actingAs($owner)->putJson('/portal/records/exams/'.$exam, [...$examData, 'status' => 'published'])->assertOk();
         $save('attendance', ['student_id' => $student, 'date' => '2026-09-01', 'status' => 'present']);
         $save('attendance', ['student_id' => $student, 'date' => '2026-09-02', 'status' => 'late']);
         $save('attendance', ['student_id' => $student, 'date' => '2026-09-03', 'status' => 'absent']);
