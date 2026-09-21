@@ -76,6 +76,8 @@ Route::middleware('guest')->group(function () {
     Route::post('/invitations/{token}', [InvitationController::class, 'accept'])->middleware('throttle:10,1')->name('invitation.accept');
     Route::get('/password/reset/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
     Route::post('/password/reset/{token}', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1')->name('password.reset.store');
+    Route::get('/password/forgot', [AuthController::class, 'showForgotForm'])->name('password.request');
+    Route::post('/password/forgot', [AuthController::class, 'sendResetLink'])->middleware('throttle:5,1')->name('password.email');
     Route::get('/mfa/challenge', [AuthController::class, 'showMfaChallenge'])->name('mfa.challenge');
     Route::post('/mfa/challenge', [AuthController::class, 'verifyMfaChallenge'])->middleware('throttle:10,1')->name('mfa.challenge.verify');
     Route::view('/login', 'auth.login')->name('login');

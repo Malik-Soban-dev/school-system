@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
@@ -59,6 +60,18 @@ class AuthenticationTest extends TestCase
     {
         $this->post('/login', [])->assertSessionHasErrors(['username', 'password']);
         $this->assertGuest();
+    }
+
+    public function test_forgot_password_uses_a_non_enumerating_response_and_creates_an_expiring_token_for_active_accounts(): void
+    {
+        $user = User::factory()->create(['email' => 'recover@example.test', 'is_active' => true]);
+        $this->post('/password/forgot', ['email' => 'recover@example.test'])
+            ->assertSessionHas('status', 'If an active account uses that email, a reset link will be sent shortly.');
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+
+        $this->post('/password/forgot', ['email' => 'missing@example.test'])
+            ->assertSessionHas('status', 'If an active account uses that email, a reset link will be sent shortly.');
+        $this->assertSame(1, DB::table('password_reset_tokens')->count());
     }
 
     public function test_repeated_failed_login_is_rate_limited(): void

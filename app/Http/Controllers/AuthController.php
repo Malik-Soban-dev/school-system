@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -201,6 +202,33 @@ class AuthController extends Controller
         $this->findReset($token);
 
         return view('auth.password-reset', compact('token'));
+    }
+
+    public function showForgotForm(): View
+    {
+        return view('auth.password-forgot');
+    }
+
+    public function sendResetLink(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['email' => ['required', 'email', 'max:255']]);
+        $key = 'password-reset:'.hash('sha256', strtolower($data['email']).'|'.$request->ip());
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            return back()->with('status', 'If an active account uses that email, a reset link will be sent shortly.');
+        }
+        RateLimiter::hit($key, 600);
+
+        $user = User::query()->where('email', strtolower($data['email']))->where('is_active', true)->first();
+        if ($user) {
+            $token = Str::random(64);
+            DB::table('password_reset_tokens')->updateOrInsert(['email' => $user->email], ['token' => hash('sha256', $token), 'created_at' => now()]);
+            $url = route('password.reset', ['token' => $token]);
+            Mail::raw("Someone requested a password reset for your School System account.\n\nOpen this private link within 60 minutes:\n{$url}\n\nIf you did not request this, you can safely ignore this message.", function ($message) use ($user): void {
+                $message->to($user->email)->subject('Reset your School System password');
+            });
+        }
+
+        return back()->with('status', 'If an active account uses that email, a reset link will be sent shortly.');
     }
 
     public function resetPassword(Request $request, string $token): RedirectResponse

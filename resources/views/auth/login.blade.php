@@ -18,7 +18,8 @@
             <div class="field"><label for="password"><span data-i18n="Password">Password</span></label><input id="password" name="password" type="password" autocomplete="current-password" required maxlength="255"></div>
             <button class="button full" type="submit"><span data-i18n="Sign in →">Sign in &rarr;</span></button>
         <div id="login-progress" class="login-progress" role="status" hidden><span data-i18n="Opening your school workspace…">Opening your school workspace…</span></div><div id="login-error" class="notice errors" role="alert" tabindex="-1" hidden></div></form>
-        <p class="helper" style="margin-top:24px"><span data-i18n="Need access or help signing in? Contact your school administrator.">Need access or help signing in? Contact your school administrator.</span></p>
+        <p class="helper" style="margin-top:24px"><a href="{{ route('password.request') }}">Forgot your password?</a></p>
+        <p class="helper"><span data-i18n="Need access or help signing in? Contact your school administrator.">Need access or help signing in? Contact your school administrator.</span></p>
     </section>
 </div>
 @endsection
