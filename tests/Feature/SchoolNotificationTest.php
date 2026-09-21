@@ -97,4 +97,26 @@ class SchoolNotificationTest extends TestCase
         $this->artisan('school:notifications')->assertSuccessful();
         $this->assertDatabaseCount('school_notifications', 5);
     }
+
+    public function test_unpaid_fee_reminders_are_sent_once_to_student_family(): void
+    {
+        $this->travelTo(now()->setDate(2026, 9, 9)->startOfDay());
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $parent = User::factory()->create(['roles' => ['parent'], 'is_active' => true]);
+        $studentUser = User::factory()->create(['roles' => ['student'], 'is_active' => true]);
+        $portal = app(SchoolPortal::class);
+        $year = $portal->save('academic_years', $owner, ['name' => 'Year', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
+        $class = $portal->save('classes', $owner, ['name' => 'Class', 'year_id' => $year, 'capacity' => 30]);
+        $student = $portal->save('students', $owner, ['name' => 'Child', 'admission_number' => 'FEE-REM-1', 'class_id' => $class, 'user_id' => $studentUser->id, 'status' => 'active']);
+        $portal->save('guardian_links', $owner, ['student_id' => $student, 'user_id' => $parent->id, 'relationship' => 'Parent', 'status' => 'active']);
+        $portal->save('invoices', $owner, ['student_id' => $student, 'reference' => 'REMINDER-1', 'description' => 'September fee', 'amount' => '100.00', 'due_on' => '2026-09-16', 'billing_month' => '2026-09']);
+        DB::table('school_notification_events')->delete();
+
+        $this->artisan('school:notifications')->assertSuccessful();
+        $this->artisan('school:notifications')->assertSuccessful();
+
+        $this->actingAs($parent)->getJson('/portal/notifications')->assertJsonPath('unread', 1)->assertJsonPath('rows.data.0.title', 'Fee reminder: 7 days to go');
+        $this->actingAs($studentUser)->getJson('/portal/notifications')->assertJsonPath('unread', 1)->assertJsonPath('rows.data.0.title', 'Fee reminder: 7 days to go');
+        $this->assertDatabaseCount('school_notifications', 2);
+    }
 }

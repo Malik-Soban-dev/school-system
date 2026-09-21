@@ -100,7 +100,7 @@ class SchoolNotifications
         [$title, $body] = match ($module) {
             'notices' => [$record->title, $record->body],
             'exams' => [$reminder ?? 'Exam update', $record->name.' — '.$record->date.'. '.($record->schedule_status === 'cancelled' ? 'This exam has been cancelled.' : ($record->status === 'published' ? 'Results are published.' : 'Prepare for the upcoming exam. Results are not published yet.'))],
-            'invoices' => ['Fee invoice available', 'Invoice '.$record->reference.' is due on '.$record->due_on.'. Open Fee invoices to check the amount and balance.'],
+            'invoices' => [$reminder ?? 'Fee invoice available', ($reminder ? $reminder.'. ' : '').'Invoice '.$record->reference.' is due on '.$record->due_on.'. Open Fee invoices to check the amount and balance.'],
             'payments' => ['Fee payment recorded', 'Receipt '.$record->reference.' was recorded on '.$record->paid_on.' using '.str_replace('_', ' ', $record->method).'. Open Payments & receipts for details.'],
             'payroll' => ['Monthly payroll available', 'Your payroll calculation for '.$record->month.' is available. This is not confirmation of payment.'],
             'payroll_payments' => ['Salary payment recorded', 'Payment '.$record->reference.' was recorded on '.$record->paid_on.' using '.str_replace('_', ' ', $record->method).'. Open Salary payments for details.'],
@@ -135,6 +135,13 @@ class SchoolNotifications
             $date = today($timezone)->addDays($days)->toDateString();
             foreach ($this->tenant->table('school_exams')->where('schedule_status', 'announced')->where('date', $date)->get() as $exam) {
                 $this->publish('exams', $exam->id, 'exam-reminder:'.$exam->id.':'.$date.':'.$days, 'Exam reminder: '.$days.' day'.($days === 1 ? '' : 's').' to go');
+            }
+            foreach ($this->tenant->table('school_invoices')->where('due_on', $date)->orderBy('id')->get(['id', 'amount']) as $invoice) {
+                $paid = (int) $this->tenant->table('school_payments')->where('invoice_id', $invoice->id)->sum('amount');
+                if ($paid >= (int) $invoice->amount) {
+                    continue;
+                }
+                $this->publish('invoices', $invoice->id, 'invoice-reminder:'.$invoice->id.':'.$date.':'.$days, 'Fee reminder: '.$days.' day'.($days === 1 ? '' : 's').' to go');
             }
         }
     }
