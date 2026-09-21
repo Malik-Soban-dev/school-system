@@ -134,6 +134,27 @@ class MonthlySettlementTest extends TestCase
         $this->assertDatabaseHas('school_notification_events', ['module' => 'invoices', 'record_id' => DB::table('school_invoices')->value('id')]);
     }
 
+    public function test_monthly_invoice_command_applies_the_largest_active_student_concession(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $portal = app(SchoolPortal::class);
+        $year = $portal->save('academic_years', $owner, ['name' => '2026', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
+        $class = $portal->save('classes', $owner, ['name' => 'Grade 10', 'year_id' => $year, 'capacity' => 30]);
+        $student = $portal->save('students', $owner, ['name' => 'Scholarship Student', 'admission_number' => 'SCHOLAR-1', 'class_id' => $class, 'status' => 'active']);
+        $portal->save('fee_concessions', $owner, ['student_id' => $student, 'name' => 'Merit scholarship', 'type' => 'percentage', 'value' => '20.00', 'starts_on' => '2026-10-01', 'ends_on' => '2026-10-31', 'status' => 'active']);
+        DB::table('school_settings')->upsert([
+            ['school_id' => app(TenantContext::class)->id(), 'key' => 'monthly_fee_amount', 'value' => '25000'],
+            ['school_id' => app(TenantContext::class)->id(), 'key' => 'monthly_fee_due_day', 'value' => '12'],
+        ], ['school_id', 'key'], ['value']);
+
+        $this->artisan('school:monthly-invoices', ['--month' => '2026-10'])->assertSuccessful();
+        $this->artisan('school:monthly-invoices', ['--month' => '2026-10'])->assertSuccessful();
+
+        $this->assertDatabaseCount('school_invoices', 1);
+        $this->assertDatabaseHas('school_invoices', ['student_id' => $student, 'amount' => 20000, 'description' => 'Monthly school fee — Merit scholarship']);
+        $this->assertDatabaseHas('school_audit', ['module' => 'invoices', 'action' => 'monthly_batch_created']);
+    }
+
     public function test_school_payroll_command_creates_repeat_safe_calculations_from_staff_salary_settings(): void
     {
         $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);

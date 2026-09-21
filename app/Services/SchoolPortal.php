@@ -95,7 +95,7 @@ class SchoolPortal
         if ($this->admin($user)) {
             return $query;
         }
-        if ($this->tenant->hasRole($user, 'accountant') && in_array($module, ['students', 'classes', 'subjects', 'invoices', 'payments', 'expenses', 'payroll', 'payroll_payments'])) {
+        if ($this->tenant->hasRole($user, 'accountant') && in_array($module, ['students', 'classes', 'subjects', 'invoices', 'fee_concessions', 'payments', 'expenses', 'payroll', 'payroll_payments'])) {
             return $query;
         }
         if ($module === 'notices') {
@@ -564,6 +564,9 @@ class SchoolPortal
         }
         if (isset($data['starts_on'], $data['ends_on']) && $data['ends_on'] < $data['starts_on']) {
             $this->fail('ends_on', 'The last day must be on or after the first day.');
+        }
+        if ($module === 'fee_concessions' && $data['type'] === 'percentage' && (float) $data['value'] > 100) {
+            $this->fail('value', 'A percentage concession cannot be greater than 100.');
         }
         if ($module === 'students') {
             $class = $this->tenant->table('school_classes')->find($data['class_id']);

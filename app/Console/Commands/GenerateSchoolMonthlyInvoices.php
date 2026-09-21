@@ -18,6 +18,7 @@ class GenerateSchoolMonthlyInvoices extends Command
         $month = CarbonImmutable::createFromFormat('Y-m', $this->option('month') ?: today()->format('Y-m'))->startOfMonth();
         $created = 0;
         $skipped = 0;
+        $waived = 0;
 
         foreach (DB::table('schools')->where('status', 'active')->orderBy('id')->pluck('id') as $schoolId) {
             foreach (DB::table('school_branches')->where('school_id', $schoolId)->where('status', 'active')->orderBy('id')->pluck('id') as $branchId) {
@@ -33,16 +34,35 @@ class GenerateSchoolMonthlyInvoices extends Command
                 $description = trim((string) ($settings['monthly_fee_description'] ?? 'Monthly school fee')) ?: 'Monthly school fee';
                 $now = now();
 
-                $tenant->table('school_students')->where('status', 'active')->orderBy('id')->chunkById(100, function ($students) use ($tenant, $month, $dueOn, $amount, $description, $now, &$created, &$skipped): void {
+                $tenant->table('school_students')->where('status', 'active')->orderBy('id')->chunkById(100, function ($students) use ($tenant, $month, $dueOn, $amount, $description, $now, &$created, &$skipped, &$waived): void {
                     foreach ($students as $student) {
                         $reference = 'FEE-'.$month->format('Y-m').'-'.$student->id;
+                        $concession = $tenant->table('school_fee_concessions')->where('student_id', $student->id)->where('status', 'active')
+                            ->where(function ($query) use ($month): void {
+                                $query->whereNull('starts_on')->orWhere('starts_on', '<=', $month->endOfMonth()->toDateString());
+                            })->where(function ($query) use ($month): void {
+                                $query->whereNull('ends_on')->orWhere('ends_on', '>=', $month->startOfMonth()->toDateString());
+                            })->get(['name', 'type', 'value'])->map(function (object $row) use ($amount): array {
+                                $discount = $row->type === 'percentage'
+                                    ? (int) round($amount * ((float) $row->value / 100))
+                                    : $this->decimalToCents($row->value);
+
+                                return ['name' => $row->name, 'discount' => min($amount, max(0, $discount))];
+                            })->sortByDesc('discount')->first();
+                        $discount = (int) ($concession['discount'] ?? 0);
+                        if ($discount >= $amount) {
+                            $waived++;
+                            continue;
+                        }
+                        $invoiceAmount = $amount - $discount;
+                        $invoiceDescription = $discount > 0 ? $description.' — '.$concession['name'] : $description;
                         $inserted = DB::table('school_invoices')->insertOrIgnore([
                             'school_id' => $tenant->id(),
                             'branch_id' => $tenant->branchId(),
                             'reference' => $reference,
                             'student_id' => $student->id,
-                            'description' => $description,
-                            'amount' => $amount,
+                            'description' => $invoiceDescription,
+                            'amount' => $invoiceAmount,
                             'due_on' => $dueOn,
                             'billing_month' => $month->format('Y-m'),
                             'created_at' => $now,
@@ -57,12 +77,19 @@ class GenerateSchoolMonthlyInvoices extends Command
                         DB::table('school_notification_events')->insertOrIgnore(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'module' => 'invoices', 'record_id' => $invoice->id, 'event_key' => 'invoices:'.$invoice->id.':monthly', 'created_at' => $now]);
                     }
                 });
-                DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => null, 'module' => 'invoices', 'record_id' => 0, 'action' => 'monthly_batch_created', 'changes' => json_encode(['billing_month' => $month->format('Y-m'), 'created' => $created, 'skipped' => $skipped]), 'created_at' => $now]);
+                DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => null, 'module' => 'invoices', 'record_id' => 0, 'action' => 'monthly_batch_created', 'changes' => json_encode(['billing_month' => $month->format('Y-m'), 'created' => $created, 'skipped' => $skipped, 'waived' => $waived]), 'created_at' => $now]);
             }
         }
 
-        $this->info("Created {$created} monthly invoice(s); skipped {$skipped} existing invoice(s).");
+        $this->info("Created {$created} monthly invoice(s); skipped {$skipped} existing invoice(s); waived {$waived} full scholarship invoice(s).");
 
         return self::SUCCESS;
+    }
+
+    private function decimalToCents(string|int|float $value): int
+    {
+        [$whole, $fraction] = array_pad(explode('.', (string) $value, 2), 2, '0');
+
+        return max(0, ((int) $whole * 100) + (int) str_pad(substr($fraction, 0, 2), 2, '0'));
     }
 }

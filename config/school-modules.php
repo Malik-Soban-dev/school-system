@@ -610,6 +610,49 @@ return [
             'optional' => true,
         ]],
     ],
+    'fee_concessions' => [
+        'label' => 'Scholarships & concessions',
+        'singular' => 'fee concession',
+        'help' => 'Give an individual student a percentage or fixed monthly fee concession. The largest active concession is applied automatically when that month’s invoice is generated.',
+        'read' => ['owner', 'admin', 'accountant'],
+        'write' => ['owner', 'admin', 'accountant'],
+        'fields' => [[
+            'name' => 'student_id',
+            'label' => 'Student',
+            'type' => 'relation',
+            'relation' => 'students',
+        ], [
+            'name' => 'name',
+            'label' => 'Scholarship or concession name',
+            'type' => 'text',
+        ], [
+            'name' => 'type',
+            'label' => 'Calculation',
+            'type' => 'select',
+            'choices' => ['percentage', 'fixed'],
+        ], [
+            'name' => 'value',
+            'label' => 'Value',
+            'type' => 'decimal',
+            'min' => 0.01,
+            'max' => 100000000,
+        ], [
+            'name' => 'starts_on',
+            'label' => 'Starts on',
+            'type' => 'date',
+            'optional' => true,
+        ], [
+            'name' => 'ends_on',
+            'label' => 'Ends on',
+            'type' => 'date',
+            'optional' => true,
+        ], [
+            'name' => 'status',
+            'label' => 'Status',
+            'type' => 'select',
+            'choices' => ['active', 'inactive'],
+        ]],
+    ],
     'payments' => [
         'label' => 'Payments & receipts',
         'singular' => 'payment',
