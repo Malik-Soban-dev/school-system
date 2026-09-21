@@ -310,18 +310,50 @@ class PortalController extends Controller
         abort_if($students->isEmpty(), 422, 'No active students match this invoice batch.');
         $existing = $tenant->table('school_invoices')->where('billing_month', $data['billing_month'])->whereIn('student_id', $students->pluck('id'))->pluck('student_id')->map(fn ($id): int => (int) $id)->all();
         $now = now();
-        $rows = $students->reject(fn (object $student): bool => in_array($student->id, $existing, true))->map(fn (object $student): array => [
-            'school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'reference' => 'FEE-'.$data['billing_month'].'-'.$student->id,
-            'student_id' => $student->id, 'description' => $data['description'], 'amount' => $amount, 'due_on' => $data['due_on'], 'billing_month' => $data['billing_month'], 'created_at' => $now, 'updated_at' => $now,
-        ])->values();
-        DB::transaction(function () use ($request, $tenant, $rows, $data, $existing, $now): void {
+        $waived = 0;
+        $rows = $students->reject(fn (object $student): bool => in_array($student->id, $existing, true))->map(function (object $student) use ($tenant, $data, $amount, $now, &$waived): ?array {
+            $concession = $this->feeConcession($tenant, (int) $student->id, $amount, $data['billing_month']);
+            if (($concession['discount'] ?? 0) >= $amount) {
+                $waived++;
+
+                return null;
+            }
+            $discount = (int) ($concession['discount'] ?? 0);
+
+            return [
+                'school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'reference' => 'FEE-'.$data['billing_month'].'-'.$student->id,
+                'student_id' => $student->id, 'description' => $discount > 0 ? $data['description'].' — '.$concession['name'] : $data['description'], 'amount' => $amount - $discount, 'due_on' => $data['due_on'], 'billing_month' => $data['billing_month'], 'created_at' => $now, 'updated_at' => $now,
+            ];
+        })->filter()->values();
+        DB::transaction(function () use ($request, $tenant, $rows, $data, $existing, $waived, $now): void {
             if ($rows->isNotEmpty()) {
                 DB::table('school_invoices')->insert($rows->all());
             }
-            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $request->user()->id, 'module' => 'invoices', 'record_id' => 0, 'action' => 'batch_created', 'changes' => json_encode(['billing_month' => $data['billing_month'], 'created' => $rows->count(), 'skipped_existing' => count($existing)]), 'created_at' => $now]);
+            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId(), 'user_id' => $request->user()->id, 'module' => 'invoices', 'record_id' => 0, 'action' => 'batch_created', 'changes' => json_encode(['billing_month' => $data['billing_month'], 'created' => $rows->count(), 'skipped_existing' => count($existing), 'waived' => $waived]), 'created_at' => $now]);
         });
 
-        return response()->json(['message' => $rows->count().' invoices created; '.count($existing).' existing invoices skipped.', 'created' => $rows->count(), 'skipped' => count($existing)]);
+        return response()->json(['message' => $rows->count().' invoices created; '.count($existing).' existing invoices skipped; '.$waived.' full scholarships waived.', 'created' => $rows->count(), 'skipped' => count($existing), 'waived' => $waived]);
+    }
+
+    /** @return array{name: string, discount: int}|array{} */
+    private function feeConcession(TenantContext $tenant, int $studentId, int $amount, string $billingMonth): array
+    {
+        $month = CarbonImmutable::createFromFormat('Y-m', $billingMonth)->startOfMonth();
+        return $tenant->table('school_fee_concessions')->where('student_id', $studentId)->where('status', 'active')
+            ->where(function ($query) use ($month): void { $query->whereNull('starts_on')->orWhere('starts_on', '<=', $month->endOfMonth()->toDateString()); })
+            ->where(function ($query) use ($month): void { $query->whereNull('ends_on')->orWhere('ends_on', '>=', $month->startOfMonth()->toDateString()); })
+            ->get(['name', 'type', 'value'])->map(function (object $row) use ($amount): array {
+                $discount = $row->type === 'percentage' ? (int) round($amount * ((float) $row->value / 100)) : $this->moneyToCents($row->value);
+
+                return ['name' => $row->name, 'discount' => min($amount, max(0, $discount))];
+            })->sortByDesc('discount')->first() ?? [];
+    }
+
+    private function moneyToCents(string|int|float $value): int
+    {
+        [$whole, $fraction] = array_pad(explode('.', (string) $value, 2), 2, '0');
+
+        return max(0, ((int) $whole * 100) + (int) str_pad(substr($fraction, 0, 2), 2, '0'));
     }
 
     public function reconciliation(Request $request): JsonResponse

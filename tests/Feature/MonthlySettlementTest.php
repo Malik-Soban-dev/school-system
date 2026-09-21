@@ -91,6 +91,24 @@ class MonthlySettlementTest extends TestCase
         $this->actingAs($owner)->getJson('/portal/meta')->assertOk()->assertJsonPath('overview.fees.billed', 10000)->assertJsonPath('overview.fees.collected', 0)->assertJsonPath('overview.fees.outstanding', 10000)->assertJsonPath('overview.fees.overdue', 10000)->assertJsonPath('overview.fees.collection_rate', 0);
     }
 
+    public function test_manual_batch_invoices_apply_concessions_and_report_full_waivers(): void
+    {
+        $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
+        $portal = app(SchoolPortal::class);
+        $year = $portal->save('academic_years', $owner, ['name' => '2026', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
+        $class = $portal->save('classes', $owner, ['name' => 'Grade 11', 'year_id' => $year, 'capacity' => 30]);
+        $discounted = $portal->save('students', $owner, ['name' => 'Discounted Student', 'admission_number' => 'BATCH-SCHOLAR-1', 'class_id' => $class, 'status' => 'active']);
+        $waived = $portal->save('students', $owner, ['name' => 'Fully Sponsored Student', 'admission_number' => 'BATCH-SCHOLAR-2', 'class_id' => $class, 'status' => 'active']);
+        $portal->save('fee_concessions', $owner, ['student_id' => $discounted, 'name' => 'Need-based support', 'type' => 'fixed', 'value' => '25.00', 'starts_on' => '2026-11-01', 'ends_on' => '2026-11-30', 'status' => 'active']);
+        $portal->save('fee_concessions', $owner, ['student_id' => $waived, 'name' => 'Full scholarship', 'type' => 'percentage', 'value' => '100.00', 'starts_on' => '2026-11-01', 'ends_on' => '2026-11-30', 'status' => 'active']);
+
+        $this->actingAs($owner)->postJson('/portal/invoices/batch', ['billing_month' => '2026-11', 'amount' => '100.00', 'due_on' => '2026-11-10', 'description' => 'November tuition'])->assertOk()->assertJsonPath('created', 1)->assertJsonPath('waived', 1);
+
+        $this->assertDatabaseHas('school_invoices', ['student_id' => $discounted, 'amount' => 7500, 'description' => 'November tuition — Need-based support']);
+        $this->assertDatabaseMissing('school_invoices', ['student_id' => $waived, 'billing_month' => '2026-11']);
+        $this->assertDatabaseHas('school_audit', ['module' => 'invoices', 'action' => 'batch_created']);
+    }
+
     public function test_school_late_fee_command_is_repeat_safe_and_skips_paid_invoices(): void
     {
         $owner = User::factory()->create(['roles' => ['owner'], 'is_active' => true]);
