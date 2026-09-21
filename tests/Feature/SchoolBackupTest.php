@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use PDO;
 use Tests\TestCase;
 
@@ -62,6 +63,21 @@ class SchoolBackupTest extends TestCase
             $this->artisan('school:backup', ['--path' => $path])->assertFailed();
             File::put($path, 'tampered-backup');
             $this->artisan('school:verify-backup', ['path' => $path])->assertFailed();
+        } finally {
+            File::delete($path);
+        }
+    }
+
+    public function test_backup_can_copy_the_encrypted_artifact_to_a_private_offsite_disk(): void
+    {
+        Storage::fake('backup-test');
+        config(['backup.disk' => 'backup-test', 'backup.prefix' => 'offsite']);
+        $path = storage_path('framework/testing-offsite-backup-'.bin2hex(random_bytes(8)).'.enc');
+
+        try {
+            $this->artisan('school:backup', ['--path' => $path])->assertSuccessful();
+            Storage::disk('backup-test')->assertExists('offsite/'.basename($path));
+            $this->assertFileExists($path);
         } finally {
             File::delete($path);
         }

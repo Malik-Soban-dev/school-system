@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
-#[Signature('school:backup {--path= : Destination for the encrypted backup file}')]
+#[Signature('school:backup {--path= : Destination for the encrypted backup file} {--disk= : Override the configured off-site backup disk}')]
 #[Description('Create an encrypted SQLite/Turso database snapshot; retain the application key separately')]
 class BackupSchoolDatabase extends Command
 {
@@ -19,7 +20,7 @@ class BackupSchoolDatabase extends Command
      */
     public function handle(): int
     {
-        $path = $this->option('path') ?: storage_path('app/private/backups/school-'.now()->format('Ymd-His').'.enc');
+        $path = $this->option('path') ?: rtrim(config('backup.path', storage_path('app/private/backups')), '\\/').DIRECTORY_SEPARATOR.'school-'.now()->format('Ymd-His').'.enc';
         if (File::exists($path)) {
             $this->error('The backup destination already exists. Choose a new filename.');
 
@@ -48,6 +49,16 @@ class BackupSchoolDatabase extends Command
             $this->error('The backup could not be written.');
 
             return self::FAILURE;
+        }
+        $diskName = (string) ($this->option('disk') ?: config('backup.disk', 'local'));
+        if ($diskName !== 'local') {
+            $remotePath = trim(config('backup.prefix', 'backups'), '/').'/'.basename($path);
+            if (! Storage::disk($diskName)->put($remotePath, $encrypted, ['visibility' => 'private'])) {
+                $this->error('The encrypted backup was written locally but could not be copied to the configured off-site disk.');
+
+                return self::FAILURE;
+            }
+            $this->info('Encrypted backup copied to '.$diskName.':'.$remotePath);
         }
         $this->info('Encrypted backup created: '.$path);
         $this->line('Keep this file and the application encryption key in separate secure locations.');
