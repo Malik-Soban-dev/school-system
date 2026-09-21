@@ -196,10 +196,12 @@ class PortalController extends Controller
         $attendance = $tenant->table('school_attendance')->where('student_id', $student)->selectRaw('count(*) as recorded, sum(case when status in (\'present\', \'late\') then 1 else 0 end) as attended, sum(case when status = \'absent\' then 1 else 0 end) as absent, sum(case when status = \'excused\' then 1 else 0 end) as excused')->first();
         $invoices = $tenant->table('school_invoices')->where('student_id', $student)->get(['id', 'reference', 'billing_month', 'amount', 'status', 'due_on']);
         $paid = $tenant->table('school_payments')->whereIn('invoice_id', $invoices->pluck('id'))->select('invoice_id')->selectRaw('sum(amount) as total')->groupBy('invoice_id')->pluck('total', 'invoice_id');
-        $fees = $invoices->map(fn ($invoice): array => [...(array) $invoice, 'paid' => (int) ($paid[$invoice->id] ?? 0), 'balance' => max(0, (int) $invoice->amount - (int) ($paid[$invoice->id] ?? 0))]);
+        $payments = $tenant->table('school_payments')->whereIn('invoice_id', $invoices->pluck('id'))->orderByDesc('paid_on')->get(['invoice_id', 'reference', 'amount', 'paid_on', 'method']);
+        $fees = $invoices->map(fn ($invoice): array => [...(array) $invoice, 'paid' => (int) ($paid[$invoice->id] ?? 0), 'balance' => max(0, (int) $invoice->amount - (int) ($paid[$invoice->id] ?? 0)), 'payments' => $payments->where('invoice_id', $invoice->id)->values()]);
+        $feeSummary = ['billed' => (int) $invoices->sum('amount'), 'paid' => (int) $paid->sum(), 'outstanding' => max(0, (int) $invoices->sum('amount') - (int) $paid->sum())];
         $grades = $this->portal->query('grades', $request->user())->where('student_id', $student)->join('school_exams as exam', 'exam.id', '=', 'school_grades.exam_id')->join('school_subjects as subject', 'subject.id', '=', 'school_grades.subject_id')->get(['exam.name as exam', 'exam.date', 'subject.name as subject', 'school_grades.marks', 'school_grades.maximum', 'school_grades.remarks'])->map(fn ($grade): array => [...(array) $grade, 'percentage' => (float) $grade->maximum > 0 ? round((float) $grade->marks / (float) $grade->maximum * 100, 2) : null]);
         $assignments = $this->portal->query('assignments', $request->user())->where('class_id', $record->class_id ?? 0)->get(['id', 'title', 'due_on', 'status']);
-        $profile = ['student' => $record, 'guardians' => $guardians, 'attendance' => $attendance, 'fees' => $fees, 'grades' => $grades, 'assignments' => $assignments];
+        $profile = ['student' => $record, 'guardians' => $guardians, 'attendance' => $attendance, 'fees' => $fees, 'fee_summary' => $feeSummary, 'grades' => $grades, 'assignments' => $assignments];
         if ($this->portal->admin($request->user())) {
             $profile['welfare'] = $tenant->table('school_student_welfare')->where('student_id', $student)->orderByDesc('record_date')->get(['record_type', 'record_date', 'details', 'follow_up']);
         }

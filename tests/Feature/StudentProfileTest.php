@@ -21,8 +21,10 @@ class StudentProfileTest extends TestCase
         $student = $portal->save('students', $owner, ['name' => 'Profile Student', 'admission_number' => 'PROFILE-1', 'class_id' => $class, 'status' => 'active']);
         $portal->save('guardian_links', $owner, ['student_id' => $student, 'user_id' => $parent->id, 'relationship' => 'Parent', 'status' => 'active']);
         $portal->save('student_welfare', $owner, ['student_id' => $student, 'record_type' => 'medical', 'record_date' => '2026-09-20', 'details' => 'Private note', 'follow_up' => 'Review']);
+        $invoice = $portal->save('invoices', $owner, ['student_id' => $student, 'reference' => 'PROFILE-FEE-1', 'description' => 'Tuition', 'amount' => '100.00', 'due_on' => '2026-09-30', 'billing_month' => '2026-09']);
+        $this->actingAs($owner)->postJson('/portal/records/payments', ['invoice_id' => $invoice, 'reference' => 'PROFILE-REC-1', 'amount' => '40.00', 'paid_on' => '2026-09-21', 'method' => 'cash'])->assertOk();
 
-        $this->actingAs($parent)->getJson('/portal/students/'.$student.'/360')->assertOk()->assertJsonPath('student.name', 'Profile Student')->assertJsonPath('student.class_name', 'Grade 6')->assertJsonCount(1, 'guardians')->assertJsonMissingPath('welfare');
+        $this->actingAs($parent)->getJson('/portal/students/'.$student.'/360')->assertOk()->assertJsonPath('student.name', 'Profile Student')->assertJsonPath('student.class_name', 'Grade 6')->assertJsonCount(1, 'guardians')->assertJsonPath('fee_summary.billed', 10000)->assertJsonPath('fee_summary.paid', 4000)->assertJsonPath('fee_summary.outstanding', 6000)->assertJsonPath('fees.0.payments.0.reference', 'PROFILE-REC-1')->assertJsonMissingPath('welfare');
         $this->actingAs($owner)->getJson('/portal/students/'.$student.'/360')->assertOk()->assertJsonPath('welfare.0.details', 'Private note');
         $this->actingAs($parent)->getJson('/portal/students/99999/360')->assertNotFound();
     }
