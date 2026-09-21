@@ -28,6 +28,17 @@ class PlatformController extends Controller
 
     public function data(): JsonResponse
     {
+        try {
+            return $this->dataUnsafe();
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return response()->json(['summary' => ['schools' => 0, 'active_schools' => 0, 'suspended_schools' => 0, 'branches' => 0, 'active_branches' => 0, 'suspended_branches' => 0, 'members' => 0, 'accounts' => 0, 'students' => 0, 'staff' => 0, 'teachers' => 0, 'classes' => 0, 'subjects' => 0, 'guardians' => 0, 'enrollments' => 0, 'attendance' => 0, 'exams' => 0, 'grades' => 0, 'invoices' => 0, 'open_invoices' => 0, 'payments' => 0, 'expenses' => 0, 'leave_requests' => 0, 'payroll' => 0, 'payroll_payments' => 0, 'notices' => 0, 'notifications' => 0, 'notification_deliveries' => 0, 'entitlement_alerts' => 0], 'billing' => ['mrr_cents' => 0, 'subscriptions' => [], 'plan_distribution' => []], 'schools' => [], 'plans' => [], 'audit' => [], 'entitlement_alerts' => [], 'degraded' => true]);
+        }
+    }
+
+    private function dataUnsafe(): JsonResponse
+    {
         $schools = DB::table('schools as s')
             ->leftJoinSub(DB::table('school_user')->select('school_id')->selectRaw('count(*) as total')->where('status', 'active')->groupBy('school_id'), 'members', 'members.school_id', '=', 's.id')
             ->leftJoinSub(DB::table('school_students')->select('school_id')->selectRaw('count(*) as total')->groupBy('school_id'), 'students', 'students.school_id', '=', 's.id')
@@ -116,6 +127,17 @@ class PlatformController extends Controller
 
     public function branches(Request $request): JsonResponse
     {
+        try {
+            return $this->branchesUnsafe($request);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return response()->json(['branches' => ['current_page' => 1, 'data' => [], 'first_page_url' => null, 'from' => null, 'last_page' => 1, 'last_page_url' => null, 'links' => [], 'next_page_url' => null, 'path' => $request->url(), 'per_page' => (int) $request->input('per_page', 50), 'prev_page_url' => null, 'to' => null, 'total' => 0], 'degraded' => true]);
+        }
+    }
+
+    private function branchesUnsafe(Request $request): JsonResponse
+    {
         $data = $request->validate(['school_id' => ['nullable', 'integer', Rule::exists('schools', 'id')], 'status' => ['nullable', Rule::in(['active', 'suspended'])], 'search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
         $search = trim((string) ($data['search'] ?? ''));
         $query = DB::table('school_branches as b')
@@ -156,7 +178,7 @@ class PlatformController extends Controller
         ];
         $availableBranchMetrics = [];
         foreach ($branchMetrics as $table => $key) {
-            if (! Schema::hasTable($table)) {
+            if (! Schema::hasTable($table) || ! Schema::hasColumn($table, 'branch_id')) {
                 continue;
             }
             $query->leftJoinSub(DB::table($table)->select('branch_id')->selectRaw('count(*) as total')->groupBy('branch_id'), $key, $key.'.branch_id', '=', 'b.id');

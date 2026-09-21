@@ -12,6 +12,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class PortalController extends Controller
 {
@@ -20,20 +21,51 @@ class PortalController extends Controller
     public function meta(Request $request): JsonResponse
     {
         $tenant = app(TenantContext::class);
-        $settingsQuery = DB::table('school_settings')->where('school_id', $tenant->id())->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family', 'late_fee_amount', 'late_fee_grace_days', 'monthly_fee_amount', 'monthly_fee_due_day', 'monthly_fee_description']);
-        if (DB::table('schools')->count() === 1) {
-            $settingsQuery->orWhere(function ($query): void {
-                $query->whereNull('school_id')->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family']);
-            });
+        try {
+            $settingsQuery = DB::table('school_settings')->where('school_id', $tenant->id())->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family', 'late_fee_amount', 'late_fee_grace_days', 'monthly_fee_amount', 'monthly_fee_due_day', 'monthly_fee_description']);
+            if (DB::table('schools')->count() === 1) {
+                $settingsQuery->orWhere(function ($query): void {
+                    $query->whereNull('school_id')->whereIn('key', ['school_name', 'currency', 'timezone', 'logo_data', 'color_primary', 'color_secondary', 'font_family']);
+                });
+            }
+            $settings = $settingsQuery->pluck('value', 'key')->all();
+        } catch (Throwable $exception) {
+            report($exception);
+            $settings = [];
         }
-        $settings = $settingsQuery->pluck('value', 'key')->all();
+
+        try {
+            $modules = $this->portal->modules($request->user());
+        } catch (Throwable $exception) {
+            report($exception);
+            $modules = collect(config('school-modules', []))->map(function (array $definition, string $key) use ($request): array {
+                $definition['key'] = $key;
+                $definition['canWrite'] = $this->portal->admin($request->user()) && collect($definition['write'] ?? [])->contains(fn (string $role): bool => $request->user()->hasRole($role));
+
+                return $definition;
+            })->values()->all();
+        }
+
+        try {
+            $options = $this->portal->options($request->user());
+        } catch (Throwable $exception) {
+            report($exception);
+            $options = [];
+        }
+
+        try {
+            $overview = $this->portal->overview($request->user());
+        } catch (Throwable $exception) {
+            report($exception);
+            $overview = ['stats' => [], 'attendance' => ['total' => 0, 'attended' => 0, 'percentage' => 0], 'staff_attendance' => ['total' => 0, 'present' => 0, 'late' => 0, 'absent' => 0, 'leave' => 0, 'percentage' => 0], 'fees' => ['billed' => 0, 'collected' => 0, 'outstanding' => 0, 'overdue' => 0, 'collection_rate' => 0], 'today' => today()->toDateString()];
+        }
 
         return response()->json([
             'user' => [...$request->user()->only(['id', 'name', 'username', 'roles', 'tutorials']), 'effective_roles' => $tenant->roles($request->user()), 'interface_preferences' => $request->user()->interfacePreferences()],
-            'modules' => $this->portal->modules($request->user()),
-            'options' => $this->portal->options($request->user()),
+            'modules' => $modules,
+            'options' => $options,
             'settings' => (object) $settings,
-            'overview' => $this->portal->overview($request->user()),
+            'overview' => $overview,
             'canManage' => $this->portal->admin($request->user()),
             'today' => today($settings['timezone'] ?? config('app.timezone'))->toDateString(),
             'contexts' => $this->availableContexts($request->user()),
