@@ -47,7 +47,7 @@ class MonthlySettlementTest extends TestCase
         $invoice = ['student_id' => $student, 'reference' => 'FEE-1', 'description' => 'August tuition', 'amount' => '100.10', 'due_on' => '2026-08-15', 'billing_month' => '2026-08'];
         $id = $portal->save('invoices', $owner, $invoice);
         $this->actingAs($owner)->postJson('/portal/records/payments', ['invoice_id' => $id, 'reference' => 'REC-1', 'amount' => '100.10', 'paid_on' => today()->toDateString(), 'method' => 'online_manual'])->assertOk();
-        $this->actingAs($owner)->getJson('/portal/payments/reconciliation?month=2026-08')->assertOk()->assertJsonPath('billed', 10010)->assertJsonPath('collected', 10010)->assertJsonPath('outstanding', 0)->assertJsonPath('receipts', 1)->assertJsonPath('methods.0.method', 'online_manual')->assertJsonPath('methods.0.amount', 10010);
+        $this->actingAs($owner)->getJson('/portal/payments/reconciliation?month=2026-08')->assertOk()->assertJsonPath('billed', 10010)->assertJsonPath('collected', 10010)->assertJsonPath('outstanding', 0)->assertJsonPath('outstanding_invoices', 0)->assertJsonPath('overdue_invoices', 0)->assertJsonPath('receipts', 1)->assertJsonPath('methods.0.method', 'online_manual')->assertJsonPath('methods.0.amount', 10010);
         $this->getJson('/portal/records/payments?month=2026-08')->assertJsonCount(1, 'rows');
         $this->getJson('/portal/records/payments?month=2026-07')->assertJsonCount(0, 'rows');
         $this->getJson('/portal/records/invoices?month=2026-08')->assertJsonPath('rows.0.payment_status', 'paid');
@@ -87,6 +87,7 @@ class MonthlySettlementTest extends TestCase
         $invoice = $portal->save('invoices', $owner, ['student_id' => $student, 'reference' => 'OVERDUE-1', 'description' => 'Past due tuition', 'amount' => '100.00', 'due_on' => today()->subDay()->toDateString(), 'billing_month' => '2026-09']);
 
         $this->actingAs($owner)->getJson('/portal/records/invoices')->assertOk()->assertJsonPath('rows.0.id', $invoice)->assertJsonPath('rows.0.payment_status', 'overdue');
+        $this->actingAs($owner)->getJson('/portal/payments/reconciliation?month=2026-09')->assertOk()->assertJsonPath('outstanding_invoices', 1)->assertJsonPath('overdue_invoices', 1)->assertJsonPath('aging.1_30', 10000);
         $this->actingAs($owner)->getJson('/portal/meta')->assertOk()->assertJsonPath('overview.fees.billed', 10000)->assertJsonPath('overview.fees.collected', 0)->assertJsonPath('overview.fees.outstanding', 10000)->assertJsonPath('overview.fees.overdue', 10000)->assertJsonPath('overview.fees.collection_rate', 0);
     }
 

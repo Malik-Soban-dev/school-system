@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\SchoolPortal;
 use App\Support\SchoolEntitlements;
 use App\Support\TenantContext;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -336,8 +337,29 @@ class PortalController extends Controller
         $billed = (int) (clone $invoices)->sum('amount');
         $collected = (int) (clone $payments)->sum('amount');
         $methods = (clone $payments)->select('method')->selectRaw('count(*) as receipts')->selectRaw('sum(amount) as amount')->groupBy('method')->orderBy('method')->get();
+        $invoiceRows = (clone $invoices)->get(['id', 'amount', 'due_on']);
+        $paidByInvoice = (clone $payments)->select('invoice_id')->selectRaw('sum(amount) as paid')->groupBy('invoice_id')->pluck('paid', 'invoice_id');
+        $aging = ['current' => 0, '1_30' => 0, '31_60' => 0, '61_plus' => 0];
+        $outstandingInvoices = 0;
+        $overdueInvoices = 0;
+        $today = CarbonImmutable::today();
+        foreach ($invoiceRows as $invoice) {
+            $balance = max(0, (int) $invoice->amount - (int) ($paidByInvoice[$invoice->id] ?? 0));
+            if ($balance === 0) {
+                continue;
+            }
+            $outstandingInvoices++;
+            $daysLate = CarbonImmutable::parse($invoice->due_on)->diffInDays($today, false);
+            if ($daysLate <= 0) {
+                $aging['current'] += $balance;
+            } else {
+                $overdueInvoices++;
+                $bucket = $daysLate <= 30 ? '1_30' : ($daysLate <= 60 ? '31_60' : '61_plus');
+                $aging[$bucket] += $balance;
+            }
+        }
 
-        return response()->json(['month' => $data['month'] ?? null, 'billed' => $billed, 'collected' => $collected, 'outstanding' => max(0, $billed - $collected), 'receipts' => (int) (clone $payments)->count(), 'methods' => $methods]);
+        return response()->json(['month' => $data['month'] ?? null, 'billed' => $billed, 'collected' => $collected, 'outstanding' => max(0, $billed - $collected), 'outstanding_invoices' => $outstandingInvoices, 'overdue_invoices' => $overdueInvoices, 'aging' => $aging, 'receipts' => (int) (clone $payments)->count(), 'methods' => $methods]);
     }
 
     public function tutorial(Request $request): JsonResponse
