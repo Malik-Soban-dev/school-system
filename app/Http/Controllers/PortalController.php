@@ -60,15 +60,29 @@ class PortalController extends Controller
             $overview = ['stats' => [], 'attendance' => ['total' => 0, 'attended' => 0, 'percentage' => 0], 'staff_attendance' => ['total' => 0, 'present' => 0, 'late' => 0, 'absent' => 0, 'leave' => 0, 'percentage' => 0], 'fees' => ['billed' => 0, 'collected' => 0, 'outstanding' => 0, 'overdue' => 0, 'collection_rate' => 0], 'today' => today()->toDateString()];
         }
 
+        try {
+            $effectiveRoles = $tenant->roles($request->user());
+        } catch (Throwable $exception) {
+            report($exception);
+            $effectiveRoles = $request->user()->roles ?? [];
+        }
+
+        try {
+            $contexts = $this->availableContexts($request->user());
+        } catch (Throwable $exception) {
+            report($exception);
+            $contexts = collect();
+        }
+
         return response()->json([
-            'user' => [...$request->user()->only(['id', 'name', 'username', 'roles', 'tutorials']), 'effective_roles' => $tenant->roles($request->user()), 'interface_preferences' => $request->user()->interfacePreferences()],
+            'user' => [...$request->user()->only(['id', 'name', 'username', 'roles', 'tutorials']), 'effective_roles' => $effectiveRoles, 'interface_preferences' => $request->user()->interfacePreferences()],
             'modules' => $modules,
             'options' => $options,
             'settings' => (object) $settings,
             'overview' => $overview,
             'canManage' => $this->portal->admin($request->user()),
             'today' => today($settings['timezone'] ?? config('app.timezone'))->toDateString(),
-            'contexts' => $this->availableContexts($request->user()),
+            'contexts' => $contexts,
             'current_context' => ['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId()],
         ]);
     }
