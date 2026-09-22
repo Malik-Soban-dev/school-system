@@ -1403,3 +1403,9 @@ FUTURE WORK — prioritized handoff:
 - Verification: focused SchoolOperations suite passed 19 tests and 108 assertions; full Chrome browser suite passed 14/14; Vite production build passed; Laravel Pint completed.
 - Not deployed: this tested UI batch is being pushed now; Render automatic deployment will be checked after push.
 - Next bounded batch: verify the assigned headmaster experience end-to-end in the UI, including current branch identity and absence of other branches.
+
+
+## Deployment verification - owner branch assignment controls
+- Render deployment dep-dapbmv67bikc73etpoeg is live for commit bdac7f5.
+- The owner branch assignment controls are now deployed with the protected branch-access endpoint.
+- Automatic deployment completed successfully after the GitHub push.
