@@ -11,6 +11,7 @@ function open(key) {
 describe('School workflows', () => {
     it('owner switches language and theme and persists preferences', () => {
         login('owner');
+        cy.get('[data-cy=active-context]').should('be.visible').and('contain', 'Default School').and('contain', 'Default School Main Branch');
         cy.intercept('PUT', '/portal/interface-preferences').as('saveInterfacePreferences');
         cy.get('[data-cy=theme-toggle]').click();
         cy.document().its('documentElement.classList').invoke('contains', 'dark').should('be.true');

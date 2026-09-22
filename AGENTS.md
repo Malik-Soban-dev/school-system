@@ -138,3 +138,14 @@ Before relying on a package's API, confirm its installed version:
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+## Senior-agent team workflow
+
+- Work on one bounded batch at a time. Do not combine unrelated backend, frontend, database, Superadmin, branch, finance or deployment work in one batch.
+- The Senior agent is the coordinator and final owner of the result. It reads the current requirements and PROGRESS.txt, defines the batch scope, assigns isolated tasks, reviews every handoff, runs final verification, updates PROGRESS.txt, and is the only agent authorized to merge, commit, push or deploy.
+- Specialist agents may handle isolated backend, frontend, database, security, testing or documentation tasks. Each specialist must report files changed, tests run, results, known risks and remaining work.
+- Do not let multiple agents edit the same files or overlapping migrations simultaneously. Coordinate shared files through the Senior agent or use separate Git worktrees and integrate deliberately.
+- A specialist handoff is not completion. The Senior agent must inspect the diff, confirm authorization and tenant safety, run the focused tests, then run the required full verification for the batch.
+- Every batch requires server-side authorization review, focused PHPUnit coverage, Cypress workflow coverage when UI changes, production build verification, deployment verification when published, and a PROGRESS.txt update before the next batch starts.
+- After the required tests and build pass, the Senior agent must commit and push the approved batch and its progress note. Deployment remains a separate action unless explicitly requested.
+- Never allow a worker agent to declare a feature complete from code existence alone. A batch is complete only after the Senior agent confirms behavior, tests, security boundaries, known limitations and deployment state.

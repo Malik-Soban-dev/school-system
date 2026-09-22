@@ -1068,7 +1068,7 @@ FUTURE WORK — prioritized handoff:
   - Next bounded UI milestone: redesign the overview screen around these reference sections with real existing data and clear loading/empty states. Do not redesign every module in the same milestone.
 
 - 2026-09-15 OVERVIEW REDESIGN MILESTONE COMPLETE:
-  - Added role-scoped overview metrics to /portal/meta without changing existing tables or record APIs: active students, classes, outstanding fees, upcoming exams, active staff, and today�s attendance percentage where each role has access.
+  - Added role-scoped overview metrics to /portal/meta without changing existing tables or record APIs: active students, classes, outstanding fees, upcoming exams, active staff, and today�s attendance percentage where each role has access.
   - Reworked the overview around the reference direction with glass summary cards, an attendance progress panel, and an account/school profile panel while retaining existing module tiles and navigation.
   - Verification passed: npm run build (1557 modules), PHP Pint, and git diff --check.
   - Branding controls remain the next bounded milestone: owner/admin global colors, ten typography choices, school logo upload, and school name controls.
@@ -1106,7 +1106,7 @@ FUTURE WORK — prioritized handoff:
 
 - 2026-09-15 AUTHENTICATED ENDPOINT TENANT AUDIT MILESTONE COMPLETE:
   - Tenant-scoped report cards, notifications, notification deliveries, notification preferences, and authenticated invitation listing/revocation/creation were added.
-  - Invitation acceptance now creates the new account�s school membership from the invitation tenant.
+  - Invitation acceptance now creates the new account�s school membership from the invitation tenant.
   - Fixed notification preference persistence to respect its existing user_id uniqueness constraint while storing school_id.
   - Verification passed: ReportCardTest, InvitationSecurityTest, NotificationDeliveryTest and SuperadminAccessTest (15 tests, 80 assertions) plus PHP Pint.
   - Remaining safety work: audit PortalController direct attendance/audit/report queries, SchoolNotifications and NotificationDelivery workers, and replace global uniqueness constraints with tenant-safe composite constraints before enabling a second school.
@@ -1205,3 +1205,150 @@ FUTURE WORK — prioritized handoff:
   - Production /up and /login both returned HTTP 200 through Cloudflare after deployment.
   - Repository is clean and synchronized with origin/main.
   - Next bounded milestone: choose one remaining roadmap requirement before implementation; do not batch unrelated feature work.
+- 2026-09-22 MULTI-BRANCH OWNER OVERSIGHT TODO:
+  - Existing foundation: school_branches, branch_id-scoped records, active branch access grants, workspace switching, branch entitlements/limits, branch lifecycle controls, branch metrics, and Superadmin branch drill-down already exist.
+  - Owner branch registry and permissions:
+    - Decide whether an owner may create, rename, edit, activate, suspend, archive and select the default branch.
+    - Enforce owner-only school scope, active membership, subscription max_branches, safe default-branch rules and audited mutations.
+    - Add a branch list with status, code, address/contact metadata, staff count, student count and current access grants.
+  - Branch creation and onboarding:
+    - Add a guided Create branch flow that creates the branch under the current school, assigns the owner or selected administrators, and prevents cross-school identifiers.
+    - Show the new branch in the workspace selector only after its grant and lifecycle state are valid.
+    - Keep school identity and branch identity separate: dashboard header should show School Name / Branch Name and the active branch should be visible in page titles, reports, exports and audit records.
+    - Decide whether new branches inherit school settings, fee defaults, grading rules, notification preferences and enabled modules or start with an explicit setup checklist.
+  - Owner branch workspace:
+    - Make the branch selector clear on desktop and mobile.
+    - Provide a branch overview showing students, staff, classes, attendance, exams/results, fees, payroll, assignments, notifications and operational alerts for the selected branch.
+    - Preserve strict branch isolation for ordinary staff, students and guardians; switching context must never grant unassigned access.
+  - Consolidated school-owner dashboard:
+    - Add a separate owner overview, or an owner-only school overview mode, aggregating all active branches without replacing the existing branch workspace.
+    - Add branch comparison cards and charts for active students, staff, attendance, enrollment changes, invoices, collections, outstanding balances, payroll, expenses, notifications and operational activity.
+    - Add branch ranking views such as highest collections, highest outstanding fees, highest enrollment growth and strongest attendance, with clear date ranges and tie handling.
+    - Add drill-down from every school metric to the contributing branches and then to authorized records.
+  - Finance and profit reporting:
+    - Define revenue explicitly as collected payments, invoiced fees, or another approved accounting measure; do not label invoices as revenue without agreement.
+    - Define profit as collected revenue minus approved operating expenses and actual payroll disbursements, with refunds, voids, concessions, scholarships, unpaid invoices and transfers handled explicitly.
+    - Ensure every financial record has reliable school_id, branch_id, billing/payment month and status semantics before calculating comparisons.
+    - Add monthly and yearly branch statements, school totals, branch contribution percentages and reconciliation details; expose data freshness and excluded/unknown amounts.
+  - Historical performance:
+    - Add month-over-month and year-over-year filters with timezone-safe period boundaries.
+    - Decide whether historical metrics are calculated from immutable transaction records or stored period snapshots; index all aggregation paths and avoid changing past results when configuration changes.
+    - Add trend charts for revenue/collections, expenses, payroll, profit, students, attendance and overdue balances, with empty/partial-period states.
+  - Reports and exports:
+    - Add printable/downloadable school-wide and branch-specific finance and operations reports.
+    - Include school, branch, period, filters, currency, generated time and permission scope on every report.
+    - Prevent exports from leaking another branch or suspended/unassigned account data.
+  - Security, usability and verification:
+    - Add authorization tests for owner, admin, accountant, teacher, parent, student and Superadmin branch access.
+    - Add cross-branch isolation tests, default-branch lifecycle tests, plan-limit tests and audit-log tests.
+    - Add Cypress desktop/mobile workflows for branch creation, switching, owner overview, drill-down, charts, empty states and exports.
+    - Add performance checks for multi-branch aggregation, pagination and bounded date ranges.
+    - Update contextual help, deployment checks and PROGRESS.txt after each bounded milestone.
+  - Recommended implementation order: owner branch registry and identity first; branch workspace overview second; consolidated school-owner dashboard third; finance/profit definitions and historical reporting fourth; exports, performance and final hardening last.
+  - Feasibility: yes, the existing tenant/branch architecture supports this. The main product decision still required is the exact definition of revenue and profit and which owner roles may manage branch lifecycle actions.
+- 2026-09-22 REVISED MULTI-BRANCH REQUIREMENTS AND BATCH PLAN:
+  - This entry supersedes the earlier broad multi-branch owner oversight checklist. Work must be delivered as small verified batches; do not implement all branch, dashboard, finance and history work together.
+  - Agreed access model:
+    - A school owner with multiple branches can freely view all branches belonging to that school and use the consolidated school overview.
+    - A branch headmaster/admin sees only the dashboard and records for assigned branch grants.
+    - A headmaster/admin must not discover or access another branch by URL, API parameter, dashboard navigation or shared credentials.
+    - Additional branch access requires the owner to grant the person’s own account access; never ask users to share another person’s password. Sensitive branch switching may require re-authentication.
+    - The existing operational modules remain the branch headmaster/admin dashboard: Overview, People & access, Notifications, Academic years, Classes & sections, Subjects, Staff directory, Staff attendance, Students, Student welfare, Guardian links, Teaching assignments, Class materials, Assignment submissions, Assignments, Events, Event responses, Subject attendance, Attendance, Timetable, Exams, Grading rules, Exam subject plans, Marks & results, Fee invoices, Scholarships & concessions, Class fee plans, Payments & receipts, Expenses, Staff leave, Payroll records, Salary payments, Noticeboard, Activity history and School settings, subject to role permissions and branch scope.
+  - Batch 1 — branch identity and current-context safety:
+    - Show School Name / Branch Name clearly in the authenticated portal, reports and relevant page states.
+    - Verify every existing module and export uses the active branch context and rejects cross-branch access.
+    - Add focused authorization and context-display tests; verify desktop/mobile behavior.
+  - Batch 2 — owner branch setup at school creation:
+    - During Superadmin school creation, ask whether the school has multiple branches.
+    - Register the initial branch names when supplied, create a single default branch when it does not, and grant the verified owner the correct access.
+    - Add validation, audit records, plan-limit checks and an isolated browser workflow.
+  - Batch 3 — owner adds branches later:
+    - Add an owner-authorized branch registration flow for an existing school.
+    - Assign the owner and selected administrators, preserve the default branch safely, enforce lifecycle and subscription rules, and test suspended/default-branch edge cases.
+  - Batch 4 — branch headmaster/admin access management:
+    - Let the owner assign a headmaster/admin to one or more explicit branch grants using that person’s own account.
+    - Add branch-scoped People & access controls, invitations, revocation and audit history.
+    - Add tests proving headmasters cannot see another branch and authorized additional grants work.
+  - Batch 5 — branch operational overview:
+    - Improve the existing Overview for the active branch with branch-specific students, staff, attendance, fees, payroll and alerts.
+    - Keep all existing operational modules; do not create a duplicate branch application.
+    - Add contextual help, loading/empty states, responsive UI and focused tests.
+  - Batch 6 — multi-branch owner overview:
+    - Add an owner-only school overview that aggregates all owned branches while preserving the existing branch workspace.
+    - Add branch comparison cards, selected-branch drill-down and role enforcement. Start with reliable operational counts before financial rankings.
+  - Batch 7 — finance definitions and reporting:
+    - Agree on revenue, collections, expenses, payroll, profit, refunds, voids, scholarships, concessions and unpaid invoices before coding charts.
+    - Add monthly/yearly branch statements, school totals, reconciliation details and only then profit/contribution comparisons.
+  - Batch 8 — historical trends, reports and hardening:
+    - Add month-over-month/year-over-year charts, exports, performance bounds, mobile workflows, cross-branch isolation tests and deployment verification.
+  - Every batch requires: server authorization, branch isolation, mobile UI, contextual help, focused PHP tests, Cypress workflow checks, GitHub backup, deployment verification and a PROGRESS.txt update before the next batch.
+  - Feasibility: yes. The existing school/branch tenant foundation and context switching support this model; the work is intentionally split into the batches above to avoid overwhelming the implementation agent.
+- 2026-09-22 AI EXECUTION DETAILS FOR MULTI-BRANCH PLAN:
+  - General agent rules:
+    - Work on one batch only. Do not begin the next batch until the current batch has focused PHP tests, Cypress coverage where applicable, build verification, deployment verification and a PROGRESS.txt update.
+    - Inspect existing routes, controllers, services, Svelte components, migrations, policies and tests before editing. Reuse the current portal and tenant context instead of creating parallel dashboards or duplicate data models.
+    - Do not weaken server authorization because the UI hides a branch. Every branch-sensitive listing, detail endpoint, mutation, report, export, notification, job and webhook must validate school_id, branch_id, account status, membership and role on the server.
+    - Never use another user’s password as a branch-access mechanism. A person uses their own account; access comes from explicit school_user_branches grants. Re-authentication is only an additional sensitive-action check.
+    - Preserve existing school data and APIs unless a migration and compatibility plan is required. Every new migration must be safe for existing single-branch schools and migration-backed tests.
+    - Do not calculate profit, revenue or branch rankings until the accounting definitions are agreed and the source records/statuses are identified.
+  - Batch 1 definition of done — branch identity and current-context safety:
+    - The authenticated portal visibly identifies the active school and branch in the header or workspace area; mobile users can identify the same context after opening the menu.
+    - The workspace selector lists only active contexts the current account is allowed to use. Owner multi-branch access is explicit and auditable; headmaster/admin access is limited to assigned branch grants.
+    - Direct requests with another school_id or branch_id return a safe denial or empty result according to the existing API convention; they must not reveal whether unauthorized records exist.
+    - Reports, exports, notifications, audit entries and background jobs retain the active school/branch attribution.
+    - Add tests for owner, admin, headmaster, teacher, accountant, parent, student and suspended/unassigned access where relevant.
+  - Batch 2 definition of done — branch setup during school creation:
+    - Superadmin’s school creation form asks single branch versus multiple branches and collects names/details only for the selected initial branches.
+    - A single-branch school receives one active default branch. A multi-branch school receives the requested initial branches with exactly one safe default.
+    - The verified owner receives an active owner grant for the intended branches and can see valid contexts after setup; no unrelated user receives access.
+    - Duplicate names/codes, invalid school ownership, plan limits, suspended schools and failed partial setup are handled transactionally and audited.
+    - The browser workflow proves both single-branch and multi-branch setup without using production data.
+  - Batch 3 definition of done — owner adds branches later:
+    - The owner can open a school-scoped branch management area and create a branch only for their own school, subject to the active plan limit.
+    - The owner can select which existing accounts receive owner/admin/headmaster grants; invitations use the existing secure flow.
+    - Branch creation cannot silently change the default branch, move existing records, or expose records from another branch.
+    - Branch rename/status/default changes are validated, transactional, audited and tested for suspended/default edge cases.
+  - Batch 4 definition of done — headmaster/admin access:
+    - The owner can grant a person one or more named branch contexts using the person’s own account; the grant records role, school, branch and status.
+    - A headmaster/admin sees only granted branch contexts and existing modules filtered to the selected context.
+    - Removing or suspending a grant immediately blocks portal/API/report/export access and invalidates active sessions where the existing security model requires it.
+    - Tests attempt cross-branch URLs, query parameters, IDs, exports, notifications and direct mutations; all unauthorized attempts fail without data leakage.
+  - Batch 5 definition of done — branch operational overview:
+    - Reuse the current module registry and Portal.svelte screens. Add branch-aware identity, summaries, loading states, empty states, help and mobile layout improvements only where needed.
+    - Overview cards must show the selected branch, period and data scope. A branch headmaster must never see school-wide totals by accident.
+    - People & access, settings, activity history and finance controls must retain their existing role restrictions while adding branch scope.
+    - Add one desktop and one mobile Cypress workflow for a branch headmaster using the existing modules.
+  - Batch 6 definition of done — owner overview:
+    - Add an owner-only school overview route/component rather than changing the branch headmaster overview into a cross-school page.
+    - Aggregate only branches owned or authorized by the current owner’s school membership; never aggregate another school.
+    - Show branch name, period, last-updated state and whether a value is a count, amount, rate or trend. Every card has a drill-down target with the same authorization checks.
+    - Begin with operational metrics: students, staff, attendance, enrollment, classes, exams, open invoices, collections and overdue balances. Add financial ranking only after Batch 7 definitions are approved.
+  - Batch 7 definition of done — finance definitions:
+    - Before implementation, record the approved formulas and treatment of issued, partial, paid, overdue, void, refunded, waived and concession-adjusted records.
+    - Separate billed, collected, outstanding, expenses, payroll disbursements and cash/bank/cheque/verified-online methods. Do not call billed fees profit or treat a payment gateway acceptance as settled cash without reconciliation evidence.
+    - Every school-wide number equals the authorized sum of its branch numbers for the same period, currency and filters; discrepancies must be visible rather than hidden.
+    - Add feature tests for partial payments, scholarships, concessions, payroll, refunds/voids if supported, branch totals and cross-school isolation.
+  - Batch 8 definition of done — history, reports and hardening:
+    - Charts use explicit school timezone and closed/open period labels; incomplete current months are not presented as finalized history.
+    - Historical values come from immutable transactions or documented snapshots; later setting changes must not rewrite past financial meaning.
+    - Exports include school, branch, period, currency, filters, generated time and actor scope, and are authorization-tested.
+    - Add bounded queries, indexes, pagination, mobile charts, empty/error states, deployment smoke checks and a rollback/restore note.
+  - Data and UI naming rules:
+    - Use “school” for the legal/tenant organization, “branch” for a school location/workspace, “owner” for the school-level owner, and “headmaster/admin” for branch operators.
+    - Display “School Name / Branch Name” wherever a user could confuse school-wide and branch-specific information.
+    - Keep the existing module names and navigation unless a usability change is required by the batch.
+  - Required handoff for every batch:
+    - State files changed, migrations added, permissions enforced, tests run, deployment status, known limitations and the exact next batch. Never claim a provider message was delivered or a financial metric is authoritative without evidence.
+- 2026-09-22 CODEX TEAM WORKFLOW AGREED:
+  - Added a permanent Senior-agent workflow to AGENTS.md.
+  - One bounded batch is handled at a time. Specialist agents may work on isolated backend, frontend, database, security, testing or documentation tasks, but shared files and overlapping migrations require Senior-agent coordination.
+  - Every specialist must return changed files, focused tests, results, risks and remaining work. The Senior agent reviews diffs, runs final verification, updates PROGRESS.txt, and alone controls merge, push and deployment decisions.
+  - No batch is complete because code exists; completion requires authorization review, tests, build verification, known limitations and deployment state.
+
+## Batch 1 progress - active school and branch identity
+- Added a read-only identity label to the authenticated portal header so the current school name and current branch name are visible for both single-branch and multi-branch users.
+- Reused the existing server-provided context list; no branch permissions, creation flow, dashboards, finance logic, or data model was changed in this batch.
+- Added a browser assertion covering Default School and Default School Main Branch.
+- Verification: npm.cmd run build passed; Chrome browser suite passed 14/14.
+- Not deployed: this batch remains local until the next explicit publish/deploy decision.
+- Next bounded batch: review branch-context switching and verify that changing context updates the visible identity without expanding headmaster access.
