@@ -1352,3 +1352,11 @@ FUTURE WORK — prioritized handoff:
 - Verification: npm.cmd run build passed; Chrome browser suite passed 14/14.
 - Not deployed: this batch remains local until the next explicit publish/deploy decision.
 - Next bounded batch: review branch-context switching and verify that changing context updates the visible identity without expanding headmaster access.
+
+
+## Batch 1 context-switch verification
+- Confirmed the existing context switch endpoint only accepts active branch grants for non-superadmin users; unassigned branches remain unavailable even by direct request.
+- Strengthened SuperadminAccessTest to create an unassigned third branch, assert it is absent from available contexts, reject direct switching with 403, and confirm the selected branch appears in portal metadata.
+- Verification: focused SuperadminAccess suite passed 71 tests and 627 assertions; Vite production build passed.
+- No production code or database schema changed in this batch; no deployment performed.
+- Next bounded batch: design and implement the school-owner branch registration flow, beginning with the smallest server-side create/list capability.
