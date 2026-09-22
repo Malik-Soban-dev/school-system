@@ -1430,3 +1430,11 @@ FUTURE WORK — prioritized handoff:
 - Render deployment dep-dapcprcs728c73efuos0 is live for commit 27af7fd.
 - Production health check returned HTTP 200.
 - The owner-only read-only branch overview is deployed; profit calculations and historical trend charts are not included in this batch.
+
+## Batch 6 progress - owner branch workspace drill-down
+- Added an owner-only Open branch workspace action to each branch summary card.
+- The action reuses the protected context-switch endpoint, refreshes the portal metadata and opens the existing branch-scoped dashboard; no duplicate branch dashboard was created.
+- Browser fixtures now grant the test owner access to both branches while keeping the headmaster limited to North Campus.
+- Verification: Chrome browser suite passed 15/15; Vite production build passed; BrowserTestSeeder PHP lint, Laravel Pint and git diff --check passed.
+- Deployment: this tested UI batch is being pushed now; Render deployment verification is next.
+- Next bounded batch: confirm the owner branch workspace experience and decide whether branch detail should add more read-only metrics before implementing historical charts or profit reporting.

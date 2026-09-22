@@ -27,7 +27,10 @@ class BrowserTestSeeder extends Seeder
         $schoolId = DB::table('schools')->where('slug', 'default-school')->value('id');
         $headmasterBranchId = DB::table('school_branches')->insertGetId(['school_id' => $schoolId, 'name' => 'North Campus', 'code' => 'north-campus', 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
         DB::table('school_user')->insert(['school_id' => $schoolId, 'user_id' => $people['headmaster']->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
-        DB::table('school_user_branches')->insert(['school_id' => $schoolId, 'branch_id' => $headmasterBranchId, 'user_id' => $people['headmaster']->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert([
+            ['school_id' => $schoolId, 'branch_id' => $headmasterBranchId, 'user_id' => $people['owner']->id, 'roles' => json_encode(['owner']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+            ['school_id' => $schoolId, 'branch_id' => $headmasterBranchId, 'user_id' => $people['headmaster']->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+        ]);
 
         $portal = app(SchoolPortal::class);
         $save = fn (string $module, array $data): int => $portal->save($module, $people['owner'], $data);
