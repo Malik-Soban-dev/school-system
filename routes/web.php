@@ -87,6 +87,8 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, ResolveSchool::class])->group(function () {
     Route::get('/portal/meta', [PortalController::class, 'meta']);
     Route::get('/portal/contexts', [PortalController::class, 'contexts']);
+    Route::get('/portal/branches', [PortalController::class, 'branches']);
+    Route::post('/portal/branches', [PortalController::class, 'createBranch']);
     Route::put('/portal/context', [PortalController::class, 'switchContext'])->middleware('throttle:30,1');
     Route::get('/portal/interface-preferences', [InterfacePreferenceController::class, 'show']);
     Route::put('/portal/interface-preferences', [InterfacePreferenceController::class, 'update'])->middleware('throttle:20,1');

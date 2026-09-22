@@ -112,6 +112,39 @@ class PortalController extends Controller
         return response()->json(['contexts' => $this->availableContexts($request->user()), 'current' => ['school_id' => $tenant->id(), 'branch_id' => $tenant->branchId()]]);
     }
 
+    public function branches(Request $request): JsonResponse
+    {
+        $tenant = app(TenantContext::class);
+        abort_unless($tenant->hasRole($request->user(), 'owner'), 403);
+
+        return response()->json(['branches' => DB::table('school_branches')->where('school_id', $tenant->id())->orderByDesc('is_default')->orderBy('name')->get(['id', 'name', 'code', 'status', 'is_default'])]);
+    }
+
+    public function createBranch(Request $request, SchoolEntitlements $entitlements): JsonResponse
+    {
+        $tenant = app(TenantContext::class);
+        abort_unless($tenant->hasRole($request->user(), 'owner'), 403);
+        $entitlements->assertFeature('branches');
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'code' => ['required', 'alpha_dash', 'max:40', Rule::unique('school_branches', 'code')->where(fn ($query) => $query->where('school_id', $tenant->id()))],
+        ]);
+
+        $branch = DB::transaction(function () use ($request, $tenant, $data): object {
+            DB::table('schools')->where('id', $tenant->id())->lockForUpdate()->firstOrFail();
+            $subscription = DB::table('school_subscriptions')->where('school_id', $tenant->id())->whereIn('status', ['trialing', 'active'])->lockForUpdate()->first(['plan_id']);
+            $maxBranches = $subscription ? DB::table('platform_plans')->where('id', $subscription->plan_id)->value('max_branches') : null;
+            abort_if($maxBranches !== null && DB::table('school_branches')->where('school_id', $tenant->id())->where('status', 'active')->count() >= (int) $maxBranches, 422, 'This school has reached its plan branch limit. Upgrade the subscription before adding another branch.');
+            $branchId = DB::table('school_branches')->insertGetId([...$data, 'school_id' => $tenant->id(), 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('school_user_branches')->insertOrIgnore(['school_id' => $tenant->id(), 'branch_id' => $branchId, 'user_id' => $request->user()->id, 'roles' => json_encode(['owner']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'branch_id' => $branchId, 'user_id' => $request->user()->id, 'module' => 'branches', 'record_id' => $branchId, 'action' => 'branch_created', 'changes' => json_encode(['name' => $data['name'], 'code' => $data['code']]), 'created_at' => now()]);
+
+            return DB::table('school_branches')->where('id', $branchId)->first(['id', 'name', 'code', 'status', 'is_default']);
+        });
+
+        return response()->json(['branch' => $branch], 201);
+    }
+
     public function switchContext(Request $request, SchoolEntitlements $entitlements): JsonResponse
     {
         $data = $request->validate(['school_id' => ['required', 'integer'], 'branch_id' => ['required', 'integer']]);

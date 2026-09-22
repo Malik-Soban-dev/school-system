@@ -1360,3 +1360,12 @@ FUTURE WORK — prioritized handoff:
 - Verification: focused SuperadminAccess suite passed 71 tests and 627 assertions; Vite production build passed.
 - No production code or database schema changed in this batch; no deployment performed.
 - Next bounded batch: design and implement the school-owner branch registration flow, beginning with the smallest server-side create/list capability.
+
+
+## Batch 2 progress - owner branch registration foundation
+- Added owner-only GET and POST portal endpoints for listing the current school branches and registering a new branch.
+- New branches are validated with school-scoped unique codes, limited by the subscribed plan, created active and non-default, and recorded in school audit history.
+- The creating school owner receives an owner access grant for the new branch immediately; no headmaster, admin, teacher or other account is granted access automatically.
+- Verification: SchoolOperations feature suite passed 18 tests and 100 assertions; Laravel Pint completed; Vite production build passed.
+- Not deployed: this batch is ready for GitHub push only; branch-management UI and headmaster assignment are still separate batches.
+- Next bounded batch: add the owner-facing branch management UI using these endpoints, without adding cross-branch operational analytics yet.

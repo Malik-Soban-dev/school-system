@@ -22,6 +22,30 @@ class SchoolOperationsTest extends TestCase
         return app(SchoolPortal::class)->save($module, $this->person('owner'), $data);
     }
 
+    public function test_school_owner_can_list_and_register_a_branch_with_owner_access(): void
+    {
+        $owner = $this->person('owner');
+        $enterprise = DB::table('platform_plans')->where('code', 'enterprise')->value('id');
+        DB::table('school_subscriptions')->where('school_id', 1)->update(['plan_id' => $enterprise, 'status' => 'active']);
+
+        $this->actingAs($owner)->getJson('/portal/branches')->assertOk()->assertJsonCount(1, 'branches')->assertJsonPath('branches.0.is_default', 1);
+        $response = $this->actingAs($owner)->postJson('/portal/branches', ['name' => 'North Campus', 'code' => 'north-campus']);
+
+        $response->assertCreated()->assertJsonPath('branch.name', 'North Campus')->assertJsonPath('branch.code', 'north-campus')->assertJsonPath('branch.is_default', 0);
+        $branchId = $response->json('branch.id');
+        $this->actingAs($owner)->getJson('/portal/branches')->assertOk()->assertJsonCount(2, 'branches')->assertJsonFragment(['id' => $branchId, 'name' => 'North Campus']);
+        $this->assertDatabaseHas('school_audit', ['school_id' => 1, 'branch_id' => $branchId, 'user_id' => $owner->id, 'module' => 'branches', 'action' => 'branch_created']);
+        $this->assertDatabaseHas('school_user_branches', ['school_id' => 1, 'branch_id' => $branchId, 'user_id' => $owner->id, 'roles' => json_encode(['owner']), 'status' => 'active']);
+    }
+
+    public function test_non_owner_cannot_list_or_register_school_branches(): void
+    {
+        $admin = $this->person('admin');
+
+        $this->actingAs($admin)->getJson('/portal/branches')->assertForbidden();
+        $this->actingAs($admin)->postJson('/portal/branches', ['name' => 'Unauthorized Campus', 'code' => 'unauthorized-campus'])->assertForbidden();
+    }
+
     private function student(?User $user = null): int
     {
         $year = $this->record('academic_years', ['name' => 'School year', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
