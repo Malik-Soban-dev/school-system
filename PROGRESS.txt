@@ -1423,5 +1423,10 @@ FUTURE WORK — prioritized handoff:
 - Each active branch now shows its name/code, active students, active staff, classes, collected fees and outstanding fees.
 - The overview is read-only and school-scoped; non-owners receive no branch overview data. It does not claim profit or add historical trend charts yet.
 - Verification: SchoolOperations feature suite passed 19 tests and 116 assertions; Chrome browser suite passed 15/15; Vite production build passed; PHP lint, Laravel Pint and git diff --check passed.
-- Deployment: this tested production feature is being pushed now; Render deployment verification is next.
+- Deployment: verified in the deployment record below.
 - Next bounded batch: add branch overview detail/drill-down only after confirming the summary metrics with the school-owner workflow.
+
+## Deployment verification - owner multi-branch read-only overview
+- Render deployment dep-dapcprcs728c73efuos0 is live for commit 27af7fd.
+- Production health check returned HTTP 200.
+- The owner-only read-only branch overview is deployed; profit calculations and historical trend charts are not included in this batch.
