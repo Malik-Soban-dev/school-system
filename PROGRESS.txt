@@ -1199,3 +1199,9 @@ FUTURE WORK — prioritized handoff:
   - Verification passed: full PHPUnit suite (170 tests, 1,231 assertions), production Vite build (1,557 modules), focused SchoolSchedulingTest and MonthlySettlementTest (16 tests, 137 assertions), and all 14 Cypress browser workflows on Chrome 153.
   - No unrelated source changes retained; the local repository now contains only these targeted fixes plus this progress entry.
   - Known limitation: these fixes are local and are not yet included in the currently deployed Render commit. Commit and deployment verification remain the next action if the user authorizes publishing.
+- 2026-09-22 DEPLOYMENT VERIFIED:
+  - Committed and pushed verified fixes as ef2eafd (Fix settings save and payment status display).
+  - Render deployment dep-dap8jsjrjlhs73fdliog is live for the exact ef2eafd commit.
+  - Production /up and /login both returned HTTP 200 through Cloudflare after deployment.
+  - Repository is clean and synchronized with origin/main.
+  - Next bounded milestone: choose one remaining roadmap requirement before implementation; do not batch unrelated feature work.
