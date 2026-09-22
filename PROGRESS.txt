@@ -1385,3 +1385,12 @@ FUTURE WORK — prioritized handoff:
 - Live health check returned HTTP 200.
 - Live portal bundle contains the branch-management, Register branch and active-context markers.
 - Render CLI was re-authenticated successfully; the earlier token-expired blocker is resolved.
+
+
+## Batch 3 progress - owner branch access assignment foundation
+- Added an owner-only branch access endpoint for assigning an existing active school account to a selected branch.
+- The endpoint accepts operational roles only, including admin for the branch headmaster role; it rejects platform Superadmins, non-school members, cross-school branches and active grants on suspended branches.
+- Access updates revoke the target account sessions and create a school audit entry. Existing branch-scoped context resolution then exposes only the branch grants assigned to that account.
+- Verification: SchoolOperations feature suite passed 19 tests and 108 assertions; Laravel Pint completed; Vite production build passed.
+- Not deployed: this tested server-side foundation is being pushed now; owner assignment UI remains the next small batch.
+- Next bounded batch: add owner-facing branch staff assignment controls and keep People & access branch-scoped.

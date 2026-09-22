@@ -145,6 +145,39 @@ class PortalController extends Controller
         return response()->json(['branch' => $branch], 201);
     }
 
+    public function updateBranchAccess(Request $request, SchoolEntitlements $entitlements): JsonResponse
+    {
+        $tenant = app(TenantContext::class);
+        abort_unless($tenant->hasRole($request->user(), 'owner'), 403);
+        $entitlements->assertFeature('branches');
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', Rule::exists('users', 'id')],
+            'branch_id' => ['required', 'integer', Rule::exists('school_branches', 'id')->where(fn ($query) => $query->where('school_id', $tenant->id()))],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => [Rule::in(['admin', 'teacher', 'parent', 'student', 'accountant']), 'distinct'],
+            'status' => ['required', Rule::in(['active', 'suspended'])],
+        ]);
+
+        DB::transaction(function () use ($request, $tenant, $data): void {
+            $user = DB::table('users')->where('id', $data['user_id'])->lockForUpdate()->first(['id']);
+            abort_unless($user, 404);
+            abort_if(DB::table('users')->where('id', $data['user_id'])->whereJsonContains('roles', 'superadmin')->exists(), 422, 'Platform Superadmin access is managed separately.');
+            abort_unless(DB::table('school_user')->where('school_id', $tenant->id())->where('user_id', $data['user_id'])->where('status', 'active')->exists(), 404, 'The account is not an active member of this school.');
+            $branch = DB::table('school_branches')->where('school_id', $tenant->id())->where('id', $data['branch_id'])->lockForUpdate()->first(['id', 'status']);
+            abort_unless($branch, 404);
+            abort_if($data['status'] === 'active' && $branch->status !== 'active', 422, 'Activate the branch before granting active access.');
+            $before = DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $data['branch_id'])->where('user_id', $data['user_id'])->first(['roles', 'status']);
+            DB::table('school_user_branches')->updateOrInsert(
+                ['school_id' => $tenant->id(), 'branch_id' => $data['branch_id'], 'user_id' => $data['user_id']],
+                ['roles' => json_encode($data['roles']), 'status' => $data['status'], 'created_at' => now(), 'updated_at' => now()],
+            );
+            DB::table('sessions')->where('user_id', $data['user_id'])->delete();
+            DB::table('school_audit')->insert(['school_id' => $tenant->id(), 'branch_id' => $data['branch_id'], 'user_id' => $request->user()->id, 'module' => 'branch_access', 'record_id' => $data['user_id'], 'action' => 'branch_access_updated', 'changes' => json_encode(['user_id' => $data['user_id'], 'before' => $before, 'after' => ['roles' => $data['roles'], 'status' => $data['status']]]), 'created_at' => now()]);
+        });
+
+        return response()->json(['message' => 'Branch access updated and previous sessions revoked.']);
+    }
+
     public function switchContext(Request $request, SchoolEntitlements $entitlements): JsonResponse
     {
         $data = $request->validate(['school_id' => ['required', 'integer'], 'branch_id' => ['required', 'integer']]);

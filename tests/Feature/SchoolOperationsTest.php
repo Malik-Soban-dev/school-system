@@ -46,6 +46,22 @@ class SchoolOperationsTest extends TestCase
         $this->actingAs($admin)->postJson('/portal/branches', ['name' => 'Unauthorized Campus', 'code' => 'unauthorized-campus'])->assertForbidden();
     }
 
+    public function test_owner_can_assign_an_existing_school_account_to_a_branch_as_admin(): void
+    {
+        $owner = $this->person('owner');
+        $headmaster = $this->person('teacher');
+        $enterprise = DB::table('platform_plans')->where('code', 'enterprise')->value('id');
+        DB::table('school_subscriptions')->where('school_id', 1)->update(['plan_id' => $enterprise, 'status' => 'active']);
+        DB::table('school_user')->insert(['school_id' => 1, 'user_id' => $headmaster->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+
+        $branchId = $this->actingAs($owner)->postJson('/portal/branches', ['name' => 'North Campus', 'code' => 'north-campus'])->assertCreated()->json('branch.id');
+        $this->actingAs($owner)->putJson('/portal/branch-access', ['user_id' => $headmaster->id, 'branch_id' => $branchId, 'roles' => ['admin'], 'status' => 'active'])->assertOk();
+
+        $this->assertDatabaseHas('school_user_branches', ['school_id' => 1, 'branch_id' => $branchId, 'user_id' => $headmaster->id, 'roles' => json_encode(['admin']), 'status' => 'active']);
+        $this->assertDatabaseHas('school_audit', ['school_id' => 1, 'branch_id' => $branchId, 'user_id' => $owner->id, 'module' => 'branch_access', 'record_id' => $headmaster->id, 'action' => 'branch_access_updated']);
+        $this->actingAs($headmaster)->getJson('/portal/contexts')->assertOk()->assertJsonCount(1, 'contexts')->assertJsonPath('contexts.0.branch_id', $branchId)->assertJsonPath('contexts.0.roles.0', 'admin');
+    }
+
     private function student(?User $user = null): int
     {
         $year = $this->record('academic_years', ['name' => 'School year', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
