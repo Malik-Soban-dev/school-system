@@ -1378,3 +1378,10 @@ FUTURE WORK — prioritized handoff:
 - Verification: Vite production build passed; full Chrome browser suite passed 14/14.
 - Not deployed: this tested UI batch is being pushed now; production deployment remains pending explicit Render access/verification.
 - Next bounded batch: build explicit owner assignment of a headmaster/admin to a selected branch, with branch-scoped People & access behavior.
+
+
+## Deployment verification - owner branch management UI
+- Render service school-system deployment dep-dapb9arm8hqs739630m0 is live for commit 0b91f95.
+- Live health check returned HTTP 200.
+- Live portal bundle contains the branch-management, Register branch and active-context markers.
+- Render CLI was re-authenticated successfully; the earlier token-expired blocker is resolved.
