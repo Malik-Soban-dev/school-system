@@ -1417,3 +1417,11 @@ FUTURE WORK — prioritized handoff:
 - Verification: Chrome browser suite passed 15/15; BrowserTestSeeder PHP lint passed; Laravel Pint completed; git diff --check passed.
 - Deployment: this test-only batch is being pushed; it does not change the production application behavior.
 - Next bounded batch: review the school owner multi-branch overview requirements and define the smallest read-only dashboard slice before implementing analytics.
+
+## Batch 5 progress - owner multi-branch read-only overview
+- Added an owner-only branch overview to portal metadata and the owner Overview page.
+- Each active branch now shows its name/code, active students, active staff, classes, collected fees and outstanding fees.
+- The overview is read-only and school-scoped; non-owners receive no branch overview data. It does not claim profit or add historical trend charts yet.
+- Verification: SchoolOperations feature suite passed 19 tests and 116 assertions; Chrome browser suite passed 15/15; Vite production build passed; PHP lint, Laravel Pint and git diff --check passed.
+- Deployment: this tested production feature is being pushed now; Render deployment verification is next.
+- Next bounded batch: add branch overview detail/drill-down only after confirming the summary metrics with the school-owner workflow.

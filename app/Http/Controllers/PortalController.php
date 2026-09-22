@@ -90,12 +90,15 @@ class PortalController extends Controller
             $contexts = collect();
         }
 
+        $branchOverview = $tenant->hasRole($request->user(), 'owner') ? $this->ownerBranchOverview($tenant->id()) : [];
+
         return response()->json([
             'user' => [...$request->user()->only(['id', 'name', 'username', 'roles', 'tutorials']), 'effective_roles' => $effectiveRoles, 'interface_preferences' => $request->user()->interfacePreferences()],
             'modules' => $modules,
             'options' => $options,
             'settings' => (object) $settings,
             'overview' => $overview,
+            'branch_overview' => $branchOverview,
             'canManage' => $this->portal->admin($request->user()),
             'today' => today($settings['timezone'] ?? config('app.timezone'))->toDateString(),
             'contexts' => $contexts,
@@ -103,6 +106,34 @@ class PortalController extends Controller
             'degraded' => $degraded,
             'degraded_reasons' => array_values(array_unique($degradedReasons)),
         ]);
+    }
+
+    private function ownerBranchOverview(int $schoolId): array
+    {
+        return DB::table('school_branches as branch')
+            ->where('branch.school_id', $schoolId)
+            ->where('branch.status', 'active')
+            ->orderByDesc('branch.is_default')
+            ->orderBy('branch.name')
+            ->get(['branch.id', 'branch.name', 'branch.code', 'branch.is_default'])
+            ->map(function (object $branch) use ($schoolId): array {
+                $invoices = DB::table('school_invoices')->where('school_id', $schoolId)->where('branch_id', $branch->id)->get(['id', 'amount']);
+                $paid = DB::table('school_payments')->whereIn('invoice_id', $invoices->pluck('id'))->selectRaw('invoice_id, sum(amount) as paid')->groupBy('invoice_id')->pluck('paid', 'invoice_id');
+                $billed = (int) $invoices->sum('amount');
+                $collected = (int) $paid->sum();
+
+                return [
+                    'id' => (int) $branch->id,
+                    'name' => $branch->name,
+                    'code' => $branch->code,
+                    'is_default' => (bool) $branch->is_default,
+                    'students' => DB::table('school_students')->where('school_id', $schoolId)->where('branch_id', $branch->id)->where('status', 'active')->count(),
+                    'staff' => DB::table('school_staff')->where('school_id', $schoolId)->where('branch_id', $branch->id)->where('status', 'active')->count(),
+                    'classes' => DB::table('school_classes')->where('school_id', $schoolId)->where('branch_id', $branch->id)->count(),
+                    'collected' => $collected,
+                    'outstanding' => max(0, $billed - $collected),
+                ];
+            })->all();
     }
 
     public function contexts(Request $request): JsonResponse
