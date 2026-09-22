@@ -57,6 +57,12 @@ describe('School workflows', () => {
             cy.contains('button','Sign out').click(); cy.visit(url); cy.get('#username').type('invited.teacher'); cy.get('#password').type('Invite-test-12345',{log:false}); cy.get('#password_confirmation').type('Invite-test-12345',{log:false}); cy.get('button[type=submit]').click(); cy.url().should('include','/login'); cy.get('#username').type('invited.teacher'); cy.get('#password').type('Invite-test-12345',{log:false}); cy.get('button[type=submit]').click(); cy.contains('Welcome, Invited Teacher').should('be.visible');
         });
     });
+    it('headmaster stays inside the assigned branch', () => {
+        login('headmaster');
+        cy.get('[data-cy=active-context]').should('be.visible').and('contain', 'Default School').and('contain', 'North Campus').and('not.contain', 'Default School Main Branch');
+        cy.request('/portal/contexts').its('body.contexts').should('have.length', 1).its('0.branch_name').should('eq', 'North Campus');
+        cy.request({url:'/portal/branches', failOnStatusCode:false}).its('status').should('eq', 403);
+    });
     it('owner saves first-use school settings', () => {
         login('owner'); cy.contains('nav button','School settings').click(); cy.contains('button','Skip guide').click(); cy.contains('[data-cy=branch-management]','Manage your branches').should('be.visible'); cy.contains('[data-cy=branch-management]','Assign a branch headmaster').should('be.visible'); cy.get('#school_name').type('Browser Test School'); cy.get('#currency').type('PKR'); cy.get('#timezone').type('UTC'); cy.contains('button','Save settings').click(); cy.contains('School settings saved.').should('be.visible'); cy.reload(); cy.contains('Browser Test School').should('be.visible');
     });

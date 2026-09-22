@@ -1409,3 +1409,11 @@ FUTURE WORK — prioritized handoff:
 - Render deployment dep-dapbmv67bikc73etpoeg is live for commit bdac7f5.
 - The owner branch assignment controls are now deployed with the protected branch-access endpoint.
 - Automatic deployment completed successfully after the GitHub push.
+
+## Batch 4 progress - assigned headmaster branch isolation verification
+- Added an isolated browser fixture for a headmaster assigned only to North Campus.
+- Added an end-to-end browser check that confirms the school and active branch identity, exposes exactly one assigned context, and denies owner-only branch registration access.
+- No production application code or database migration changed in this batch; the existing protected context-switch authorization remains covered by the feature suite.
+- Verification: Chrome browser suite passed 15/15; BrowserTestSeeder PHP lint passed; Laravel Pint completed; git diff --check passed.
+- Deployment: this test-only batch is being pushed; it does not change the production application behavior.
+- Next bounded batch: review the school owner multi-branch overview requirements and define the smallest read-only dashboard slice before implementing analytics.

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\SchoolNotifications;
 use App\Services\SchoolPortal;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class BrowserTestSeeder extends Seeder
 {
@@ -18,11 +19,16 @@ class BrowserTestSeeder extends Seeder
             throw new \RuntimeException('Browser fixtures require the isolated browser testing database.');
         }
         $people = [];
-        foreach (['owner', 'teacher', 'student', 'parent', 'accountant'] as $role) {
+        foreach (['owner', 'teacher', 'student', 'parent', 'accountant', 'headmaster'] as $role) {
             $person = new User;
             $person->forceFill(['name' => ucfirst($role).' Test', 'username' => 'test.'.$role, 'email' => $role.'@example.test', 'password' => 'Browser-test-12345', 'roles' => [$role], 'is_active' => true])->save();
             $people[$role] = $person;
         }
+        $schoolId = DB::table('schools')->where('slug', 'default-school')->value('id');
+        $headmasterBranchId = DB::table('school_branches')->insertGetId(['school_id' => $schoolId, 'name' => 'North Campus', 'code' => 'north-campus', 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user')->insert(['school_id' => $schoolId, 'user_id' => $people['headmaster']->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_user_branches')->insert(['school_id' => $schoolId, 'branch_id' => $headmasterBranchId, 'user_id' => $people['headmaster']->id, 'roles' => json_encode(['admin']), 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+
         $portal = app(SchoolPortal::class);
         $save = fn (string $module, array $data): int => $portal->save($module, $people['owner'], $data);
         $year = $save('academic_years', ['name' => '2026 school year', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31']);
