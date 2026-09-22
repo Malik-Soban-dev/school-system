@@ -1369,3 +1369,12 @@ FUTURE WORK — prioritized handoff:
 - Verification: SchoolOperations feature suite passed 18 tests and 100 assertions; Laravel Pint completed; Vite production build passed.
 - Not deployed: this batch is ready for GitHub push only; branch-management UI and headmaster assignment are still separate batches.
 - Next bounded batch: add the owner-facing branch management UI using these endpoints, without adding cross-branch operational analytics yet.
+
+
+## Batch 2 progress - owner branch management UI
+- Added an owner-only branch management panel inside School settings using the existing portal design and endpoints.
+- Owners can refresh their branch list and submit a new branch name/code; headmasters and other roles do not receive this panel.
+- Added a browser assertion for owner visibility. Branch creation remains server-protected by owner authorization, subscription feature access and plan branch limits.
+- Verification: Vite production build passed; full Chrome browser suite passed 14/14.
+- Not deployed: this tested UI batch is being pushed now; production deployment remains pending explicit Render access/verification.
+- Next bounded batch: build explicit owner assignment of a headmaster/admin to a selected branch, with branch-scoped People & access behavior.
