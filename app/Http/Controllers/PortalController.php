@@ -464,7 +464,7 @@ class PortalController extends Controller
         }
         DB::transaction(function () use ($data, $request): void {
             foreach ($data as $key => $value) {
-                DB::table('school_settings')->updateOrInsert(['school_id' => app(TenantContext::class)->id(), 'key' => $key], ['value' => $value]);
+                DB::table('school_settings')->updateOrInsert(['school_id' => app(TenantContext::class)->id(), 'key' => $key], ['value' => $value ?? '']);
             }
             DB::table('school_audit')->insert(['school_id' => app(TenantContext::class)->id(), 'branch_id' => app(TenantContext::class)->branchId(), 'user_id' => $request->user()->id, 'module' => 'settings', 'record_id' => 0, 'action' => 'updated', 'changes' => json_encode($data), 'created_at' => now()]);
         });

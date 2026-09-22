@@ -1192,3 +1192,10 @@ FUTURE WORK — prioritized handoff:
   - Suspension now blocks normal school resolution while preserving superadmin visibility.
   - All platform mutations use a transaction and write a school audit record; aggregate queries use school_id-backed indexes and bounded result sets.
   - Added coverage for superadmin registry/status control and built production assets successfully with Vite.
+
+- 2026-09-22 TARGETED BROWSER FAILURE FIXES COMPLETE:
+  - Fixed school settings saves when optional blank fields are converted to null; tenant settings now persist blank optional values as empty strings instead of violating the non-null settings value column.
+  - Fixed the portal record card to render the calculated payment status text instead of displaying the paid amount under the Payment status label.
+  - Verification passed: full PHPUnit suite (170 tests, 1,231 assertions), production Vite build (1,557 modules), focused SchoolSchedulingTest and MonthlySettlementTest (16 tests, 137 assertions), and all 14 Cypress browser workflows on Chrome 153.
+  - No unrelated source changes retained; the local repository now contains only these targeted fixes plus this progress entry.
+  - Known limitation: these fixes are local and are not yet included in the currently deployed Render commit. Commit and deployment verification remain the next action if the user authorizes publishing.
