@@ -1350,7 +1350,7 @@ FUTURE WORK — prioritized handoff:
 - Reused the existing server-provided context list; no branch permissions, creation flow, dashboards, finance logic, or data model was changed in this batch.
 - Added a browser assertion covering Default School and Default School Main Branch.
 - Verification: npm.cmd run build passed; Chrome browser suite passed 14/14.
-- Not deployed: this batch remains local until the next explicit publish/deploy decision.
+- Deployment: the identity change was included in the subsequent production deployment.
 - Next bounded batch: review branch-context switching and verify that changing context updates the visible identity without expanding headmaster access.
 
 
@@ -1367,7 +1367,7 @@ FUTURE WORK — prioritized handoff:
 - New branches are validated with school-scoped unique codes, limited by the subscribed plan, created active and non-default, and recorded in school audit history.
 - The creating school owner receives an owner access grant for the new branch immediately; no headmaster, admin, teacher or other account is granted access automatically.
 - Verification: SchoolOperations feature suite passed 18 tests and 100 assertions; Laravel Pint completed; Vite production build passed.
-- Not deployed: this batch is ready for GitHub push only; branch-management UI and headmaster assignment are still separate batches.
+- Deployment: the server-side branch registration change was included in the subsequent production deployment; the UI and headmaster assignment remained separate batches.
 - Next bounded batch: add the owner-facing branch management UI using these endpoints, without adding cross-branch operational analytics yet.
 
 
@@ -1376,7 +1376,7 @@ FUTURE WORK — prioritized handoff:
 - Owners can refresh their branch list and submit a new branch name/code; headmasters and other roles do not receive this panel.
 - Added a browser assertion for owner visibility. Branch creation remains server-protected by owner authorization, subscription feature access and plan branch limits.
 - Verification: Vite production build passed; full Chrome browser suite passed 14/14.
-- Not deployed: this tested UI batch is being pushed now; production deployment remains pending explicit Render access/verification.
+- Deployment: verified live in Render deployment dep-dapb9arm8hqs739630m0 for commit 0b91f95.
 - Next bounded batch: build explicit owner assignment of a headmaster/admin to a selected branch, with branch-scoped People & access behavior.
 
 
@@ -1392,7 +1392,7 @@ FUTURE WORK — prioritized handoff:
 - The endpoint accepts operational roles only, including admin for the branch headmaster role; it rejects platform Superadmins, non-school members, cross-school branches and active grants on suspended branches.
 - Access updates revoke the target account sessions and create a school audit entry. Existing branch-scoped context resolution then exposes only the branch grants assigned to that account.
 - Verification: SchoolOperations feature suite passed 19 tests and 108 assertions; Laravel Pint completed; Vite production build passed.
-- Not deployed: this tested server-side foundation is being pushed now; owner assignment UI remains the next small batch.
+- Deployment: the server-side foundation was included in the subsequent production deployment; the owner assignment UI remained the next small batch.
 - Next bounded batch: add owner-facing branch staff assignment controls and keep People & access branch-scoped.
 
 
@@ -1401,7 +1401,7 @@ FUTURE WORK — prioritized handoff:
 - Owners can choose an existing school account, branch and operational role; the form sends the existing protected assignment request. The current owner account is excluded from the target list.
 - Added a browser assertion for the assignment controls while preserving branch-scoped People & access behavior.
 - Verification: focused SchoolOperations suite passed 19 tests and 108 assertions; full Chrome browser suite passed 14/14; Vite production build passed; Laravel Pint completed.
-- Not deployed: this tested UI batch is being pushed now; Render automatic deployment will be checked after push.
+- Deployment: verified live in Render deployment dep-dapbmv67bikc73etpoeg for commit bdac7f5.
 - Next bounded batch: verify the assigned headmaster experience end-to-end in the UI, including current branch identity and absence of other branches.
 
 
