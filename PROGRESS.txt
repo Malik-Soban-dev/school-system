@@ -1394,3 +1394,12 @@ FUTURE WORK — prioritized handoff:
 - Verification: SchoolOperations feature suite passed 19 tests and 108 assertions; Laravel Pint completed; Vite production build passed.
 - Not deployed: this tested server-side foundation is being pushed now; owner assignment UI remains the next small batch.
 - Next bounded batch: add owner-facing branch staff assignment controls and keep People & access branch-scoped.
+
+
+## Batch 3 progress - owner branch assignment controls
+- Added an owner-only branch access data view and assignment form inside School settings.
+- Owners can choose an existing school account, branch and operational role; the form sends the existing protected assignment request. The current owner account is excluded from the target list.
+- Added a browser assertion for the assignment controls while preserving branch-scoped People & access behavior.
+- Verification: focused SchoolOperations suite passed 19 tests and 108 assertions; full Chrome browser suite passed 14/14; Vite production build passed; Laravel Pint completed.
+- Not deployed: this tested UI batch is being pushed now; Render automatic deployment will be checked after push.
+- Next bounded batch: verify the assigned headmaster experience end-to-end in the UI, including current branch identity and absence of other branches.

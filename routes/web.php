@@ -89,6 +89,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, Resolve
     Route::get('/portal/contexts', [PortalController::class, 'contexts']);
     Route::get('/portal/branches', [PortalController::class, 'branches']);
     Route::post('/portal/branches', [PortalController::class, 'createBranch']);
+    Route::get('/portal/branch-access', [PortalController::class, 'branchAccess']);
     Route::put('/portal/branch-access', [PortalController::class, 'updateBranchAccess']);
     Route::put('/portal/context', [PortalController::class, 'switchContext'])->middleware('throttle:30,1');
     Route::get('/portal/interface-preferences', [InterfacePreferenceController::class, 'show']);

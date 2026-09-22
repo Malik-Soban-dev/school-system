@@ -145,6 +145,17 @@ class PortalController extends Controller
         return response()->json(['branch' => $branch], 201);
     }
 
+    public function branchAccess(Request $request): JsonResponse
+    {
+        $tenant = app(TenantContext::class);
+        abort_unless($tenant->hasRole($request->user(), 'owner'), 403);
+
+        return response()->json([
+            'members' => DB::table('school_user')->join('users', 'users.id', '=', 'school_user.user_id')->where('school_user.school_id', $tenant->id())->where('school_user.status', 'active')->orderBy('users.name')->get(['users.id', 'users.name', 'users.username', 'users.email']),
+            'grants' => DB::table('school_user_branches')->join('school_branches', 'school_branches.id', '=', 'school_user_branches.branch_id')->where('school_user_branches.school_id', $tenant->id())->get(['school_user_branches.user_id', 'school_user_branches.branch_id', 'school_user_branches.roles', 'school_user_branches.status', 'school_branches.name as branch_name']),
+        ]);
+    }
+
     public function updateBranchAccess(Request $request, SchoolEntitlements $entitlements): JsonResponse
     {
         $tenant = app(TenantContext::class);
@@ -162,10 +173,12 @@ class PortalController extends Controller
             $user = DB::table('users')->where('id', $data['user_id'])->lockForUpdate()->first(['id']);
             abort_unless($user, 404);
             abort_if(DB::table('users')->where('id', $data['user_id'])->whereJsonContains('roles', 'superadmin')->exists(), 422, 'Platform Superadmin access is managed separately.');
+            abort_if($data['user_id'] === $request->user()->id, 422, 'You cannot replace your own owner access.');
             abort_unless(DB::table('school_user')->where('school_id', $tenant->id())->where('user_id', $data['user_id'])->where('status', 'active')->exists(), 404, 'The account is not an active member of this school.');
             $branch = DB::table('school_branches')->where('school_id', $tenant->id())->where('id', $data['branch_id'])->lockForUpdate()->first(['id', 'status']);
             abort_unless($branch, 404);
             abort_if($data['status'] === 'active' && $branch->status !== 'active', 422, 'Activate the branch before granting active access.');
+            abort_if(DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $data['branch_id'])->where('user_id', $data['user_id'])->whereJsonContains('roles', 'owner')->exists(), 422, 'Owner access must be managed privately.');
             $before = DB::table('school_user_branches')->where('school_id', $tenant->id())->where('branch_id', $data['branch_id'])->where('user_id', $data['user_id'])->first(['roles', 'status']);
             DB::table('school_user_branches')->updateOrInsert(
                 ['school_id' => $tenant->id(), 'branch_id' => $data['branch_id'], 'user_id' => $data['user_id']],
