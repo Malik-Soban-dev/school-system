@@ -1438,3 +1438,8 @@ FUTURE WORK — prioritized handoff:
 - Verification: Chrome browser suite passed 15/15; Vite production build passed; BrowserTestSeeder PHP lint, Laravel Pint and git diff --check passed.
 - Deployment: this tested UI batch is being pushed now; Render deployment verification is next.
 - Next bounded batch: confirm the owner branch workspace experience and decide whether branch detail should add more read-only metrics before implementing historical charts or profit reporting.
+
+## Deployment verification - owner branch workspace drill-down
+- Render deployment dep-dapdrl0473hc738q6f2g is live for commit 89820e5.
+- Production health check returned HTTP 200.
+- Owners can open a permitted branch workspace from the overview; headmaster branch isolation remains enforced.
