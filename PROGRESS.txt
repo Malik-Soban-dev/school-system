@@ -1508,5 +1508,5 @@ FUTURE WORK — prioritized handoff:
 - Kept reconciliation values tied to the selected school, active branch and explicit month; recorded receipts remain distinct from settled cash and profit.
 - Added feature assertions for cash receipts, payment amount, overdue aging and invoice counts; no schema changes were needed.
 - Verification: SchoolOperations feature suite passed 21 tests and 147 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome wrapper was not rerun because it consistently hangs before browser requests in this environment.
-- Deployment: pending this commit; verify Render before the next batch.
+- Deployment: Render deployment dep-daq1er6k1f9s73bg124g is live for commit 97f888e; production health check returned HTTP 200.
 - Next bounded batch: add a bounded historical period selector or statement comparison only after preserving explicit open/closed period labels; profit remains excluded.
