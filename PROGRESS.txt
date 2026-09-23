@@ -1484,3 +1484,12 @@ FUTURE WORK — prioritized handoff:
 ## Next bounded batch
 - Review and approve the finance definitions above, then add a school-owner branch statement with explicit period, currency, scope and reconciliation labels before any profit or ranking view.
 
+
+## Batch 9 progress - owner monthly branch financial statement
+- Added an owner-only monthly statement endpoint scoped to the authenticated school and an active branch selected by the owner.
+- The statement reports billed, collected, outstanding, overdue, expenses and payroll disbursements for one explicit YYYY-MM period and currency; it does not calculate profit, rankings or historical trends.
+- Added an owner portal control to open the statement and change the month, with recorded-operating-total and no-profit labels.
+- Added authorization and branch-scope feature coverage; non-owners receive 403 and cross-school branches cannot be selected.
+- Verification: SchoolOperations feature suite passed 21 tests and 134 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome wrapper was attempted but hung before issuing browser requests, so no Cypress pass is claimed for this batch.
+- Deployment: not yet deployed; commit and push are next after this handoff.
+- Next bounded batch: add explicit reconciliation detail or exports only after the owner reviews the monthly statement semantics; profit remains blocked on reversal/settlement rules.

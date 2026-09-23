@@ -150,6 +150,44 @@ class PortalController extends Controller
             })->all();
     }
 
+    public function branchFinancialStatement(Request $request): JsonResponse
+    {
+        $tenant = app(TenantContext::class);
+        abort_unless($tenant->hasRole($request->user(), 'owner'), 403);
+        $data = $request->validate([
+            'branch_id' => ['required', 'integer'],
+            'month' => ['required', 'date_format:Y-m'],
+        ]);
+        $branch = DB::table('school_branches')->where('school_id', $tenant->id())->where('id', $data['branch_id'])->where('status', 'active')->first(['id', 'name', 'code']);
+        abort_unless($branch, 404);
+
+        $invoices = DB::table('school_invoices')->where('school_id', $tenant->id())->where('branch_id', $branch->id)->where('billing_month', $data['month']);
+        $payments = DB::table('school_payments')->where('school_id', $tenant->id())->whereIn('invoice_id', (clone $invoices)->select('id'));
+        $invoiceRows = (clone $invoices)->get(['id', 'amount', 'due_on']);
+        $paidByInvoice = (clone $payments)->select('invoice_id')->selectRaw('sum(amount) as paid')->groupBy('invoice_id')->pluck('paid', 'invoice_id');
+        $billed = (int) $invoiceRows->sum('amount');
+        $collected = (int) $paidByInvoice->sum();
+        $overdue = $invoiceRows->sum(function (object $invoice) use ($paidByInvoice): int {
+            $balance = max(0, (int) $invoice->amount - (int) ($paidByInvoice[$invoice->id] ?? 0));
+
+            return (string) $invoice->due_on < today()->toDateString() ? $balance : 0;
+        });
+
+        return response()->json([
+            'branch' => $branch,
+            'period' => $data['month'],
+            'currency' => DB::table('school_settings')->where('school_id', $tenant->id())->where('key', 'currency')->value('value') ?? 'USD',
+            'metrics' => [
+                'billed' => $billed,
+                'collected' => $collected,
+                'outstanding' => max(0, $billed - $collected),
+                'overdue' => (int) $overdue,
+                'expenses' => (int) DB::table('school_expenses')->where('school_id', $tenant->id())->where('branch_id', $branch->id)->whereBetween('paid_on', [$data['month'].'-01', $data['month'].'-31'])->sum('amount'),
+                'payroll_disbursed' => (int) DB::table('school_payroll_payments')->where('school_id', $tenant->id())->where('branch_id', $branch->id)->whereBetween('paid_on', [$data['month'].'-01', $data['month'].'-31'])->sum('amount'),
+            ],
+        ]);
+    }
+
     public function contexts(Request $request): JsonResponse
     {
         $tenant = app(TenantContext::class);

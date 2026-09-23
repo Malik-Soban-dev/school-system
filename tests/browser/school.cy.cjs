@@ -14,6 +14,8 @@ describe('School workflows', () => {
         login('owner');
         cy.get('[data-cy=active-context]').should('be.visible').and('contain', 'Default School').and('contain', 'Default School Main Branch');
         cy.contains('[data-cy=branch-overview]', 'North Campus').should('be.visible');
+        cy.contains('.branch-summary', 'North Campus').find('[data-cy^=financial-statement-]').click();
+        cy.get('[data-cy=branch-financial-statement]').should('be.visible').and('contain', 'No profit calculation included');
         cy.contains('.branch-summary', 'North Campus').find('button').click();
         cy.get('[data-cy=active-context]').should('contain', 'North Campus');
         cy.get('.context-switcher select').select('Default School · Default School Main Branch');

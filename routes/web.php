@@ -113,6 +113,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, Resolve
     Route::post('/portal/invoices/batch', [PortalController::class, 'createBatchInvoices']);
     Route::get('/portal/payments/reconciliation', [PortalController::class, 'reconciliation']);
     Route::get('/portal/payments/reconciliation/export', [PortalController::class, 'reconciliationExport']);
+    Route::get('/portal/branch-financial-statement', [PortalController::class, 'branchFinancialStatement']);
     Route::get('/portal/audit', [PortalController::class, 'audit']);
     Route::get('/portal/records/{module}', [PortalController::class, 'index']);
     Route::post('/portal/records/{module}', [PortalController::class, 'save']);
@@ -120,7 +121,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, Resolve
     Route::get('/portal/submissions/{submission}/attachment', [PortalController::class, 'submissionAttachment'])->whereNumber('submission');
     Route::get('/reports/{module}/{id}', [PortalController::class, 'report'])->whereNumber('id')->name('record.report');
     Route::get('/report-cards/{exam}/{student}', [ReportCardController::class, 'show'])->whereNumber(['exam', 'student'])->name('report-card.show');
-    Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
+    Route::get('/dashboard', function (Request $request) {
         if ($request->user()->hasRole('superadmin') && ! $request->session()->get('school_workspace', false)) {
             return redirect()->route('superadmin.dashboard');
         }

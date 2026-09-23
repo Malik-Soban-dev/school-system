@@ -61,6 +61,21 @@ class SchoolOperationsTest extends TestCase
         $this->actingAs($owner)->getJson('/portal/meta')->assertOk()->assertJsonFragment(['name' => 'Finance Campus', 'expenses' => 2500, 'payroll_disbursed' => 7000]);
     }
 
+    public function test_owner_can_read_a_monthly_branch_financial_statement_but_other_roles_cannot(): void
+    {
+        $owner = $this->person('owner');
+        $branchId = $this->actingAs($owner)->postJson('/portal/branches', ['name' => 'Statement Campus', 'code' => 'statement-campus'])->assertCreated()->json('branch.id');
+        $yearId = DB::table('school_academic_years')->insertGetId(['school_id' => 1, 'branch_id' => $branchId, 'name' => 'Statement year', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31', 'created_at' => now(), 'updated_at' => now()]);
+        $classId = DB::table('school_classes')->insertGetId(['school_id' => 1, 'branch_id' => $branchId, 'name' => 'Statement class', 'year_id' => $yearId, 'capacity' => 20, 'created_at' => now(), 'updated_at' => now()]);
+        $studentId = DB::table('school_students')->insertGetId(['school_id' => 1, 'branch_id' => $branchId, 'name' => 'Statement student', 'admission_number' => 'STAT-STUDENT-1', 'class_id' => $classId, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_invoices')->insert(['school_id' => 1, 'branch_id' => $branchId, 'reference' => 'STAT-INV-1', 'student_id' => $studentId, 'description' => 'Tuition', 'amount' => 10000, 'due_on' => '2026-09-10', 'billing_month' => '2026-09', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_payments')->insert(['school_id' => 1, 'branch_id' => $branchId, 'invoice_id' => DB::table('school_invoices')->where('reference', 'STAT-INV-1')->value('id'), 'reference' => 'STAT-PAY-1', 'amount' => 4000, 'paid_on' => '2026-09-12', 'method' => 'cash', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_expenses')->insert(['school_id' => 1, 'branch_id' => $branchId, 'reference' => 'STAT-EXP-1', 'description' => 'Supplies', 'category' => 'supplies', 'amount' => 2500, 'paid_on' => '2026-09-20', 'created_at' => now(), 'updated_at' => now()]);
+
+        $this->actingAs($owner)->getJson('/portal/branch-financial-statement?branch_id='.$branchId.'&month=2026-09')->assertOk()->assertJsonPath('branch.id', $branchId)->assertJsonPath('period', '2026-09')->assertJsonPath('metrics.billed', 10000)->assertJsonPath('metrics.collected', 4000)->assertJsonPath('metrics.outstanding', 6000)->assertJsonPath('metrics.overdue', 6000)->assertJsonPath('metrics.expenses', 2500)->assertJsonPath('metrics.payroll_disbursed', 0);
+        $this->actingAs($this->person('admin'))->getJson('/portal/branch-financial-statement?branch_id='.$branchId.'&month=2026-09')->assertForbidden();
+    }
+
     public function test_owner_can_assign_an_existing_school_account_to_a_branch_as_admin(): void
     {
         $owner = $this->person('owner');
