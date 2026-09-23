@@ -1500,5 +1500,5 @@ FUTURE WORK — prioritized handoff:
 - Reused the same server-side branch-scoped metrics as the statement endpoint; non-owner access and unauthenticated export access are denied.
 - Added a portal download link and feature assertions for CSV content and authorization.
 - Verification: SchoolOperations feature suite passed 21 tests and 141 assertions; PHP lint and Vite build passed; git diff --check passed. The Chrome wrapper remains an environment limitation because it hangs before browser requests.
-- Deployment: pending this commit; verify Render before the next batch.
+- Deployment: Render deployment dep-daq1236gekts73cri520 is live for commit 8332d7e; production health check returned HTTP 200.
 - Next bounded batch: add reconciliation detail by payment method and invoice aging only if it remains explicitly separate from profit and settlement claims.
