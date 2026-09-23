@@ -1510,3 +1510,11 @@ FUTURE WORK — prioritized handoff:
 - Verification: SchoolOperations feature suite passed 21 tests and 147 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome wrapper was not rerun because it consistently hangs before browser requests in this environment.
 - Deployment: Render deployment dep-daq1er6k1f9s73bg124g is live for commit 97f888e; production health check returned HTTP 200.
 - Next bounded batch: add a bounded historical period selector or statement comparison only after preserving explicit open/closed period labels; profit remains excluded.
+
+## Batch 12 progress - explicit historical period comparison
+- Added previous-month comparison data to the owner branch statement with school-timezone-aware period status labels: open, closed or upcoming.
+- The comparison shows prior billed, collected, expenses and payroll-disbursed totals and clearly labels itself as comparison-only, not a finalized statement.
+- Added feature assertions for the current open period, previous closed period and previous-period totals; profit and ranking remain excluded.
+- Verification: SchoolOperations feature suite passed 21 tests and 151 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome wrapper remains an environment limitation because it hangs before browser requests.
+- Deployment: pending this commit; verify Render before the next batch.
+- Next bounded batch: add a bounded multi-period selector or trend view with explicit incomplete-period handling; do not present the current open month as finalized.

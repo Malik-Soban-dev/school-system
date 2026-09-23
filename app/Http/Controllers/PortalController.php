@@ -161,7 +161,9 @@ class PortalController extends Controller
         $branch = DB::table('school_branches')->where('school_id', $tenant->id())->where('id', $data['branch_id'])->where('status', 'active')->first(['id', 'name', 'code']);
         abort_unless($branch, 404);
 
-        return response()->json(['branch' => $branch, 'period' => $data['month'], 'currency' => $this->schoolCurrency($tenant->id()), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $data['month'])]);
+        $previousMonth = CarbonImmutable::createFromFormat('Y-m', $data['month'])->subMonth()->format('Y-m');
+
+        return response()->json(['branch' => $branch, 'period' => $data['month'], 'period_status' => $this->financialPeriodStatus($tenant->id(), $data['month']), 'currency' => $this->schoolCurrency($tenant->id()), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $data['month']), 'comparison' => ['period' => $previousMonth, 'period_status' => $this->financialPeriodStatus($tenant->id(), $previousMonth), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $previousMonth)]]);
     }
 
     public function branchFinancialStatementExport(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
@@ -187,6 +189,14 @@ class PortalController extends Controller
     private function schoolCurrency(int $schoolId): string
     {
         return (string) (DB::table('school_settings')->where('school_id', $schoolId)->where('key', 'currency')->value('value') ?? 'USD');
+    }
+
+    private function financialPeriodStatus(int $schoolId, string $month): string
+    {
+        $timezone = DB::table('school_settings')->where('school_id', $schoolId)->where('key', 'timezone')->value('value') ?? config('app.timezone');
+        $currentMonth = today($timezone)->format('Y-m');
+
+        return $month < $currentMonth ? 'closed' : ($month === $currentMonth ? 'open' : 'upcoming');
     }
 
     private function branchFinancialMetrics(int $schoolId, object $branch, string $month): array
