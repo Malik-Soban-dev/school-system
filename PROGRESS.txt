@@ -1464,3 +1464,23 @@ FUTURE WORK — prioritized handoff:
 - Verification: SchoolOperations feature suite passed 20 tests and 123 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome runner completed its first workflow and exited after the run, but its wrapper did not return the final aggregate count in this environment.
 - Deployment: not yet deployed; commit and push are the next handoff step.
 - Next bounded batch: agree and document the exact treatment of issued, partial, paid, overdue, void, refunded, waived, scholarship and concession-adjusted records before adding monthly/yearly statements or profit/contribution comparisons.
+
+## Deployment verification - separated branch financial operating totals
+- Render deployment dep-dapvfblg1s2s73fj5geg is live for commit 47d0561.
+- Production health check returned HTTP 200.
+- The live owner branch overview includes separate recorded expenses and payroll-disbursement values; no profit or historical reporting was added.
+
+## Next batch definition record - current finance semantics for review
+- Billed fees: the recorded invoice amount for the selected school, branch and period. This is not revenue or profit.
+- Collected fees: the sum of recorded school payment receipts linked to those invoices. A recorded online/manual receipt is not treated as settled cash without reconciliation evidence.
+- Outstanding fees: max(billed fees - recorded collected receipts, 0) for the same scope.
+- Overdue fees: the unpaid portion of an invoice whose due date is before the reporting date; partial payments leave only the unpaid portion overdue.
+- Expenses: recorded school expense amounts by branch and paid date.
+- Payroll disbursements: recorded salary-payment amounts by branch and payment date; payroll liability or gross payroll is not treated as cash paid.
+- Scholarships and concessions: reduce the invoice amount when applied to an issued invoice; they are not collected cash and will remain separately identified in later statements.
+- Refunds, voids and chargebacks: the current school ledger has no complete immutable reversal treatment, so they must not be silently netted into profit. Profit and branch ranking remain unavailable until reversal and settlement rules are approved.
+- Status: proposed current semantics for owner review; no monthly/yearly statement or profit calculation should be implemented until these rules and unsupported reversal cases are approved.
+
+## Next bounded batch
+- Review and approve the finance definitions above, then add a school-owner branch statement with explicit period, currency, scope and reconciliation labels before any profit or ranking view.
+
