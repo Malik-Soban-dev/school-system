@@ -16,6 +16,7 @@ describe('School workflows', () => {
         cy.contains('[data-cy=branch-overview]', 'North Campus').should('be.visible');
         cy.contains('.branch-summary', 'North Campus').find('[data-cy^=financial-statement-]').click();
         cy.get('[data-cy=branch-financial-statement]').should('be.visible').and('contain', 'No profit calculation included');
+        cy.get('[data-cy=download-branch-statement]').should('have.attr', 'href').and('contain', '/portal/branch-financial-statement/export');
         cy.contains('.branch-summary', 'North Campus').find('button').click();
         cy.get('[data-cy=active-context]').should('contain', 'North Campus');
         cy.get('.context-switcher select').select('Default School · Default School Main Branch');

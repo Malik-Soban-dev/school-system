@@ -73,7 +73,13 @@ class SchoolOperationsTest extends TestCase
         DB::table('school_expenses')->insert(['school_id' => 1, 'branch_id' => $branchId, 'reference' => 'STAT-EXP-1', 'description' => 'Supplies', 'category' => 'supplies', 'amount' => 2500, 'paid_on' => '2026-09-20', 'created_at' => now(), 'updated_at' => now()]);
 
         $this->actingAs($owner)->getJson('/portal/branch-financial-statement?branch_id='.$branchId.'&month=2026-09')->assertOk()->assertJsonPath('branch.id', $branchId)->assertJsonPath('period', '2026-09')->assertJsonPath('metrics.billed', 10000)->assertJsonPath('metrics.collected', 4000)->assertJsonPath('metrics.outstanding', 6000)->assertJsonPath('metrics.overdue', 6000)->assertJsonPath('metrics.expenses', 2500)->assertJsonPath('metrics.payroll_disbursed', 0);
+        $export = $this->actingAs($owner)->get('/portal/branch-financial-statement/export?branch_id='.$branchId.'&month=2026-09')->assertOk()->assertHeader('content-type', 'text/csv; charset=UTF-8');
+        $csv = $export->streamedContent();
+        $this->assertStringContainsString('School,Branch,Period,Currency', $csv);
+        $this->assertStringContainsString('Statement Campus', $csv);
+        $this->assertStringContainsString('2026-09', $csv);
         $this->actingAs($this->person('admin'))->getJson('/portal/branch-financial-statement?branch_id='.$branchId.'&month=2026-09')->assertForbidden();
+        $this->get('/portal/branch-financial-statement/export?branch_id='.$branchId.'&month=2026-09')->assertForbidden();
     }
 
     public function test_owner_can_assign_an_existing_school_account_to_a_branch_as_admin(): void

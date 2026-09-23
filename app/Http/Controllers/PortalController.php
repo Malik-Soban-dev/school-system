@@ -161,8 +161,38 @@ class PortalController extends Controller
         $branch = DB::table('school_branches')->where('school_id', $tenant->id())->where('id', $data['branch_id'])->where('status', 'active')->first(['id', 'name', 'code']);
         abort_unless($branch, 404);
 
-        $invoices = DB::table('school_invoices')->where('school_id', $tenant->id())->where('branch_id', $branch->id)->where('billing_month', $data['month']);
-        $payments = DB::table('school_payments')->where('school_id', $tenant->id())->whereIn('invoice_id', (clone $invoices)->select('id'));
+        return response()->json(['branch' => $branch, 'period' => $data['month'], 'currency' => $this->schoolCurrency($tenant->id()), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $data['month'])]);
+    }
+
+    public function branchFinancialStatementExport(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $tenant = app(TenantContext::class);
+        abort_unless($tenant->hasRole($request->user(), 'owner'), 403);
+        $data = $request->validate(['branch_id' => ['required', 'integer'], 'month' => ['required', 'date_format:Y-m']]);
+        $branch = DB::table('school_branches')->where('school_id', $tenant->id())->where('id', $data['branch_id'])->where('status', 'active')->first(['id', 'name', 'code']);
+        abort_unless($branch, 404);
+        $currency = $this->schoolCurrency($tenant->id());
+        $metrics = $this->branchFinancialMetrics($tenant->id(), $branch, $data['month']);
+        $schoolName = DB::table('schools')->where('id', $tenant->id())->value('name') ?? 'School';
+        $actor = $request->user()->email ?? $request->user()->username ?? (string) $request->user()->id;
+
+        return response()->streamDownload(function () use ($schoolName, $branch, $data, $currency, $actor, $metrics): void {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['School', 'Branch', 'Period', 'Currency', 'Generated at', 'Actor scope', 'Billed', 'Collected', 'Outstanding', 'Overdue', 'Expenses', 'Payroll disbursed']);
+            fputcsv($handle, [$schoolName, $branch->name, $data['month'], $currency, now()->toIso8601String(), $actor, number_format($metrics['billed'] / 100, 2, '.', ''), number_format($metrics['collected'] / 100, 2, '.', ''), number_format($metrics['outstanding'] / 100, 2, '.', ''), number_format($metrics['overdue'] / 100, 2, '.', ''), number_format($metrics['expenses'] / 100, 2, '.', ''), number_format($metrics['payroll_disbursed'] / 100, 2, '.', '')]);
+            fclose($handle);
+        }, 'branch-statement-'.$branch->code.'-'.$data['month'].'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function schoolCurrency(int $schoolId): string
+    {
+        return (string) (DB::table('school_settings')->where('school_id', $schoolId)->where('key', 'currency')->value('value') ?? 'USD');
+    }
+
+    private function branchFinancialMetrics(int $schoolId, object $branch, string $month): array
+    {
+        $invoices = DB::table('school_invoices')->where('school_id', $schoolId)->where('branch_id', $branch->id)->where('billing_month', $month);
+        $payments = DB::table('school_payments')->where('school_id', $schoolId)->whereIn('invoice_id', (clone $invoices)->select('id'));
         $invoiceRows = (clone $invoices)->get(['id', 'amount', 'due_on']);
         $paidByInvoice = (clone $payments)->select('invoice_id')->selectRaw('sum(amount) as paid')->groupBy('invoice_id')->pluck('paid', 'invoice_id');
         $billed = (int) $invoiceRows->sum('amount');
@@ -173,19 +203,7 @@ class PortalController extends Controller
             return (string) $invoice->due_on < today()->toDateString() ? $balance : 0;
         });
 
-        return response()->json([
-            'branch' => $branch,
-            'period' => $data['month'],
-            'currency' => DB::table('school_settings')->where('school_id', $tenant->id())->where('key', 'currency')->value('value') ?? 'USD',
-            'metrics' => [
-                'billed' => $billed,
-                'collected' => $collected,
-                'outstanding' => max(0, $billed - $collected),
-                'overdue' => (int) $overdue,
-                'expenses' => (int) DB::table('school_expenses')->where('school_id', $tenant->id())->where('branch_id', $branch->id)->whereBetween('paid_on', [$data['month'].'-01', $data['month'].'-31'])->sum('amount'),
-                'payroll_disbursed' => (int) DB::table('school_payroll_payments')->where('school_id', $tenant->id())->where('branch_id', $branch->id)->whereBetween('paid_on', [$data['month'].'-01', $data['month'].'-31'])->sum('amount'),
-            ],
-        ]);
+        return ['billed' => $billed, 'collected' => $collected, 'outstanding' => max(0, $billed - $collected), 'overdue' => (int) $overdue, 'expenses' => (int) DB::table('school_expenses')->where('school_id', $schoolId)->where('branch_id', $branch->id)->whereBetween('paid_on', [$month.'-01', $month.'-31'])->sum('amount'), 'payroll_disbursed' => (int) DB::table('school_payroll_payments')->where('school_id', $schoolId)->where('branch_id', $branch->id)->whereBetween('paid_on', [$month.'-01', $month.'-31'])->sum('amount')];
     }
 
     public function contexts(Request $request): JsonResponse

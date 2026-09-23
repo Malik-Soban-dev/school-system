@@ -1493,3 +1493,12 @@ FUTURE WORK — prioritized handoff:
 - Verification: SchoolOperations feature suite passed 21 tests and 134 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome wrapper was attempted but hung before issuing browser requests, so no Cypress pass is claimed for this batch.
 - Deployment: Render deployment dep-daq0ok49v7es73bnmoc0 is live for commit 2a52a16; production health check returned HTTP 200.
 - Next bounded batch: add explicit reconciliation detail or exports only after the owner reviews the monthly statement semantics; profit remains blocked on reversal/settlement rules.
+
+## Batch 10 progress - owner branch statement export
+- Added an owner-only CSV export for one active branch and one explicit month.
+- Export metadata includes school, branch, period, currency, generated timestamp and actor scope, followed by billed, collected, outstanding, overdue, expenses and payroll-disbursed values.
+- Reused the same server-side branch-scoped metrics as the statement endpoint; non-owner access and unauthenticated export access are denied.
+- Added a portal download link and feature assertions for CSV content and authorization.
+- Verification: SchoolOperations feature suite passed 21 tests and 141 assertions; PHP lint and Vite build passed; git diff --check passed. The Chrome wrapper remains an environment limitation because it hangs before browser requests.
+- Deployment: pending this commit; verify Render before the next batch.
+- Next bounded batch: add reconciliation detail by payment method and invoice aging only if it remains explicitly separate from profit and settlement claims.

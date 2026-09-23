@@ -114,6 +114,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsureMfa::class, Resolve
     Route::get('/portal/payments/reconciliation', [PortalController::class, 'reconciliation']);
     Route::get('/portal/payments/reconciliation/export', [PortalController::class, 'reconciliationExport']);
     Route::get('/portal/branch-financial-statement', [PortalController::class, 'branchFinancialStatement']);
+    Route::get('/portal/branch-financial-statement/export', [PortalController::class, 'branchFinancialStatementExport']);
     Route::get('/portal/audit', [PortalController::class, 'audit']);
     Route::get('/portal/records/{module}', [PortalController::class, 'index']);
     Route::post('/portal/records/{module}', [PortalController::class, 'save']);
