@@ -1525,5 +1525,5 @@ FUTURE WORK — prioritized handoff:
 - Trend values are limited to collected, expenses and payroll disbursements; no profit, ranking or charting claim was added.
 - Added feature assertions for trend length, periods and status labels.
 - Verification: SchoolOperations feature suite passed 21 tests and 156 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome wrapper remains an environment limitation because it hangs before browser requests.
-- Deployment: pending this commit; verify Render before the next batch.
+- Deployment: Render deployment dep-daq2d2ff3r2c73bnktrg is live for commit 0b57306; production health check returned HTTP 200.
 - Next bounded batch: add a bounded year-to-date view only if it preserves period status and explicit incomplete-period handling.
