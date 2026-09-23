@@ -162,8 +162,13 @@ class PortalController extends Controller
         abort_unless($branch, 404);
 
         $previousMonth = CarbonImmutable::createFromFormat('Y-m', $data['month'])->subMonth()->format('Y-m');
+        $trend = collect(range(0, 2))->map(function (int $offset) use ($tenant, $branch, $data): array {
+            $period = CarbonImmutable::createFromFormat('Y-m', $data['month'])->subMonths($offset)->format('Y-m');
 
-        return response()->json(['branch' => $branch, 'period' => $data['month'], 'period_status' => $this->financialPeriodStatus($tenant->id(), $data['month']), 'currency' => $this->schoolCurrency($tenant->id()), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $data['month']), 'comparison' => ['period' => $previousMonth, 'period_status' => $this->financialPeriodStatus($tenant->id(), $previousMonth), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $previousMonth)]]);
+            return ['period' => $period, 'period_status' => $this->financialPeriodStatus($tenant->id(), $period), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $period)];
+        })->all();
+
+        return response()->json(['branch' => $branch, 'period' => $data['month'], 'period_status' => $this->financialPeriodStatus($tenant->id(), $data['month']), 'currency' => $this->schoolCurrency($tenant->id()), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $data['month']), 'comparison' => ['period' => $previousMonth, 'period_status' => $this->financialPeriodStatus($tenant->id(), $previousMonth), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $previousMonth)], 'trend' => $trend]);
     }
 
     public function branchFinancialStatementExport(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse

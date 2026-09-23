@@ -1518,3 +1518,12 @@ FUTURE WORK — prioritized handoff:
 - Verification: SchoolOperations feature suite passed 21 tests and 151 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome wrapper remains an environment limitation because it hangs before browser requests.
 - Deployment: Render deployment dep-daq217v40ujc73f5b1lg is live for commit e71609f; production health check returned HTTP 200.
 - Next bounded batch: add a bounded multi-period selector or trend view with explicit incomplete-period handling; do not present the current open month as finalized.
+
+## Batch 13 progress - three-period operating trend
+- Added a bounded three-period trend for the selected branch: selected month plus two previous months.
+- Each period includes its school-timezone-aware open/closed/upcoming status; the UI states that open periods are not finalized.
+- Trend values are limited to collected, expenses and payroll disbursements; no profit, ranking or charting claim was added.
+- Added feature assertions for trend length, periods and status labels.
+- Verification: SchoolOperations feature suite passed 21 tests and 156 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome wrapper remains an environment limitation because it hangs before browser requests.
+- Deployment: pending this commit; verify Render before the next batch.
+- Next bounded batch: add a bounded year-to-date view only if it preserves period status and explicit incomplete-period handling.
