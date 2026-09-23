@@ -1451,3 +1451,8 @@ FUTURE WORK — prioritized handoff:
 - Verification: SchoolOperations feature suite passed 19 tests and 118 assertions; Chrome browser suite passed 15/15; Vite production build passed; PHP lint, Laravel Pint and git diff --check passed.
 - Deployment: this tested metrics batch is being pushed now; Render deployment verification is next.
 - Next bounded batch: add a clearly labeled branch financial detail view only after confirming whether expenses and profit definitions are ready.
+
+## Deployment verification - branch attendance and overdue fee indicators
+- Render deployment dep-dapsfvbm8hqs73amp75g is live for commit 89f6c72, which includes the tested feature commit 75b4318 and the browser fixture stabilization.
+- Production health check returned HTTP 200.
+- Owner branch summaries now include the tested attendance and overdue indicators; no profit or historical chart claims were added.
