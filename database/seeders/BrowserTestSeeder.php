@@ -25,6 +25,8 @@ class BrowserTestSeeder extends Seeder
             $people[$role] = $person;
         }
         $schoolId = DB::table('schools')->where('slug', 'default-school')->value('id');
+        $enterprise = DB::table('platform_plans')->where('code', 'enterprise')->value('id');
+        DB::table('school_subscriptions')->where('school_id', $schoolId)->update(['plan_id' => $enterprise, 'status' => 'active']);
         $headmasterBranchId = DB::table('school_branches')->insertGetId(['school_id' => $schoolId, 'name' => 'North Campus', 'code' => 'north-campus', 'status' => 'active', 'is_default' => false, 'created_at' => now(), 'updated_at' => now()]);
         DB::table('school_user')->insert(['school_id' => $schoolId, 'user_id' => $people['headmaster']->id, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
         DB::table('school_user_branches')->insert([

@@ -121,6 +121,16 @@ class PortalController extends Controller
                 $paid = DB::table('school_payments')->whereIn('invoice_id', $invoices->pluck('id'))->selectRaw('invoice_id, sum(amount) as paid')->groupBy('invoice_id')->pluck('paid', 'invoice_id');
                 $billed = (int) $invoices->sum('amount');
                 $collected = (int) $paid->sum();
+                $overdue = 0;
+                foreach ($invoices as $invoice) {
+                    $invoicePaid = (int) ($paid[$invoice->id] ?? 0);
+                    if ($invoicePaid < (int) $invoice->amount && (string) $invoice->due_on < today()->toDateString()) {
+                        $overdue += max(0, (int) $invoice->amount - $invoicePaid);
+                    }
+                }
+                $attendance = DB::table('school_attendance')->where('school_id', $schoolId)->where('branch_id', $branch->id)->where('date', today()->toDateString())->get(['status']);
+                $attendanceTotal = $attendance->count();
+                $attendanceAttended = $attendance->whereIn('status', ['present', 'late'])->count();
 
                 return [
                     'id' => (int) $branch->id,
@@ -132,6 +142,8 @@ class PortalController extends Controller
                     'classes' => DB::table('school_classes')->where('school_id', $schoolId)->where('branch_id', $branch->id)->count(),
                     'collected' => $collected,
                     'outstanding' => max(0, $billed - $collected),
+                    'overdue' => $overdue,
+                    'attendance_percentage' => $attendanceTotal > 0 ? (int) round($attendanceAttended / $attendanceTotal * 100) : 0,
                 ];
             })->all();
     }

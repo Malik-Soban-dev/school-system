@@ -1443,3 +1443,11 @@ FUTURE WORK — prioritized handoff:
 - Render deployment dep-dapdrl0473hc738q6f2g is live for commit 89820e5.
 - Production health check returned HTTP 200.
 - Owners can open a permitted branch workspace from the overview; headmaster branch isolation remains enforced.
+
+## Batch 7 progress - branch attendance and overdue fee indicators
+- Added owner-only read-only metrics to each branch summary: today's student attendance percentage and overdue fee balance.
+- Kept profit, historical charts, and year-over-year reporting out of scope; these values are operational indicators, not profit calculations.
+- Browser fixtures enable the multi-branch entitlement for the owner and reset owner tests to the default branch so drill-down coverage remains isolated.
+- Verification: SchoolOperations feature suite passed 19 tests and 118 assertions; Chrome browser suite passed 15/15; Vite production build passed; PHP lint, Laravel Pint and git diff --check passed.
+- Deployment: this tested metrics batch is being pushed now; Render deployment verification is next.
+- Next bounded batch: add a clearly labeled branch financial detail view only after confirming whether expenses and profit definitions are ready.

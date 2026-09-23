@@ -36,7 +36,7 @@ class SchoolOperationsTest extends TestCase
         $this->actingAs($owner)->getJson('/portal/branches')->assertOk()->assertJsonCount(2, 'branches')->assertJsonFragment(['id' => $branchId, 'name' => 'North Campus']);
         $this->assertDatabaseHas('school_audit', ['school_id' => 1, 'branch_id' => $branchId, 'user_id' => $owner->id, 'module' => 'branches', 'action' => 'branch_created']);
         $this->assertDatabaseHas('school_user_branches', ['school_id' => 1, 'branch_id' => $branchId, 'user_id' => $owner->id, 'roles' => json_encode(['owner']), 'status' => 'active']);
-        $this->actingAs($owner)->getJson('/portal/meta')->assertOk()->assertJsonCount(2, 'branch_overview')->assertJsonFragment(['name' => 'North Campus', 'students' => 0, 'staff' => 0, 'classes' => 0, 'collected' => 0, 'outstanding' => 0]);
+        $this->actingAs($owner)->getJson('/portal/meta')->assertOk()->assertJsonCount(2, 'branch_overview')->assertJsonFragment(['name' => 'North Campus', 'students' => 0, 'staff' => 0, 'classes' => 0, 'collected' => 0, 'outstanding' => 0, 'overdue' => 0, 'attendance_percentage' => 0]);
     }
 
     public function test_non_owner_cannot_list_or_register_school_branches(): void
