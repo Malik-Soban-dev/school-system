@@ -197,13 +197,31 @@ class PortalController extends Controller
         $paidByInvoice = (clone $payments)->select('invoice_id')->selectRaw('sum(amount) as paid')->groupBy('invoice_id')->pluck('paid', 'invoice_id');
         $billed = (int) $invoiceRows->sum('amount');
         $collected = (int) $paidByInvoice->sum();
+        $aging = ['current' => 0, '1_30' => 0, '31_60' => 0, '61_plus' => 0];
+        $outstandingInvoices = 0;
+        $overdueInvoices = 0;
         $overdue = $invoiceRows->sum(function (object $invoice) use ($paidByInvoice): int {
             $balance = max(0, (int) $invoice->amount - (int) ($paidByInvoice[$invoice->id] ?? 0));
 
             return (string) $invoice->due_on < today()->toDateString() ? $balance : 0;
         });
+        foreach ($invoiceRows as $invoice) {
+            $balance = max(0, (int) $invoice->amount - (int) ($paidByInvoice[$invoice->id] ?? 0));
+            if ($balance === 0) {
+                continue;
+            }
+            $outstandingInvoices++;
+            $daysLate = CarbonImmutable::parse($invoice->due_on)->diffInDays(CarbonImmutable::today(), false);
+            if ($daysLate <= 0) {
+                $aging['current'] += $balance;
+            } else {
+                $overdueInvoices++;
+                $bucket = $daysLate <= 30 ? '1_30' : ($daysLate <= 60 ? '31_60' : '61_plus');
+                $aging[$bucket] += $balance;
+            }
+        }
 
-        return ['billed' => $billed, 'collected' => $collected, 'outstanding' => max(0, $billed - $collected), 'overdue' => (int) $overdue, 'expenses' => (int) DB::table('school_expenses')->where('school_id', $schoolId)->where('branch_id', $branch->id)->whereBetween('paid_on', [$month.'-01', $month.'-31'])->sum('amount'), 'payroll_disbursed' => (int) DB::table('school_payroll_payments')->where('school_id', $schoolId)->where('branch_id', $branch->id)->whereBetween('paid_on', [$month.'-01', $month.'-31'])->sum('amount')];
+        return ['billed' => $billed, 'collected' => $collected, 'outstanding' => max(0, $billed - $collected), 'overdue' => (int) $overdue, 'expenses' => (int) DB::table('school_expenses')->where('school_id', $schoolId)->where('branch_id', $branch->id)->whereBetween('paid_on', [$month.'-01', $month.'-31'])->sum('amount'), 'payroll_disbursed' => (int) DB::table('school_payroll_payments')->where('school_id', $schoolId)->where('branch_id', $branch->id)->whereBetween('paid_on', [$month.'-01', $month.'-31'])->sum('amount'), 'receipts' => (int) (clone $payments)->count(), 'methods' => (clone $payments)->select('method')->selectRaw('count(*) as receipts')->selectRaw('sum(amount) as amount')->groupBy('method')->orderBy('method')->get(), 'aging' => $aging, 'outstanding_invoices' => $outstandingInvoices, 'overdue_invoices' => $overdueInvoices];
     }
 
     public function contexts(Request $request): JsonResponse

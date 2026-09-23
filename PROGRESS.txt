@@ -1502,3 +1502,11 @@ FUTURE WORK — prioritized handoff:
 - Verification: SchoolOperations feature suite passed 21 tests and 141 assertions; PHP lint and Vite build passed; git diff --check passed. The Chrome wrapper remains an environment limitation because it hangs before browser requests.
 - Deployment: Render deployment dep-daq1236gekts73cri520 is live for commit 8332d7e; production health check returned HTTP 200.
 - Next bounded batch: add reconciliation detail by payment method and invoice aging only if it remains explicitly separate from profit and settlement claims.
+
+## Batch 11 progress - branch reconciliation and aging detail
+- Extended the owner monthly branch statement with receipt count, payment-method totals, open-invoice count, overdue-invoice count and current/1-30/31-60/61+ aging buckets.
+- Kept reconciliation values tied to the selected school, active branch and explicit month; recorded receipts remain distinct from settled cash and profit.
+- Added feature assertions for cash receipts, payment amount, overdue aging and invoice counts; no schema changes were needed.
+- Verification: SchoolOperations feature suite passed 21 tests and 147 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome wrapper was not rerun because it consistently hangs before browser requests in this environment.
+- Deployment: pending this commit; verify Render before the next batch.
+- Next bounded batch: add a bounded historical period selector or statement comparison only after preserving explicit open/closed period labels; profit remains excluded.
