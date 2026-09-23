@@ -168,7 +168,7 @@ class PortalController extends Controller
             return ['period' => $period, 'period_status' => $this->financialPeriodStatus($tenant->id(), $period), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $period)];
         })->all();
 
-        return response()->json(['branch' => $branch, 'period' => $data['month'], 'period_status' => $this->financialPeriodStatus($tenant->id(), $data['month']), 'currency' => $this->schoolCurrency($tenant->id()), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $data['month']), 'comparison' => ['period' => $previousMonth, 'period_status' => $this->financialPeriodStatus($tenant->id(), $previousMonth), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $previousMonth)], 'trend' => $trend]);
+        return response()->json(['branch' => $branch, 'period' => $data['month'], 'period_status' => $this->financialPeriodStatus($tenant->id(), $data['month']), 'currency' => $this->schoolCurrency($tenant->id()), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $data['month']), 'comparison' => ['period' => $previousMonth, 'period_status' => $this->financialPeriodStatus($tenant->id(), $previousMonth), 'metrics' => $this->branchFinancialMetrics($tenant->id(), $branch, $previousMonth)], 'trend' => $trend, 'year_to_date' => $this->branchYearToDate($tenant->id(), $branch, $data['month'])]);
     }
 
     public function branchFinancialStatementExport(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
@@ -202,6 +202,25 @@ class PortalController extends Controller
         $currentMonth = today($timezone)->format('Y-m');
 
         return $month < $currentMonth ? 'closed' : ($month === $currentMonth ? 'open' : 'upcoming');
+    }
+
+    private function branchYearToDate(int $schoolId, object $branch, string $through): array
+    {
+        $selected = CarbonImmutable::createFromFormat('Y-m', $through);
+        $period = $selected->startOfYear();
+        $flowMetrics = ['billed' => 0, 'collected' => 0, 'expenses' => 0, 'payroll_disbursed' => 0];
+        $monthsIncluded = 0;
+        $endingMetrics = [];
+        while ($period <= $selected) {
+            $endingMetrics = $this->branchFinancialMetrics($schoolId, $branch, $period->format('Y-m'));
+            foreach ($flowMetrics as $key => $value) {
+                $flowMetrics[$key] += $endingMetrics[$key];
+            }
+            $monthsIncluded++;
+            $period = $period->addMonth();
+        }
+
+        return ['year' => $selected->format('Y'), 'through' => $through, 'period_status' => $this->financialPeriodStatus($schoolId, $through), 'months_included' => $monthsIncluded, 'metrics' => [...$flowMetrics, 'outstanding' => $endingMetrics['outstanding'] ?? 0, 'overdue' => $endingMetrics['overdue'] ?? 0]];
     }
 
     private function branchFinancialMetrics(int $schoolId, object $branch, string $month): array
