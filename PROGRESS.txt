@@ -1491,5 +1491,5 @@ FUTURE WORK — prioritized handoff:
 - Added an owner portal control to open the statement and change the month, with recorded-operating-total and no-profit labels.
 - Added authorization and branch-scope feature coverage; non-owners receive 403 and cross-school branches cannot be selected.
 - Verification: SchoolOperations feature suite passed 21 tests and 134 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome wrapper was attempted but hung before issuing browser requests, so no Cypress pass is claimed for this batch.
-- Deployment: not yet deployed; commit and push are next after this handoff.
+- Deployment: Render deployment dep-daq0ok49v7es73bnmoc0 is live for commit 2a52a16; production health check returned HTTP 200.
 - Next bounded batch: add explicit reconciliation detail or exports only after the owner reviews the monthly statement semantics; profit remains blocked on reversal/settlement rules.
