@@ -1534,5 +1534,5 @@ FUTURE WORK — prioritized handoff:
 - The UI includes year, through-month, months included and open/closed/upcoming status; profit and rankings remain excluded.
 - Added feature assertions for YTD year, period, month count, flows and ending balance semantics.
 - Verification: SchoolOperations feature suite passed 21 tests and 162 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome wrapper remains an environment limitation because it hangs before browser requests.
-- Deployment: pending this commit; verify Render before the next batch.
+- Deployment: Render deployment dep-daq3g6bl550s73b5ubm0 is live for commit 69d4938; production health check returned HTTP 200.
 - Next bounded batch: add final report hardening�bounded query review, empty states and export period metadata�before considering historical reporting complete.
