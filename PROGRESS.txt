@@ -1456,3 +1456,11 @@ FUTURE WORK — prioritized handoff:
 - Render deployment dep-dapsfvbm8hqs73amp75g is live for commit 89f6c72, which includes the tested feature commit 75b4318 and the browser fixture stabilization.
 - Production health check returned HTTP 200.
 - Owner branch summaries now include the tested attendance and overdue indicators; no profit or historical chart claims were added.
+
+## Batch 8 progress - separated branch financial operating totals
+- Added owner-only branch summary values for recorded expenses and actual payroll disbursements, kept separate from billed fees, collected fees, outstanding balances and overdue balances.
+- Added an explicit UI note that these are operational recorded totals, not profit or accounting statements; profit, rankings and historical charts remain out of scope until accounting definitions are approved.
+- Added a feature test covering branch-scoped expense and payroll-disbursement totals; no schema or migration changes were needed.
+- Verification: SchoolOperations feature suite passed 20 tests and 123 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome runner completed its first workflow and exited after the run, but its wrapper did not return the final aggregate count in this environment.
+- Deployment: not yet deployed; commit and push are the next handoff step.
+- Next bounded batch: agree and document the exact treatment of issued, partial, paid, overdue, void, refunded, waived, scholarship and concession-adjusted records before adding monthly/yearly statements or profit/contribution comparisons.

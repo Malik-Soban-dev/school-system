@@ -47,6 +47,20 @@ class SchoolOperationsTest extends TestCase
         $this->actingAs($admin)->postJson('/portal/branches', ['name' => 'Unauthorized Campus', 'code' => 'unauthorized-campus'])->assertForbidden();
     }
 
+    public function test_owner_branch_overview_separates_expenses_and_payroll_disbursements(): void
+    {
+        $owner = $this->person('owner');
+        $enterprise = DB::table('platform_plans')->where('code', 'enterprise')->value('id');
+        DB::table('school_subscriptions')->where('school_id', 1)->update(['plan_id' => $enterprise, 'status' => 'active']);
+        $branchId = $this->actingAs($owner)->postJson('/portal/branches', ['name' => 'Finance Campus', 'code' => 'finance-campus'])->assertCreated()->json('branch.id');
+        DB::table('school_expenses')->insert(['school_id' => 1, 'branch_id' => $branchId, 'reference' => 'EXP-BRANCH-1', 'description' => 'Supplies', 'category' => 'supplies', 'amount' => 2500, 'paid_on' => '2026-09-20', 'created_at' => now(), 'updated_at' => now()]);
+        $staffId = DB::table('school_staff')->insertGetId(['school_id' => 1, 'branch_id' => $branchId, 'name' => 'Finance Teacher', 'employee_number' => 'FIN-STAFF-1', 'department' => 'Teaching', 'designation' => 'Teacher', 'joined_on' => '2026-01-01', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $payrollId = DB::table('school_payroll')->insertGetId(['school_id' => 1, 'branch_id' => $branchId, 'staff_id' => $staffId, 'month' => '2026-09', 'basic' => 10000, 'allowances' => 0, 'deductions' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('school_payroll_payments')->insert(['school_id' => 1, 'branch_id' => $branchId, 'payroll_id' => $payrollId, 'reference' => 'PAY-BRANCH-1', 'amount' => 7000, 'paid_on' => '2026-09-20', 'method' => 'bank', 'created_at' => now(), 'updated_at' => now()]);
+
+        $this->actingAs($owner)->getJson('/portal/meta')->assertOk()->assertJsonFragment(['name' => 'Finance Campus', 'expenses' => 2500, 'payroll_disbursed' => 7000]);
+    }
+
     public function test_owner_can_assign_an_existing_school_account_to_a_branch_as_admin(): void
     {
         $owner = $this->person('owner');

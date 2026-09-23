@@ -143,6 +143,8 @@ class PortalController extends Controller
                     'collected' => $collected,
                     'outstanding' => max(0, $billed - $collected),
                     'overdue' => $overdue,
+                    'expenses' => (int) DB::table('school_expenses')->where('school_id', $schoolId)->where('branch_id', $branch->id)->sum('amount'),
+                    'payroll_disbursed' => (int) DB::table('school_payroll_payments')->where('school_id', $schoolId)->where('branch_id', $branch->id)->sum('amount'),
                     'attendance_percentage' => $attendanceTotal > 0 ? (int) round($attendanceAttended / $attendanceTotal * 100) : 0,
                 ];
             })->all();
