@@ -1516,5 +1516,5 @@ FUTURE WORK — prioritized handoff:
 - The comparison shows prior billed, collected, expenses and payroll-disbursed totals and clearly labels itself as comparison-only, not a finalized statement.
 - Added feature assertions for the current open period, previous closed period and previous-period totals; profit and ranking remain excluded.
 - Verification: SchoolOperations feature suite passed 21 tests and 151 assertions; PHP lint passed; Vite production build passed; git diff --check passed. The Chrome wrapper remains an environment limitation because it hangs before browser requests.
-- Deployment: pending this commit; verify Render before the next batch.
+- Deployment: Render deployment dep-daq217v40ujc73f5b1lg is live for commit e71609f; production health check returned HTTP 200.
 - Next bounded batch: add a bounded multi-period selector or trend view with explicit incomplete-period handling; do not present the current open month as finalized.
