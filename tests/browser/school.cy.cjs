@@ -3,6 +3,7 @@ function login(role) {
     cy.intercept('GET','/portal/meta').as('loadMeta');
     cy.visit('/login'); cy.get('#username').type('test.' + role); cy.get('#password').type('Browser-test-12345', {log:false}); cy.get('button[type=submit]').click(); cy.url().should('include','/dashboard');
     cy.wait('@loadMeta').then(({response}) => {seenGuides = response.body.user.tutorials ?? []; if(!seenGuides.includes('overview')) cy.contains('button','Skip guide').click();});
+    if (role === 'owner') cy.get('.context-switcher select').select('1:1');
 }
 function open(key) {
     cy.get(`[data-cy=nav-${key}]`).click();
@@ -15,6 +16,8 @@ describe('School workflows', () => {
         cy.contains('[data-cy=branch-overview]', 'North Campus').should('be.visible');
         cy.contains('.branch-summary', 'North Campus').find('button').click();
         cy.get('[data-cy=active-context]').should('contain', 'North Campus');
+        cy.get('.context-switcher select').select('Default School · Default School Main Branch');
+        cy.get('[data-cy=active-context]').should('contain', 'Default School Main Branch');
         cy.intercept('PUT', '/portal/interface-preferences').as('saveInterfacePreferences');
         cy.get('[data-cy=theme-toggle]').click();
         cy.document().its('documentElement.classList').invoke('contains', 'dark').should('be.true');
